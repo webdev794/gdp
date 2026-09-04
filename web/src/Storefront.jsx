@@ -288,6 +288,7 @@ export default function Storefront() {
     setAuthMode(null)
     setOtpStage(null)
     setOtpCode('')
+    if (cart.length) setCheckoutOpen(true)
   }
 
   async function submitOtp(event) {
@@ -326,7 +327,12 @@ export default function Storefront() {
     event.preventDefault()
     setCheckoutMessage('')
     const token = localStorage.getItem('gdp_token')
-    if (!token) { setCheckoutMessage('Please sign in before checking out.'); return }
+    if (!token) {
+      setCheckoutOpen(false)
+      setAuthMode('login')
+      setAuthMessage('Sign in to place your order — your cart is saved.')
+      return
+    }
 
     try {
       for (const item of cart) {
