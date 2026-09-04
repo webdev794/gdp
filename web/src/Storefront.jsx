@@ -24,6 +24,31 @@ const categoriesFallback = [
 
 function price(cents) { return `$${(cents / 100).toFixed(2)}` }
 
+const CATEGORY_EMOJI = [
+  [/produce|fruit|veg|green/i, '\u{1F955}'], [/dairy|egg|milk|cheese/i, '\u{1F9C0}'],
+  [/bak|bread/i, '\u{1F35E}'], [/pantry|staple|grain|rice/i, '\u{1F33E}'],
+  [/snack/i, '\u{1F37F}'], [/drink|beverage|juice|water/i, '\u{1F9C3}'],
+  [/meat|poultry|chicken|fish|seafood/i, '\u{1F357}'], [/frozen/i, '\u{1F9CA}'],
+  [/clean|house|home/i, '\u{1F9FD}'], [/care|health|beauty|personal/i, '\u{1F9F4}'],
+]
+function categoryEmoji(name = '') { return (CATEGORY_EMOJI.find(([re]) => re.test(name)) ?? [null, '\u{1F6D2}'])[1] }
+
+const PRODUCT_EMOJI = [
+  [/banana/i, '\u{1F34C}'], [/apple/i, '\u{1F34E}'], [/egg/i, '\u{1F95A}'], [/milk/i, '\u{1F95B}'],
+  [/rice/i, '\u{1F35A}'], [/pasta|noodle|spaghetti/i, '\u{1F35D}'], [/bread|loaf|bun/i, '\u{1F35E}'],
+  [/cheese/i, '\u{1F9C0}'], [/butter/i, '\u{1F9C8}'], [/yog[hu]|yoghurt/i, '\u{1F963}'],
+  [/tomato/i, '\u{1F345}'], [/potato/i, '\u{1F954}'], [/onion|garlic/i, '\u{1F9C5}'],
+  [/carrot/i, '\u{1F955}'], [/orange|citrus/i, '\u{1F34A}'], [/grape/i, '\u{1F347}'],
+  [/berr|blueberr|strawberr/i, '\u{1FED0}'], [/lemon|lime/i, '\u{1F34B}'], [/avocado/i, '\u{1F951}'],
+  [/chicken|poultry/i, '\u{1F357}'], [/fish|salmon|tuna/i, '\u{1F41F}'], [/coffee/i, '☕'],
+  [/\btea\b/i, '\u{1F375}'], [/water/i, '\u{1F4A7}'], [/juice/i, '\u{1F9C3}'], [/oil/i, '\u{1FAD9}'],
+  [/sugar/i, '\u{1F36C}'], [/salt/i, '\u{1F9C2}'], [/chocolate|cookie|biscuit/i, '\u{1F36A}'],
+  [/chip|crisp/i, '\u{1F35F}'], [/corn/i, '\u{1F33D}'], [/bean|lentil/i, '\u{1FAD8}'],
+  [/flour|wheat/i, '\u{1F33E}'], [/honey/i, '\u{1F36F}'], [/pepper|chil/i, '\u{1F336}️'],
+  [/mushroom/i, '\u{1F344}'], [/broccoli/i, '\u{1F966}'], [/lettuce|spinach|kale|salad/i, '\u{1F96C}'],
+]
+function productEmoji(name = '') { return (PRODUCT_EMOJI.find(([re]) => re.test(name)) ?? [null, '\u{1F6D2}'])[1] }
+
 function orderLabel(order) {
   if (order.payment_status === 'paid') return 'Paid'
   if (order.payment_status === 'failed') return 'Payment failed'
@@ -163,6 +188,7 @@ export default function Storefront() {
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
   const cartTotal = cart.reduce((sum, item) => sum + item.price_cents * item.quantity, 0)
+  const cartQty = useMemo(() => Object.fromEntries(cart.map((item) => [item.id, item.quantity])), [cart])
 
   function add(product) {
     setCart((current) => {
@@ -310,29 +336,42 @@ export default function Storefront() {
   }
 
   return <div className="app-shell">
-    <div className="notice-bar">Free delivery on orders over $35 <span>Serving your neighborhood today</span></div>
-    <header className="site-header">
-      <a className="brand" href="/" aria-label="Grocerly home"><span className="brand-mark">g</span>grocerly</a>
-      <div className="location">Deliver to <strong>Brooklyn, NY</strong> <span>v</span></div>
-      {currentUser ? <><button className="text-button" type="button" onClick={() => { setOrdersOpen(true); setOrdersLoading(true); setOrders([]); setOrdersMessage('') }}>Your orders</button>{currentUser.is_admin && <button className="text-button" type="button" onClick={() => setAdminOpen(true)}>Admin</button>}<button className="text-button account-name" type="button" onClick={logout}>{currentUser.name} <span>Log out</span></button></> : <button className="text-button" type="button" onClick={() => { setAuthMode('login'); setAuthMessage('') }}>Sign in</button>}
-      <button className="cart-button" type="button" onClick={() => setCartOpen(true)} aria-label={`Cart with ${cartCount} items`}>Cart <b>{cartCount}</b></button>
-    </header>
-    <main>
-      <section className="hero-section">
-        <div className="hero-copy"><p className="eyebrow">Freshness, delivered</p><h1>Your everyday grocery run, made easy.</h1><p className="hero-subtitle">Good food, fair prices, and a little more time in your day. Delivered when you need it.</p>
-          <label className="search-box"><span>/</span><input aria-label="Search groceries" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search for groceries" /><kbd>Search</kbd></label>
-          <div className="hero-meta"><i /> Same-day delivery <em /> No memberships</div>
+    <header className="topbar">
+      <div className="topbar-row">
+        <a className="brand" href="/" aria-label="Grocerly home"><span className="brand-mark">g</span>grocerly</a>
+        <div className="deliver-to"><span className="deliver-eta">Delivery in 12 min</span><strong>Home &middot; Brooklyn, NY</strong></div>
+        <div className="topbar-actions">
+          {currentUser ? <>
+            <button className="link-btn" type="button" onClick={() => { setOrdersOpen(true); setOrdersLoading(true); setOrders([]); setOrdersMessage('') }}>Orders</button>
+            {currentUser.is_admin && <button className="link-btn" type="button" onClick={() => setAdminOpen(true)}>Admin</button>}
+            <button className="link-btn" type="button" onClick={logout}>{currentUser.name.split(' ')[0]} &middot; Log out</button>
+          </> : <button className="link-btn" type="button" onClick={() => { setAuthMode('login'); setAuthMessage('') }}>Sign in</button>}
+          <button className="cart-pill" type="button" onClick={() => setCartOpen(true)} aria-label={`Cart with ${cartCount} items`}><span aria-hidden>&#128722;</span> <b>{cartCount}</b></button>
         </div>
-        <div className="hero-art" role="img" aria-label="Fresh groceries illustration"><div className="art-sun" /><div className="basket"><span className="leaf leaf-a" /><span className="leaf leaf-b" /><span className="fruit fruit-a" /><span className="fruit fruit-b" /><span className="fruit fruit-c" /></div><small>picked today</small></div>
-      </section>
-      <section className="catalog-section" aria-labelledby="catalog-title"><div className="section-heading"><div><p className="eyebrow">The good stuff</p><h2 id="catalog-title">Shop the essentials</h2></div><span className="result-count">{visibleProducts.length} items</span></div>
-        <div className="category-row" aria-label="Product categories"><button className={activeCategory === 'All items' ? 'chip active' : 'chip'} type="button" onClick={() => setActiveCategory('All items')}>All items</button>{categories.map((category) => <button className={activeCategory === category.name ? 'chip active' : 'chip'} type="button" key={category.id} onClick={() => setActiveCategory(category.name)}>{category.name}</button>)}</div>
-        {offline && <div className="api-note">Showing sample products while the API is offline.</div>}
-        {loading ? <div className="empty-state">Loading the good stuff...</div> : <div className="product-grid">{visibleProducts.map((product) => <article className="product-card" key={product.id}><div className={`product-visual visual-${product.id % 4}`}><span>{product.name.split(' ').map((word) => word[0]).join('').slice(0, 2)}</span></div><div className="product-info"><p className="product-category">{product.category?.name ?? 'Grocery'}</p><h3>{product.name}</h3><div className="product-bottom"><strong>{price(product.price_cents)}</strong><button className="add-button" type="button" onClick={() => add(product)}>Add <span>+</span></button></div></div></article>)}</div>}
-      </section>
+      </div>
+      <label className="searchbar"><span aria-hidden>&#8981;</span><input aria-label="Search groceries" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search for milk, bananas, bread…" /></label>
+    </header>
+    <main className="catalog">
+      <nav className="cat-rail" aria-label="Product categories">
+        <button className={activeCategory === 'All items' ? 'cat-tile active' : 'cat-tile'} type="button" onClick={() => setActiveCategory('All items')}><span className="cat-ico" aria-hidden>&#129530;</span>All</button>
+        {categories.map((category) => <button className={activeCategory === category.name ? 'cat-tile active' : 'cat-tile'} type="button" key={category.id} onClick={() => setActiveCategory(category.name)}><span className="cat-ico" aria-hidden>{categoryEmoji(category.name)}</span>{category.name}</button>)}
+      </nav>
+      {offline && <div className="api-note">Showing sample products while the API is offline.</div>}
+      <div className="catalog-head"><h2>{activeCategory === 'All items' ? 'All products' : activeCategory}</h2><span>{visibleProducts.length} items</span></div>
+      {loading ? <div className="empty-state">Loading products…</div> : <div className="product-grid">{visibleProducts.map((product) => {
+        const qty = cartQty[product.id] ?? 0
+        return <article className="pcard" key={product.id}>
+          <div className="pcard-img" aria-hidden>{productEmoji(product.name)}</div>
+          <p className="pcard-cat">{product.category?.name ?? 'Grocery'}</p>
+          <h3>{product.name}</h3>
+          <div className="pcard-foot"><strong>{price(product.price_cents)}</strong>{qty === 0
+            ? <button className="add-btn" type="button" onClick={() => add(product)}>ADD</button>
+            : <span className="stepper"><button type="button" aria-label="Remove one" onClick={() => updateQuantity(product.id, -1)}>&minus;</button><b>{qty}</b><button type="button" aria-label="Add one" onClick={() => updateQuantity(product.id, 1)}>+</button></span>}</div>
+        </article>
+      })}{!visibleProducts.length && <p className="empty-state">Nothing matches that search.</p>}</div>}
     </main>
     <aside className="cart-tray" aria-live="polite"><div><strong>{cartCount ? `${cartCount} ${cartCount === 1 ? 'item' : 'items'} in your cart` : 'Your cart is ready'}</strong><span>{cartCount ? `${price(cartTotal)} subtotal` : 'Add something delicious'}</span></div><button type="button" onClick={() => setCartOpen(true)}>View cart <span>-&gt;</span></button></aside>
-    {cartOpen && <div className="overlay" role="presentation" onClick={() => setCartOpen(false)}><aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" onClick={(event) => event.stopPropagation()}><div className="drawer-header"><div><p className="eyebrow">Ready when you are</p><h2 id="cart-title">Your cart</h2></div><button className="close-button" type="button" onClick={() => setCartOpen(false)} aria-label="Close cart">x</button></div>{cart.length ? <><div className="drawer-items">{cart.map((item) => <div className="drawer-item" key={item.id}><div className="mini-visual">{item.name.slice(0, 2)}</div><div className="drawer-item-copy"><strong>{item.name}</strong><span>{price(item.price_cents)}</span></div><div className="quantity"><button type="button" onClick={() => updateQuantity(item.id, -1)}>-</button><span>{item.quantity}</span><button type="button" onClick={() => updateQuantity(item.id, 1)}>+</button></div></div>)}</div><div className="drawer-total"><span>Subtotal</span><strong>{price(cartTotal)}</strong></div><button className="checkout-button" type="button" onClick={() => { setCartOpen(false); setCheckoutOpen(true); setCheckoutMessage('') }}>Continue to checkout <span>-&gt;</span></button></> : <div className="empty-cart"><div className="empty-cart-mark">+</div><h3>Your cart is empty</h3><p>Find something good in the essentials below.</p><button type="button" onClick={() => setCartOpen(false)}>Keep shopping</button></div>}</aside></div>}
+    {cartOpen && <div className="overlay" role="presentation" onClick={() => setCartOpen(false)}><aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" onClick={(event) => event.stopPropagation()}><div className="drawer-header"><div><p className="eyebrow">Ready when you are</p><h2 id="cart-title">Your cart</h2></div><button className="close-button" type="button" onClick={() => setCartOpen(false)} aria-label="Close cart">x</button></div>{cart.length ? <><div className="drawer-items">{cart.map((item) => <div className="drawer-item" key={item.id}><div className="mini-visual" aria-hidden>{productEmoji(item.name)}</div><div className="drawer-item-copy"><strong>{item.name}</strong><span>{price(item.price_cents)}</span></div><div className="quantity"><button type="button" onClick={() => updateQuantity(item.id, -1)}>-</button><span>{item.quantity}</span><button type="button" onClick={() => updateQuantity(item.id, 1)}>+</button></div></div>)}</div><div className="drawer-total"><span>Subtotal</span><strong>{price(cartTotal)}</strong></div><button className="checkout-button" type="button" onClick={() => { setCartOpen(false); setCheckoutOpen(true); setCheckoutMessage('') }}>Continue to checkout <span>-&gt;</span></button></> : <div className="empty-cart"><div className="empty-cart-mark">+</div><h3>Your cart is empty</h3><p>Find something good in the essentials below.</p><button type="button" onClick={() => setCartOpen(false)}>Keep shopping</button></div>}</aside></div>}
     {authMode && <div className="overlay" role="presentation" onClick={() => { setAuthMode(null); setOtpStage(null) }}><div className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => { setAuthMode(null); setOtpStage(null) }} aria-label="Close authentication">x</button><p className="eyebrow">A better grocery run</p>{otpStage ? <><h2 id="auth-title">Enter your code</h2><p className="auth-intro">We emailed a 6-digit code to {otpStage.email}. It expires in 10 minutes.</p><form onSubmit={submitOtp}><input required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength="8" placeholder="6-digit code" value={otpCode} onChange={(event) => setOtpCode(event.target.value.replace(/[^0-9]/g, ''))} /><button className="checkout-button" type="submit">Verify <span>-&gt;</span></button></form>{authMessage && <p className="auth-message">{authMessage}</p>}<button className="switch-auth" type="button" onClick={resendOtp}>Resend code</button><button className="switch-auth" type="button" onClick={() => { setOtpStage(null); setAuthMessage('') }}>Use a different email</button></> : <><h2 id="auth-title">{authMode === 'register' ? 'Create your account' : 'Welcome back'}</h2><p className="auth-intro">{authMode === 'register' ? 'Save your details for a faster checkout.' : 'Sign in to pick up where you left off.'}</p><form onSubmit={submitAuth}>{authMode === 'register' && <input required placeholder="Full name" value={authForm.name} onChange={(event) => setAuthForm({ ...authForm, name: event.target.value })} />}<input required type="email" placeholder="Email address" value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} /><input required minLength="8" type="password" placeholder="Password" value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} />{authMode === 'register' && <input required minLength="8" type="password" placeholder="Confirm password" value={authForm.password_confirmation} onChange={(event) => setAuthForm({ ...authForm, password_confirmation: event.target.value })} />}<button className="checkout-button" type="submit">{authMode === 'register' ? 'Create account' : 'Sign in'} <span>-&gt;</span></button></form>{authMessage && <p className="auth-message">{authMessage}</p>}<button className="switch-auth" type="button" onClick={() => { setAuthMode(authMode === 'register' ? 'login' : 'register'); setAuthMessage('') }}>{authMode === 'register' ? 'Already have an account? Sign in' : 'New here? Create an account'}</button></>}</div></div>}
     {checkoutOpen && <div className="overlay" role="presentation" onClick={() => setCheckoutOpen(false)}><div className="auth-modal checkout-modal" role="dialog" aria-modal="true" aria-labelledby="checkout-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setCheckoutOpen(false)} aria-label="Close checkout">x</button><p className="eyebrow">Almost there</p><h2 id="checkout-title">Where should we deliver?</h2><p className="auth-intro">Your total will be calculated and confirmed securely by the server.</p>{addresses.length > 0 && <label className="address-picker">Saved address<select value={selectedAddressId} onChange={(event) => setSelectedAddressId(event.target.value)}>{addresses.map((address) => <option key={address.id} value={address.id}>{address.label} - {address.line1}, {address.city}</option>)}<option value="">Use a new address</option></select></label>}<form onSubmit={submitCheckout}>{!selectedAddressId && <><input required placeholder="Full name" value={checkoutForm.name} onChange={(event) => setCheckoutForm({ ...checkoutForm, name: event.target.value })} /><input required placeholder="Street address" value={checkoutForm.line1} onChange={(event) => setCheckoutForm({ ...checkoutForm, line1: event.target.value })} /><div className="form-row"><input required placeholder="City" value={checkoutForm.city} onChange={(event) => setCheckoutForm({ ...checkoutForm, city: event.target.value })} /><input required maxLength="2" placeholder="State" value={checkoutForm.state} onChange={(event) => setCheckoutForm({ ...checkoutForm, state: event.target.value.toUpperCase() })} /></div><input required pattern="[0-9]{5}(-[0-9]{4})?" placeholder="ZIP code" value={checkoutForm.postal_code} onChange={(event) => setCheckoutForm({ ...checkoutForm, postal_code: event.target.value })} /></>}</form><button className="checkout-button" type="button" onClick={submitCheckout}>Review order <span>-&gt;</span></button>{checkoutMessage && <p className="auth-message">{checkoutMessage}</p>}</div></div>}
     {order?.clientSecret && <div className="overlay" role="presentation"><div className="auth-modal checkout-modal payment-modal" role="dialog" aria-modal="true" aria-labelledby="payment-title"><p className="eyebrow">Secure payment</p><h2 id="payment-title">Finish your order.</h2><p className="auth-intro">Order #{order.id} · {price(order.total_cents)} USD</p><Elements stripe={stripePromise}><PaymentForm clientSecret={order.clientSecret} onComplete={finalizePayment} /></Elements></div></div>}
