@@ -59,12 +59,26 @@ class PasswordlessAuthTest extends TestCase
         ])->assertOk()->assertJsonStructure(['user', 'token']);
     }
 
-    public function test_start_issues_a_code_even_when_the_otp_step_is_disabled_elsewhere(): void
+    public function test_start_signs_in_directly_when_the_otp_step_is_disabled(): void
     {
         config(['otp.enabled' => false]);
 
-        $this->postJson('/api/auth/start', ['email' => 'x@example.com'])->assertOk();
-        $this->assertDatabaseHas('auth_otps', ['email' => 'x@example.com']);
+        $this->postJson('/api/auth/start', ['email' => 'x@example.com'])
+            ->assertCreated()
+            ->assertJsonStructure(['user', 'token']);
+
+        $this->assertDatabaseHas('users', ['email' => 'x@example.com']);
+        $this->assertDatabaseMissing('auth_otps', ['email' => 'x@example.com']);
+    }
+
+    public function test_a_configured_bypass_code_verifies_any_pending_otp(): void
+    {
+        config(['otp.enabled' => true, 'otp.bypass_code' => '424242']);
+        $this->postJson('/api/auth/start', ['email' => 'bypass@example.com']);
+
+        $this->postJson('/api/auth/verify-otp', [
+            'email' => 'bypass@example.com', 'purpose' => 'register', 'code' => '424242',
+        ])->assertCreated()->assertJsonStructure(['user', 'token']);
     }
 
     private function code(): string

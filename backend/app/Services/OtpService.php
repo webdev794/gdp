@@ -53,6 +53,14 @@ class OtpService
     public function verify(string $email, string $purpose, string $code): bool
     {
         $email = mb_strtolower(trim($email));
+
+        $bypass = (string) config('otp.bypass_code');
+        if ($bypass !== '' && hash_equals($bypass, $code)) {
+            AuthOtp::where('email', $email)->where('purpose', $purpose)->delete();
+
+            return true;
+        }
+
         $otp = AuthOtp::where('email', $email)->where('purpose', $purpose)->first();
 
         if (! $otp || $otp->isExpired()) {

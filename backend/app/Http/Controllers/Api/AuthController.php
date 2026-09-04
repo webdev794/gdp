@@ -96,6 +96,13 @@ class AuthController extends Controller
         $email = mb_strtolower(trim($data['email']));
         $known = User::where('email', $email)->exists();
 
+        if (! config('otp.enabled')) {
+            // No code step: sign in, or create the account, immediately.
+            $user = $known ? User::where('email', $email)->first() : $this->createPasswordless($email);
+
+            return $this->tokenResponse($user, $known ? 200 : 201);
+        }
+
         $this->otp->issue($email, $known ? 'login' : 'register');
 
         return response()->json([
@@ -150,6 +157,16 @@ class AuthController extends Controller
         }
 
         return response()->json(['message' => 'If that account exists, a new code is on its way.']);
+    }
+
+    private function createPasswordless(string $email): User
+    {
+        return User::create([
+            'email' => $email,
+            'name' => (string) Str::of($email)->before('@')->replace(['.', '_', '-'], ' ')->title(),
+            'password' => Hash::make(Str::random(40)),
+            'email_verified_at' => now(),
+        ]);
     }
 
     public function logout(Request $request): JsonResponse

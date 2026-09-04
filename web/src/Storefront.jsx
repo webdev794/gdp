@@ -262,6 +262,7 @@ export default function Storefront() {
       const response = await fetch(`${API_URL}/auth/start`, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ email: authForm.email.trim() }) })
       const data = await responseJson(response)
       if (!response.ok) throw new Error(data.message ?? Object.values(data.errors ?? {})[0]?.[0] ?? 'Please check your email.')
+      if (data.token) { finishAuth(data); return }
       setOtpStage({ email: data.email, purpose: data.purpose })
       setOtpCode('')
       setAuthMessage(data.known ? 'Welcome back — enter the code we emailed you.' : 'Enter the code to finish creating your account.')
