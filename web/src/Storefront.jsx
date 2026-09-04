@@ -6,7 +6,7 @@ import './StorefrontBase.css'
 import './Storefront.css'
 import './Checkout.css'
 
-const API_URL = 'http://127.0.0.1:8000/api'
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api'
 const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) : null
 const fallbackProducts = [
   { id: 1, name: 'Organic Bananas', price_cents: 299, category: { name: 'Fresh Produce' } },
