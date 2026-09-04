@@ -27,8 +27,8 @@ class AuthController extends Controller
             'address.name' => ['required_with:address', 'string', 'max:120'],
             'address.line1' => ['required_with:address', 'string', 'max:255'],
             'address.city' => ['required_with:address', 'string', 'max:100'],
-            'address.state' => ['required_with:address', 'string', 'size:2'],
-            'address.postal_code' => ['required_with:address', 'regex:/^\\d{5}(-\\d{4})?$/'],
+            'address.state' => ['required_with:address', 'string', 'max:60'],
+            'address.postal_code' => ['required_with:address', 'string', 'max:12'],
         ]);
 
         $user = DB::transaction(function () use ($validated): User {

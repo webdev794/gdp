@@ -21,8 +21,8 @@ class CheckoutController extends Controller
             'address.line1' => ['required_without:address_id', 'string', 'max:255'],
             'address.line2' => ['nullable', 'string', 'max:255'],
             'address.city' => ['required_without:address_id', 'string', 'max:100'],
-            'address.state' => ['required_without:address_id', 'string', 'size:2'],
-            'address.postal_code' => ['required_without:address_id', 'string', 'regex:/^\\d{5}(-\\d{4})?$/'],
+            'address.state' => ['required_without:address_id', 'string', 'max:60'],
+            'address.postal_code' => ['required_without:address_id', 'string', 'max:12'],
         ]);
 
         $order = DB::transaction(function () use ($request, $validated): Order {
