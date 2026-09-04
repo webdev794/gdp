@@ -50,6 +50,26 @@ const PRODUCT_EMOJI = [
 ]
 function productEmoji(name = '') { return (PRODUCT_EMOJI.find(([re]) => re.test(name)) ?? [null, '\u{1F6D2}'])[1] }
 
+const NOMINATIM = 'https://nominatim.openstreetmap.org'
+
+// Map an OpenStreetMap Nominatim result to the app's address shape.
+function toAddress(place) {
+  const a = place.address ?? {}
+  const city = a.city || a.town || a.village || a.suburb || a.county || a.state_district || ''
+  const state = ((a['ISO3166-2-lvl4'] || '').split('-')[1] || a.state || '').slice(0, 2).toUpperCase()
+  const parts = (place.display_name || '').split(',').map((s) => s.trim())
+  return {
+    label: parts.slice(0, 2).join(', ') || 'Selected location',
+    full: place.display_name || '',
+    line1: [a.house_number, a.road].filter(Boolean).join(' '),
+    city,
+    state,
+    postal_code: a.postcode || '',
+    lat: place.lat,
+    lon: place.lon,
+  }
+}
+
 function orderLabel(order) {
   if (order.payment_status === 'paid') return 'Paid'
   if (order.payment_status === 'failed') return 'Payment failed'
@@ -100,6 +120,15 @@ export default function Storefront() {
   })
   const [loading, setLoading] = useState(true)
   const [offline, setOffline] = useState(false)
+  const [location, setLocation] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('gdp_location') ?? 'null') }
+    catch { return null }
+  })
+  const [locationOpen, setLocationOpen] = useState(false)
+  const [locationQuery, setLocationQuery] = useState('')
+  const [locationResults, setLocationResults] = useState([])
+  const [locationBusy, setLocationBusy] = useState(false)
+  const [locationMsg, setLocationMsg] = useState('')
   const [cartOpen, setCartOpen] = useState(false)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [authMode, setAuthMode] = useState(null)
@@ -128,17 +157,17 @@ export default function Storefront() {
   }, [cart])
 
   useEffect(() => {
-    if (!checkoutOpen) return
+    if (!checkoutOpen && !locationOpen) return
     const token = localStorage.getItem('gdp_token')
     if (!token) return
     fetch(`${API_URL}/addresses`, { headers: { Accept: 'application/json', Authorization: `Bearer ${token}` } })
       .then(responseJson)
       .then((data) => {
         setAddresses(data.data ?? [])
-        if (data.data?.[0]) setSelectedAddressId(String(data.data[0].id))
+        if (checkoutOpen && data.data?.[0]) setSelectedAddressId(String(data.data[0].id))
       })
       .catch(() => setAddresses([]))
-  }, [checkoutOpen])
+  }, [checkoutOpen, locationOpen])
 
   useEffect(() => {
     if (!ordersOpen) return
@@ -347,11 +376,69 @@ export default function Storefront() {
     setOrders([])
   }
 
+  function applyLocation(address) {
+    setLocation(address)
+    localStorage.setItem('gdp_location', JSON.stringify(address))
+    if (address.city || address.postal_code) {
+      setCheckoutForm((form) => ({
+        ...form,
+        line1: address.line1 || form.line1,
+        city: address.city || form.city,
+        state: address.state || form.state,
+        postal_code: address.postal_code || form.postal_code,
+      }))
+    }
+    setLocationOpen(false)
+    setLocationResults([])
+    setLocationQuery('')
+    setLocationMsg('')
+  }
+
+  async function detectLocation() {
+    setLocationMsg('')
+    if (!navigator.geolocation) { setLocationMsg('This browser cannot detect location.'); return }
+    setLocationBusy(true)
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        const { latitude, longitude } = pos.coords
+        const response = await fetch(`${NOMINATIM}/reverse?format=jsonv2&addressdetails=1&lat=${latitude}&lon=${longitude}`, { headers: { 'Accept-Language': 'en' } })
+        const data = await response.json()
+        if (!data || data.error) throw new Error('Could not read that location.')
+        applyLocation(toAddress(data))
+      } catch (error) {
+        setLocationMsg(error.message ?? 'Could not read that location.')
+      } finally {
+        setLocationBusy(false)
+      }
+    }, (error) => {
+      setLocationBusy(false)
+      setLocationMsg(error.code === 1 ? 'Location permission was denied.' : 'Could not get your location.')
+    }, { enableHighAccuracy: true, timeout: 10000 })
+  }
+
+  async function searchLocation(event) {
+    event.preventDefault()
+    const term = locationQuery.trim()
+    if (term.length < 3) return
+    setLocationBusy(true)
+    setLocationMsg('')
+    try {
+      const response = await fetch(`${NOMINATIM}/search?format=jsonv2&addressdetails=1&limit=6&q=${encodeURIComponent(term)}`, { headers: { 'Accept-Language': 'en' } })
+      const data = await response.json()
+      setLocationResults(Array.isArray(data) ? data : [])
+      if (!data.length) setLocationMsg('No matches. Try a more specific address.')
+    } catch {
+      setLocationMsg('Address lookup is unavailable right now.')
+    } finally {
+      setLocationBusy(false)
+    }
+  }
+
   return <div className="app-shell">
     <header className="topbar">
       <div className="topbar-row">
         <a className="brand" href="/" aria-label="Grocerly home"><span className="brand-mark">g</span>grocerly</a>
-        <div className="deliver-to"><span className="deliver-eta">Delivery in 12 min</span><strong>Home &middot; Brooklyn, NY</strong></div>
+        <button className="deliver-to" type="button" onClick={() => { setLocationOpen(true); setLocationMsg('') }}><span className="deliver-eta">Delivery in 12 min</span><strong>{location ? location.label : 'Set your location'} <em aria-hidden>&#9662;</em></strong></button>
         <div className="topbar-actions">
           {currentUser ? <>
             <button className="link-btn" type="button" onClick={() => { setOrdersOpen(true); setOrdersLoading(true); setOrders([]); setOrdersMessage('') }}>Orders</button>
@@ -405,6 +492,14 @@ export default function Storefront() {
     {order?.clientSecret && <div className="overlay" role="presentation"><div className="auth-modal checkout-modal payment-modal" role="dialog" aria-modal="true" aria-labelledby="payment-title"><p className="eyebrow">Secure payment</p><h2 id="payment-title">Finish your order.</h2><p className="auth-intro">Order #{order.id} · {price(order.total_cents)} USD</p><Elements stripe={stripePromise}><PaymentForm clientSecret={order.clientSecret} onComplete={finalizePayment} /></Elements></div></div>}
     {order && !order.clientSecret && <div className="overlay" role="presentation" onClick={() => setOrder(null)}><div className="auth-modal order-modal" role="dialog" aria-modal="true" aria-labelledby="order-title" onClick={(event) => event.stopPropagation()}><p className="eyebrow">{order.paid ? 'Payment submitted' : 'Payment setup needed'}</p><h2 id="order-title">{order.paid ? 'You’re all set.' : 'Order created.'}</h2><p className="auth-intro">Order #{order.id} is {order.paid ? 'being confirmed by Stripe.' : 'waiting for Stripe test keys.'}</p><div className="order-total"><span>Order total</span><strong>{price(order.total_cents)}</strong></div><button className="checkout-button" type="button" onClick={() => setOrder(null)}>Keep shopping <span>-&gt;</span></button></div></div>}
     {ordersOpen && <div className="overlay" role="presentation" onClick={() => setOrdersOpen(false)}><div className="auth-modal orders-modal" role="dialog" aria-modal="true" aria-labelledby="orders-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setOrdersOpen(false)} aria-label="Close orders">x</button><p className="eyebrow">Your grocery runs</p><h2 id="orders-title">Order history</h2>{ordersLoading ? <p className="auth-intro">Loading your orders...</p> : orders.length === 0 ? <p className="auth-intro">No orders yet. Your completed checkouts will appear here.</p> : <ul className="orders-list">{orders.map((entry) => <li className="order-row" key={entry.id}><div className="order-row-head"><strong>Order #{entry.id}</strong><span className={`order-badge order-badge-${entry.payment_status}`}>{orderLabel(entry)}</span></div><div className="order-row-meta"><span>{new Date(entry.created_at).toLocaleDateString()}</span><span>{entry.items?.length ?? 0} {entry.items?.length === 1 ? 'item' : 'items'}</span><strong>{price(entry.total_cents)}</strong></div>{entry.payment_status === 'paid' && DELIVERY_STAGES.includes(entry.status) && <div className="order-track" aria-label={`Delivery status: ${DELIVERY_LABELS[entry.status]}`}>{DELIVERY_STAGES.map((stage, index) => <span key={stage} className={index <= DELIVERY_STAGES.indexOf(entry.status) ? 'track-step done' : 'track-step'} title={DELIVERY_LABELS[stage]} />)}<em>{DELIVERY_LABELS[entry.status]}</em></div>}{entry.payment_status === 'paid' && entry.status === 'cancelled' && <p className="order-track-note">Cancelled</p>}{entry.status !== 'cancelled' && entry.payment_status !== 'paid' && entry.payment_status !== 'cancelled' && <button className="text-button order-pay" type="button" onClick={() => resumePayment(entry)}>Complete payment <span>-&gt;</span></button>}</li>)}</ul>}{ordersMessage && <p className="auth-message">{ordersMessage}</p>}</div></div>}
+    {locationOpen && <div className="overlay" role="presentation" onClick={() => setLocationOpen(false)}><div className="auth-modal location-modal" role="dialog" aria-modal="true" aria-labelledby="loc-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setLocationOpen(false)} aria-label="Close location">x</button><p className="eyebrow">Deliver to</p><h2 id="loc-title">Where are you?</h2><p className="auth-intro">We use your location to show the right delivery time and pre-fill checkout.</p>
+      <button className="checkout-button" type="button" onClick={detectLocation} disabled={locationBusy}>{locationBusy ? 'Locating…' : 'Use my current location'} <span>&#9678;</span></button>
+      <form className="loc-search" onSubmit={searchLocation}><input placeholder="Or type an address, area or ZIP" value={locationQuery} onChange={(event) => setLocationQuery(event.target.value)} /><button type="submit" disabled={locationBusy || locationQuery.trim().length < 3}>Search</button></form>
+      {location && <button className="loc-current" type="button" onClick={() => setLocationOpen(false)}><strong>Current</strong> {location.full || location.label}</button>}
+      {currentUser && addresses.length > 0 && <div className="loc-saved"><p className="loc-saved-h">Saved addresses</p>{addresses.map((address) => <button key={address.id} type="button" className="loc-result" onClick={() => applyLocation({ label: `${address.label || 'Address'} · ${address.city}`, full: `${address.line1}, ${address.city} ${address.state} ${address.postal_code}`, line1: address.line1, city: address.city, state: address.state, postal_code: address.postal_code })}>{address.line1}, {address.city} {address.state} {address.postal_code}</button>)}</div>}
+      {locationResults.length > 0 && <div className="loc-results">{locationResults.map((place) => <button key={place.place_id} type="button" className="loc-result" onClick={() => applyLocation(toAddress(place))}>{place.display_name}</button>)}</div>}
+      {locationMsg && <p className="auth-message">{locationMsg}</p>}
+    </div></div>}
     {adminOpen && currentUser?.is_admin && <Admin token={localStorage.getItem('gdp_token')} onClose={() => setAdminOpen(false)} />}
     <footer><span>grocerly</span><span>Fresh food. Less fuss.</span><span>USD / United States</span></footer>
   </div>
