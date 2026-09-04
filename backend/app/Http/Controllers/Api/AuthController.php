@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class AuthController extends Controller
@@ -84,6 +85,27 @@ class AuthController extends Controller
         return $this->tokenResponse($user);
     }
 
+    /**
+     * Passwordless entry: send a code to an email. Existing accounts get a
+     * login code; unknown emails get a register code and the account is
+     * created when that code is verified.
+     */
+    public function start(Request $request): JsonResponse
+    {
+        $data = $request->validate(['email' => ['required', 'email', 'max:255']]);
+        $email = mb_strtolower(trim($data['email']));
+        $known = User::where('email', $email)->exists();
+
+        $this->otp->issue($email, $known ? 'login' : 'register');
+
+        return response()->json([
+            'requires_otp' => true,
+            'purpose' => $known ? 'login' : 'register',
+            'email' => $email,
+            'known' => $known,
+        ]);
+    }
+
     public function verifyOtp(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -98,7 +120,16 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $user = User::where('email', $validated['email'])->firstOrFail();
+        $user = $validated['purpose'] === 'register'
+            ? User::firstOrCreate(
+                ['email' => mb_strtolower(trim($validated['email']))],
+                [
+                    'name' => (string) Str::of($validated['email'])->before('@')->replace(['.', '_', '-'], ' ')->title(),
+                    'password' => Hash::make(Str::random(40)),
+                    'email_verified_at' => now(),
+                ]
+            )
+            : User::where('email', $validated['email'])->firstOrFail();
 
         if (! $user->email_verified_at) {
             $user->forceFill(['email_verified_at' => now()])->save();

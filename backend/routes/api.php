@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('throttle:12,1')->group(function () {
+    Route::post('/auth/start', [AuthController::class, 'start']);
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
     Route::post('/auth/verify-otp', [AuthController::class, 'verifyOtp']);
