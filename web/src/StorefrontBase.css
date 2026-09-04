@@ -47,7 +47,8 @@ button{cursor:pointer}
 .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:12px}
 .pcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px;display:flex;flex-direction:column;transition:box-shadow .15s ease}
 .pcard:hover{box-shadow:var(--shadow)}
-.pcard-img{height:112px;border-radius:11px;background:linear-gradient(160deg,#f1f7ee,#e2efe6);display:grid;place-items:center;font-size:46px;margin-bottom:9px;user-select:none}
+.pcard-img{position:relative;height:112px;border-radius:11px;background:linear-gradient(160deg,#f1f7ee,#e2efe6);display:grid;place-items:center;font-size:46px;margin-bottom:9px;user-select:none;overflow:hidden}
+.pcard-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#fff}
 .pcard-cat{margin:0;font:9px 'DM Mono',monospace;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
 .pcard h3{margin:4px 0 10px;font-size:13px;font-weight:600;line-height:1.32;min-height:34px}
 .pcard-foot{margin-top:auto;display:flex;align-items:center;justify-content:space-between;gap:8px}

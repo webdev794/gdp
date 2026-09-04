@@ -8,13 +8,14 @@ import './Checkout.css'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api'
 const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) : null
+const flickr = (keyword, lock) => `https://loremflickr.com/400/300/${keyword}?lock=${lock}`
 const fallbackProducts = [
-  { id: 1, name: 'Organic Bananas', price_cents: 299, category: { name: 'Fresh Produce' } },
-  { id: 2, name: 'Gala Apples', price_cents: 449, category: { name: 'Fresh Produce' } },
-  { id: 3, name: 'Large Brown Eggs', price_cents: 599, category: { name: 'Dairy and Eggs' } },
-  { id: 4, name: 'Whole Milk', price_cents: 429, category: { name: 'Dairy and Eggs' } },
-  { id: 5, name: 'Long Grain Rice', price_cents: 699, category: { name: 'Pantry Staples' } },
-  { id: 6, name: 'Pasta', price_cents: 249, category: { name: 'Pantry Staples' } },
+  { id: 1, name: 'Organic Bananas', price_cents: 299, category: { name: 'Fresh Produce' }, image_url: flickr('banana', 10) },
+  { id: 2, name: 'Gala Apples', price_cents: 449, category: { name: 'Fresh Produce' }, image_url: flickr('apple', 20) },
+  { id: 3, name: 'Large Brown Eggs', price_cents: 599, category: { name: 'Dairy and Eggs' }, image_url: flickr('eggs', 60) },
+  { id: 4, name: 'Whole Milk', price_cents: 429, category: { name: 'Dairy and Eggs' }, image_url: flickr('milk', 70) },
+  { id: 5, name: 'Long Grain Rice', price_cents: 699, category: { name: 'Pantry Staples' }, image_url: flickr('rice', 110) },
+  { id: 6, name: 'Pasta', price_cents: 249, category: { name: 'Pantry Staples' }, image_url: flickr('pasta', 120) },
 ]
 const categoriesFallback = [
   { id: 1, name: 'Fresh Produce' },
@@ -361,7 +362,7 @@ export default function Storefront() {
       {loading ? <div className="empty-state">Loading products…</div> : <div className="product-grid">{visibleProducts.map((product) => {
         const qty = cartQty[product.id] ?? 0
         return <article className="pcard" key={product.id}>
-          <div className="pcard-img" aria-hidden>{productEmoji(product.name)}</div>
+          <div className="pcard-img" aria-hidden>{productEmoji(product.name)}{product.image_url && <img src={product.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
           <p className="pcard-cat">{product.category?.name ?? 'Grocery'}</p>
           <h3>{product.name}</h3>
           <div className="pcard-foot"><strong>{price(product.price_cents)}</strong>{qty === 0
