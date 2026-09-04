@@ -10,6 +10,21 @@ class AuthTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // These cover the password path; OTP has its own suite.
+        config(['otp.enabled' => false]);
+    }
+
+    public function test_guest_api_request_returns_json_unauthorized_response(): void
+    {
+        $this->get('/api/user')
+            ->assertUnauthorized()
+            ->assertJson(['message' => 'Unauthenticated.']);
+    }
+
     public function test_customer_can_register(): void
     {
         $response = $this->postJson('/api/auth/register', [
@@ -24,6 +39,30 @@ class AuthTest extends TestCase
 
         $this->assertDatabaseHas('users', [
             'email' => 'customer@example.com',
+        ]);
+    }
+
+    public function test_customer_can_register_with_an_optional_delivery_address(): void
+    {
+        $response = $this->postJson('/api/auth/register', [
+            'name' => 'Address Customer',
+            'email' => 'address@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'address' => [
+                'name' => 'Address Customer',
+                'line1' => '10 Main Street',
+                'city' => 'Brooklyn',
+                'state' => 'NY',
+                'postal_code' => '11201',
+            ],
+        ]);
+
+        $response->assertCreated();
+        $this->assertDatabaseHas('addresses', [
+            'name' => 'Address Customer',
+            'line1' => '10 Main Street',
+            'is_default' => true,
         ]);
     }
 
