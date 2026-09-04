@@ -8,19 +8,19 @@ import './Checkout.css'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api'
 const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) : null
-const flickr = (keyword, lock) => `https://loremflickr.com/400/300/${keyword}?lock=${lock}`
+const foodImg = (ingredient) => `https://www.themealdb.com/images/ingredients/${encodeURIComponent(ingredient)}-Medium.png`
 const fallbackProducts = [
-  { id: 1, name: 'Organic Bananas', price_cents: 299, category: { name: 'Fresh Produce' }, image_url: flickr('banana', 10) },
-  { id: 2, name: 'Gala Apples', price_cents: 449, category: { name: 'Fresh Produce' }, image_url: flickr('apple', 20) },
-  { id: 3, name: 'Large Brown Eggs', price_cents: 599, category: { name: 'Dairy and Eggs' }, image_url: flickr('eggs', 60) },
-  { id: 4, name: 'Whole Milk', price_cents: 429, category: { name: 'Dairy and Eggs' }, image_url: flickr('milk', 70) },
-  { id: 5, name: 'Long Grain Rice', price_cents: 699, category: { name: 'Pantry Staples' }, image_url: flickr('rice', 110) },
-  { id: 6, name: 'Pasta', price_cents: 249, category: { name: 'Pantry Staples' }, image_url: flickr('pasta', 120) },
+  { id: 1, name: 'Organic Bananas', price_cents: 299, category: { name: 'Fresh Produce' }, image_url: foodImg('Banana') },
+  { id: 2, name: 'Gala Apples', price_cents: 449, category: { name: 'Fresh Produce' }, image_url: foodImg('Apples') },
+  { id: 3, name: 'Large Brown Eggs', price_cents: 599, category: { name: 'Dairy and Eggs' }, image_url: foodImg('Egg') },
+  { id: 4, name: 'Whole Milk', price_cents: 429, category: { name: 'Dairy and Eggs' }, image_url: foodImg('Milk') },
+  { id: 5, name: 'Long Grain Rice', price_cents: 699, category: { name: 'Pantry Staples' }, image_url: foodImg('Rice') },
+  { id: 6, name: 'Pasta', price_cents: 249, category: { name: 'Pantry Staples' }, image_url: foodImg('Spaghetti') },
 ]
 const categoriesFallback = [
-  { id: 1, name: 'Fresh Produce' },
-  { id: 2, name: 'Dairy and Eggs' },
-  { id: 3, name: 'Pantry Staples' },
+  { id: 1, name: 'Fresh Produce', image_url: foodImg('Tomato') },
+  { id: 2, name: 'Dairy and Eggs', image_url: foodImg('Milk') },
+  { id: 3, name: 'Pantry Staples', image_url: foodImg('Rice') },
 ]
 
 function price(cents) { return `$${(cents / 100).toFixed(2)}` }
@@ -355,7 +355,7 @@ export default function Storefront() {
     <main className="catalog">
       <nav className="cat-rail" aria-label="Product categories">
         <button className={activeCategory === 'All items' ? 'cat-tile active' : 'cat-tile'} type="button" onClick={() => setActiveCategory('All items')}><span className="cat-ico" aria-hidden>&#129530;</span>All</button>
-        {categories.map((category) => <button className={activeCategory === category.name ? 'cat-tile active' : 'cat-tile'} type="button" key={category.id} onClick={() => setActiveCategory(category.name)}><span className="cat-ico" aria-hidden>{categoryEmoji(category.name)}</span>{category.name}</button>)}
+        {categories.map((category) => <button className={activeCategory === category.name ? 'cat-tile active' : 'cat-tile'} type="button" key={category.id} onClick={() => setActiveCategory(category.name)}><span className="cat-ico" aria-hidden>{categoryEmoji(category.name)}{category.image_url && <img src={category.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>{category.name}</button>)}
       </nav>
       {offline && <div className="api-note">Showing sample products while the API is offline.</div>}
       <div className="catalog-head"><h2>{activeCategory === 'All items' ? 'All products' : activeCategory}</h2><span>{visibleProducts.length} items</span></div>

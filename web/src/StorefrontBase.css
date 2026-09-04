@@ -34,7 +34,8 @@ button{cursor:pointer}
 .cat-rail::-webkit-scrollbar-thumb{background:var(--line);border-radius:9px}
 .cat-tile{flex:0 0 auto;width:78px;display:flex;flex-direction:column;align-items:center;gap:7px;border:0;background:0;font-size:11px;font-weight:600;color:var(--muted);text-align:center;line-height:1.2}
 .cat-tile.active{color:var(--ink)}
-.cat-ico{width:60px;height:60px;border-radius:16px;display:grid;place-items:center;font-size:27px;background:var(--lime);border:1px solid var(--line);transition:box-shadow .15s ease}
+.cat-ico{position:relative;overflow:hidden;width:60px;height:60px;border-radius:16px;display:grid;place-items:center;font-size:27px;background:var(--lime);border:1px solid var(--line);transition:box-shadow .15s ease}
+.cat-ico img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#fff}
 .cat-tile.active .cat-ico{box-shadow:0 0 0 2px var(--green) inset}
 
 .api-note{margin:12px 0;padding:9px 12px;background:#fff7e0;border:1px solid #f2e2ad;border-radius:10px;color:#8a6d1f;font:12px 'DM Mono',monospace}
