@@ -27,6 +27,6 @@ class AddressController extends Controller
 
     private function rules(): array
     {
-        return ['label' => ['sometimes', 'string', 'max:40'], 'name' => ['required', 'string', 'max:120'], 'line1' => ['required', 'string', 'max:255'], 'line2' => ['nullable', 'string', 'max:255'], 'city' => ['required', 'string', 'max:100'], 'state' => ['required', 'string', 'max:60'], 'postal_code' => ['required', 'string', 'max:12'], 'is_default' => ['sometimes', 'boolean']];
+        return ['label' => ['sometimes', 'string', 'max:40'], 'name' => ['required', 'string', 'max:120'], 'line1' => ['required', 'string', 'max:255'], 'line2' => ['nullable', 'string', 'max:255'], 'city' => ['required', 'string', 'max:100'], 'state' => ['required', 'string', 'max:60'], 'postal_code' => ['required', 'string', 'max:12'], 'latitude' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'], 'longitude' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'], 'is_default' => ['sometimes', 'boolean']];
     }
 }

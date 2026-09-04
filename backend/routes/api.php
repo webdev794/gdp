@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\AdminCategoryController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AdminOrderController;
 use App\Http\Controllers\Api\AdminProductController;
+use App\Http\Controllers\Api\AdminStoreController;
+use App\Http\Controllers\Api\DeliveryController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\CheckoutController;
@@ -24,6 +26,7 @@ Route::middleware('throttle:12,1')->group(function () {
 });
 
 Route::get('/config', ConfigController::class);
+Route::get('/delivery-eta', DeliveryController::class);
 
 Route::get('/categories', [CatalogController::class, 'categories']);
 Route::get('/products', [CatalogController::class, 'products']);
@@ -55,6 +58,11 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/products', [AdminProductController::class, 'store']);
     Route::patch('/products/{product}', [AdminProductController::class, 'update']);
     Route::delete('/products/{product}', [AdminProductController::class, 'destroy']);
+
+    Route::get('/stores', [AdminStoreController::class, 'index']);
+    Route::post('/stores', [AdminStoreController::class, 'store']);
+    Route::patch('/stores/{store}', [AdminStoreController::class, 'update']);
+    Route::delete('/stores/{store}', [AdminStoreController::class, 'destroy']);
 
     Route::get('/categories', [AdminCategoryController::class, 'index']);
     Route::post('/categories', [AdminCategoryController::class, 'store']);

@@ -5,7 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\Order;
-use App\Models\Address;
+use App\Models\Store;
+use App\Support\Geo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,12 +24,16 @@ class CheckoutController extends Controller
             'address.city' => ['required_without:address_id', 'string', 'max:100'],
             'address.state' => ['required_without:address_id', 'string', 'max:60'],
             'address.postal_code' => ['required_without:address_id', 'string', 'max:12'],
+            'address.latitude' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
+            'address.longitude' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
         ]);
 
         $order = DB::transaction(function () use ($request, $validated): Order {
             $address = isset($validated['address_id'])
                 ? $request->user()->addresses()->findOrFail($validated['address_id'])->toArray()
                 : $validated['address'];
+
+            $this->assertWithinDeliveryArea($address);
             $cart = Cart::query()->where('user_id', $request->user()->id)->first();
 
             if (! $cart) {
@@ -90,5 +95,63 @@ class CheckoutController extends Controller
         });
 
         return response()->json(['data' => $order], 201);
+    }
+
+    /**
+     * Block the order if the delivery address is outside the active store's
+     * radius. A store with no coordinates, or radius enforcement turned off,
+     * skips the check.
+     *
+     * @param  array<string, mixed>  $address
+     */
+    private function assertWithinDeliveryArea(array $address): void
+    {
+        if (! config('checkout.enforce_radius')) {
+            return;
+        }
+
+        $stores = Store::query()->where('is_active', true)
+            ->whereNotNull('latitude')->whereNotNull('longitude')->get();
+
+        if ($stores->isEmpty()) {
+            return;
+        }
+
+        $lat = $address['latitude'] ?? null;
+        $lng = $address['longitude'] ?? null;
+
+        if ($lat === null || $lng === null) {
+            [$lat, $lng] = Geo::geocode(implode(', ', array_filter([
+                $address['line1'] ?? null,
+                $address['city'] ?? null,
+                $address['state'] ?? null,
+                $address['postal_code'] ?? null,
+            ])));
+        }
+
+        if ($lat === null || $lng === null) {
+            throw ValidationException::withMessages([
+                'address' => ['We could not locate that address to check delivery availability. Pick it on the map.'],
+            ]);
+        }
+
+        $nearest = null;
+        foreach ($stores as $store) {
+            $km = Geo::haversineKm((float) $store->latitude, (float) $store->longitude, (float) $lat, (float) $lng);
+            if ($km <= $store->delivery_radius_km) {
+                return; // in range of at least one store
+            }
+            if ($nearest === null || $km < $nearest['km']) {
+                $nearest = ['km' => $km, 'radius' => $store->delivery_radius_km];
+            }
+        }
+
+        throw ValidationException::withMessages([
+            'address' => [sprintf(
+                'That address is %.1f km from our nearest store, which delivers within %d km.',
+                $nearest['km'],
+                $nearest['radius'],
+            )],
+        ]);
     }
 }

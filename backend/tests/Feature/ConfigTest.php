@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class ConfigTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_public_config_exposes_client_settings(): void
     {
         config([

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Store;
 use Illuminate\Http\JsonResponse;
 
 class ConfigController extends Controller
@@ -21,6 +22,10 @@ class ConfigController extends Controller
                 'tax_rate_bps' => (int) config('checkout.tax_rate_bps'),
                 'delivery_fee_cents' => (int) config('checkout.delivery_fee_cents'),
                 'free_delivery_threshold_cents' => (int) config('checkout.free_delivery_threshold_cents'),
+                'enforce_radius' => (bool) config('checkout.enforce_radius'),
+                'stores' => Store::query()->where('is_active', true)
+                    ->whereNotNull('latitude')->whereNotNull('longitude')
+                    ->get(['id', 'name', 'latitude', 'longitude', 'delivery_radius_km']),
             ],
         ]);
     }

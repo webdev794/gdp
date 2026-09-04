@@ -15,7 +15,7 @@ class PasswordlessAuthTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        config(['otp.resend_cooldown_seconds' => 60]);
+        config(['otp.enabled' => true, 'otp.resend_cooldown_seconds' => 60, 'otp.bypass_code' => '']);
         Notification::fake();
     }
 
