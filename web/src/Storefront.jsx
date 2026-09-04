@@ -93,7 +93,7 @@ export default function Storefront() {
   const [categories, setCategories] = useState([])
   const [products, setProducts] = useState([])
   const [query, setQuery] = useState('')
-  const [activeCategory, setActiveCategory] = useState('All items')
+  const [activeCategory, setActiveCategory] = useState(null)
   const [cart, setCart] = useState(() => {
     try { return JSON.parse(localStorage.getItem('gdp_cart') ?? '[]') }
     catch { return [] }
@@ -178,14 +178,25 @@ export default function Storefront() {
     loadCatalog()
   }, [])
 
+  const searching = query.trim().length > 0
+
   const visibleProducts = useMemo(() => {
     const term = query.trim().toLowerCase()
     return products.filter((product) => {
-      const categoryMatch = activeCategory === 'All items' || product.category?.name === activeCategory
+      const categoryMatch = term ? true : !activeCategory || product.category?.name === activeCategory
       const textMatch = !term || [product.name, product.description, product.sku].filter(Boolean).some((value) => value.toLowerCase().includes(term))
       return categoryMatch && textMatch
     })
   }, [activeCategory, products, query])
+
+  const categoryCounts = useMemo(() => {
+    const counts = {}
+    for (const product of products) {
+      const name = product.category?.name
+      if (name) counts[name] = (counts[name] ?? 0) + 1
+    }
+    return counts
+  }, [products])
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
   const cartTotal = cart.reduce((sum, item) => sum + item.price_cents * item.quantity, 0)
@@ -353,23 +364,39 @@ export default function Storefront() {
       <label className="searchbar"><span aria-hidden>&#8981;</span><input aria-label="Search groceries" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search for milk, bananas, bread…" /></label>
     </header>
     <main className="catalog">
-      <nav className="cat-rail" aria-label="Product categories">
-        <button className={activeCategory === 'All items' ? 'cat-tile active' : 'cat-tile'} type="button" onClick={() => setActiveCategory('All items')}><span className="cat-ico" aria-hidden>&#129530;</span>All</button>
-        {categories.map((category) => <button className={activeCategory === category.name ? 'cat-tile active' : 'cat-tile'} type="button" key={category.id} onClick={() => setActiveCategory(category.name)}><span className="cat-ico" aria-hidden>{categoryEmoji(category.name)}{category.image_url && <img src={category.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>{category.name}</button>)}
-      </nav>
       {offline && <div className="api-note">Showing sample products while the API is offline.</div>}
-      <div className="catalog-head"><h2>{activeCategory === 'All items' ? 'All products' : activeCategory}</h2><span>{visibleProducts.length} items</span></div>
-      {loading ? <div className="empty-state">Loading products…</div> : <div className="product-grid">{visibleProducts.map((product) => {
-        const qty = cartQty[product.id] ?? 0
-        return <article className="pcard" key={product.id}>
-          <div className="pcard-img" aria-hidden>{productEmoji(product.name)}{product.image_url && <img src={product.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
-          <p className="pcard-cat">{product.category?.name ?? 'Grocery'}</p>
-          <h3>{product.name}</h3>
-          <div className="pcard-foot"><strong>{price(product.price_cents)}</strong>{qty === 0
-            ? <button className="add-btn" type="button" onClick={() => add(product)}>ADD</button>
-            : <span className="stepper"><button type="button" aria-label="Remove one" onClick={() => updateQuantity(product.id, -1)}>&minus;</button><b>{qty}</b><button type="button" aria-label="Add one" onClick={() => updateQuantity(product.id, 1)}>+</button></span>}</div>
-        </article>
-      })}{!visibleProducts.length && <p className="empty-state">Nothing matches that search.</p>}</div>}
+
+      {loading ? <div className="empty-state">Loading…</div> : (!searching && !activeCategory) ? (
+        <>
+          <div className="catalog-head"><h2>Shop by category</h2><span>{categories.length} categories</span></div>
+          <div className="cat-grid">
+            {categories.map((category) => <button className="cat-card" type="button" key={category.id} onClick={() => setActiveCategory(category.name)}>
+              <span className="cat-card-img" aria-hidden>{categoryEmoji(category.name)}{category.image_url && <img src={category.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
+              <strong>{category.name}</strong>
+              <span className="cat-card-count">{categoryCounts[category.name] ?? 0} items</span>
+            </button>)}
+          </div>
+        </>
+      ) : (
+        <>
+          <nav className="cat-rail" aria-label="Product categories">
+            <button className="cat-tile" type="button" onClick={() => { setActiveCategory(null); setQuery('') }}><span className="cat-ico" aria-hidden>&#8592;</span>All</button>
+            {categories.map((category) => <button className={activeCategory === category.name ? 'cat-tile active' : 'cat-tile'} type="button" key={category.id} onClick={() => { setActiveCategory(category.name); setQuery('') }}><span className="cat-ico" aria-hidden>{categoryEmoji(category.name)}{category.image_url && <img src={category.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>{category.name}</button>)}
+          </nav>
+          <div className="catalog-head"><h2>{searching ? `Results for “${query.trim()}”` : activeCategory}</h2><span>{visibleProducts.length} items</span></div>
+          <div className="product-grid">{visibleProducts.map((product) => {
+            const qty = cartQty[product.id] ?? 0
+            return <article className="pcard" key={product.id}>
+              <div className="pcard-img" aria-hidden>{productEmoji(product.name)}{product.image_url && <img src={product.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
+              <p className="pcard-cat">{product.category?.name ?? 'Grocery'}</p>
+              <h3>{product.name}</h3>
+              <div className="pcard-foot"><strong>{price(product.price_cents)}</strong>{qty === 0
+                ? <button className="add-btn" type="button" onClick={() => add(product)}>ADD</button>
+                : <span className="stepper"><button type="button" aria-label="Remove one" onClick={() => updateQuantity(product.id, -1)}>&minus;</button><b>{qty}</b><button type="button" aria-label="Add one" onClick={() => updateQuantity(product.id, 1)}>+</button></span>}</div>
+            </article>
+          })}{!visibleProducts.length && <p className="empty-state">Nothing here yet.</p>}</div>
+        </>
+      )}
     </main>
     <aside className="cart-tray" aria-live="polite"><div><strong>{cartCount ? `${cartCount} ${cartCount === 1 ? 'item' : 'items'} in your cart` : 'Your cart is ready'}</strong><span>{cartCount ? `${price(cartTotal)} subtotal` : 'Add something delicious'}</span></div><button type="button" onClick={() => setCartOpen(true)}>View cart <span>-&gt;</span></button></aside>
     {cartOpen && <div className="overlay" role="presentation" onClick={() => setCartOpen(false)}><aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" onClick={(event) => event.stopPropagation()}><div className="drawer-header"><div><p className="eyebrow">Ready when you are</p><h2 id="cart-title">Your cart</h2></div><button className="close-button" type="button" onClick={() => setCartOpen(false)} aria-label="Close cart">x</button></div>{cart.length ? <><div className="drawer-items">{cart.map((item) => <div className="drawer-item" key={item.id}><div className="mini-visual" aria-hidden>{productEmoji(item.name)}</div><div className="drawer-item-copy"><strong>{item.name}</strong><span>{price(item.price_cents)}</span></div><div className="quantity"><button type="button" onClick={() => updateQuantity(item.id, -1)}>-</button><span>{item.quantity}</span><button type="button" onClick={() => updateQuantity(item.id, 1)}>+</button></div></div>)}</div><div className="drawer-total"><span>Subtotal</span><strong>{price(cartTotal)}</strong></div><button className="checkout-button" type="button" onClick={() => { setCartOpen(false); setCheckoutOpen(true); setCheckoutMessage('') }}>Continue to checkout <span>-&gt;</span></button></> : <div className="empty-cart"><div className="empty-cart-mark">+</div><h3>Your cart is empty</h3><p>Find something good in the essentials below.</p><button type="button" onClick={() => setCartOpen(false)}>Keep shopping</button></div>}</aside></div>}
