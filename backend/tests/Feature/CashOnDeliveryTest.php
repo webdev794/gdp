@@ -1,0 +1,205 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Category;
+use App\Models\Order;
+use App\Models\Product;
+use App\Models\Setting;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
+use Tests\TestCase;
+
+class CashOnDeliveryTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_cash_on_delivery_checkout_creates_a_confirmed_unpaid_order_when_enabled(): void
+    {
+        Setting::put('cod_enabled', true);
+        $user = User::factory()->create();
+        $product = $this->product(['price_cents' => 1000, 'inventory_quantity' => 5]);
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/cart/items', ['product_id' => $product->id, 'quantity' => 2]);
+
+        $this->postJson('/api/checkout', [
+            'payment_method' => 'cod',
+            'address' => [
+                'name' => 'Test Customer', 'line1' => '10 Main Street', 'city' => 'Brooklyn',
+                'state' => 'NY', 'postal_code' => '11201',
+            ],
+        ])->assertCreated()
+            ->assertJsonPath('data.status', 'confirmed')
+            ->assertJsonPath('data.payment_status', 'pending')
+            ->assertJsonPath('data.payment_method', 'cod')
+            ->assertJsonPath('data.stripe_payment_intent_id', null);
+    }
+
+    public function test_cash_on_delivery_checkout_is_rejected_when_disabled(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->product(['inventory_quantity' => 2]);
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/cart/items', ['product_id' => $product->id, 'quantity' => 1]);
+
+        $this->postJson('/api/checkout', [
+            'payment_method' => 'cod',
+            'address' => [
+                'name' => 'Test Customer', 'line1' => '10 Main Street', 'city' => 'Brooklyn',
+                'state' => 'NY', 'postal_code' => '11201',
+            ],
+        ])->assertUnprocessable()->assertJsonValidationErrors(['payment_method']);
+    }
+
+    public function test_cash_on_delivery_order_advances_through_delivery_without_stripe(): void
+    {
+        $order = $this->codOrder();
+        Sanctum::actingAs($this->admin());
+
+        foreach (['packing', 'ready_for_delivery', 'out_for_delivery', 'completed'] as $status) {
+            $this->patchJson("/api/admin/orders/{$order->id}", ['status' => $status])
+                ->assertOk()
+                ->assertJsonPath('data.status', $status);
+        }
+
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'payment_status' => 'pending']);
+    }
+
+    public function test_admin_can_mark_cash_collected(): void
+    {
+        $order = $this->codOrder(['status' => 'out_for_delivery']);
+        Sanctum::actingAs($this->admin());
+
+        $this->patchJson("/api/admin/orders/{$order->id}", ['cash_collected' => true])
+            ->assertOk()
+            ->assertJsonPath('data.payment_status', 'paid');
+    }
+
+    public function test_cash_collected_flag_is_ignored_for_a_card_order(): void
+    {
+        $order = Order::create([
+            'user_id' => User::factory()->create()->id,
+            'status' => 'confirmed',
+            'payment_status' => 'paid',
+            'payment_method' => 'card',
+            'subtotal_cents' => 1000, 'tax_cents' => 89, 'delivery_fee_cents' => 599, 'total_cents' => 1688,
+            'delivery_address' => ['name' => 'X', 'line1' => '1 St', 'city' => 'B', 'state' => 'NY', 'postal_code' => '11201'],
+        ]);
+        Sanctum::actingAs($this->admin());
+
+        $this->patchJson("/api/admin/orders/{$order->id}", ['cash_collected' => true, 'courier_name' => 'Sam'])
+            ->assertOk()
+            ->assertJsonPath('data.payment_status', 'paid');
+    }
+
+    public function test_customer_can_switch_an_unpaid_card_order_to_cash_on_delivery(): void
+    {
+        Setting::put('cod_enabled', true);
+        $user = User::factory()->create();
+        $order = Order::create([
+            'user_id' => $user->id,
+            'status' => 'pending_payment',
+            'payment_status' => 'pending',
+            'payment_method' => 'card',
+            'subtotal_cents' => 1000, 'tax_cents' => 89, 'delivery_fee_cents' => 599, 'total_cents' => 1688,
+            'delivery_address' => ['name' => 'X', 'line1' => '1 St', 'city' => 'B', 'state' => 'NY', 'postal_code' => '11201'],
+        ]);
+        Sanctum::actingAs($user);
+
+        $this->patchJson("/api/orders/{$order->id}/payment-method", ['payment_method' => 'cod'])
+            ->assertOk()
+            ->assertJsonPath('data.payment_method', 'cod')
+            ->assertJsonPath('data.status', 'confirmed');
+    }
+
+    public function test_switching_to_cod_is_refused_when_disabled_or_already_paid(): void
+    {
+        $user = User::factory()->create();
+        $paid = $this->codOrder(['user_id' => $user->id, 'payment_method' => 'card', 'payment_status' => 'paid']);
+        Sanctum::actingAs($user);
+
+        // disabled toggle
+        $pending = Order::create([
+            'user_id' => $user->id, 'status' => 'pending_payment', 'payment_status' => 'pending', 'payment_method' => 'card',
+            'subtotal_cents' => 1000, 'tax_cents' => 89, 'delivery_fee_cents' => 599, 'total_cents' => 1688,
+            'delivery_address' => ['name' => 'X', 'line1' => '1 St', 'city' => 'B', 'state' => 'NY', 'postal_code' => '11201'],
+        ]);
+        $this->patchJson("/api/orders/{$pending->id}/payment-method", ['payment_method' => 'cod'])->assertStatus(422);
+
+        // already paid
+        Setting::put('cod_enabled', true);
+        $this->patchJson("/api/orders/{$paid->id}/payment-method", ['payment_method' => 'cod'])->assertStatus(422);
+    }
+
+    public function test_payment_intent_is_refused_for_a_cash_on_delivery_order(): void
+    {
+        $user = User::factory()->create();
+        $order = $this->codOrder(['user_id' => $user->id]);
+        Sanctum::actingAs($user);
+
+        $this->postJson("/api/orders/{$order->id}/payment-intent")->assertStatus(422);
+    }
+
+    public function test_admin_can_read_and_update_the_cod_setting(): void
+    {
+        Sanctum::actingAs($this->admin());
+
+        $this->getJson('/api/admin/settings')
+            ->assertOk()
+            ->assertJsonPath('data.cod_enabled', false);
+
+        $this->patchJson('/api/admin/settings', ['cod_enabled' => true])
+            ->assertOk()
+            ->assertJsonPath('data.cod_enabled', true);
+
+        $this->assertTrue((bool) Setting::get('cod_enabled'));
+    }
+
+    public function test_a_normal_user_cannot_reach_the_settings_endpoint(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->getJson('/api/admin/settings')->assertForbidden();
+        $this->patchJson('/api/admin/settings', ['cod_enabled' => true])->assertForbidden();
+    }
+
+    public function test_public_config_reports_cod_availability(): void
+    {
+        $this->getJson('/api/config')->assertOk()->assertJsonPath('data.cod_enabled', false);
+
+        Setting::put('cod_enabled', true);
+
+        $this->getJson('/api/config')->assertOk()->assertJsonPath('data.cod_enabled', true);
+    }
+
+    private function product(array $attributes = []): Product
+    {
+        $category = Category::factory()->create();
+
+        return Product::factory()->create(['category_id' => $category->id, ...$attributes]);
+    }
+
+    private function admin(): User
+    {
+        return User::factory()->create(['is_admin' => true]);
+    }
+
+    private function codOrder(array $overrides = []): Order
+    {
+        return Order::create([
+            'user_id' => User::factory()->create()->id,
+            'status' => 'confirmed',
+            'payment_status' => 'pending',
+            'payment_method' => 'cod',
+            'subtotal_cents' => 1000, 'tax_cents' => 89, 'delivery_fee_cents' => 599, 'total_cents' => 1688,
+            'delivery_address' => [
+                'name' => 'Test Customer', 'line1' => '10 Main Street',
+                'city' => 'Brooklyn', 'state' => 'NY', 'postal_code' => '11201',
+            ],
+            ...$overrides,
+        ]);
+    }
+}

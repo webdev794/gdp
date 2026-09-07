@@ -17,10 +17,11 @@ import { colors } from '../theme';
 const BLANK = { name: '', line1: '', city: '', state: '', postal_code: '' };
 
 export default function CheckoutScreen({ navigation }) {
-  const { cart, clearCart } = useApp();
+  const { cart, clearCart, user, refreshUser } = useApp();
   const [addresses, setAddresses] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [form, setForm] = useState(BLANK);
+  const [phone, setPhone] = useState(user?.phone || '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -41,6 +42,10 @@ export default function CheckoutScreen({ navigation }) {
 
   async function placeOrder() {
     setError('');
+    if (!phone.trim()) {
+      setError('Add a phone number so your delivery rider can reach you.');
+      return;
+    }
     setBusy(true);
     try {
       for (const item of cart) {
@@ -55,7 +60,8 @@ export default function CheckoutScreen({ navigation }) {
         checkoutBody = { address_id: created.data.id };
       }
 
-      const order = await api.checkout(checkoutBody);
+      const order = await api.checkout({ ...checkoutBody, phone: phone.trim() });
+      if (phone.trim() !== (user?.phone || '')) refreshUser();
       const intent = await api.paymentIntent(order.data.id);
 
       clearCart();
@@ -130,6 +136,17 @@ export default function CheckoutScreen({ navigation }) {
           </View>
         )}
 
+        <Text style={styles.fieldLabel}>
+          {user?.phone ? 'Contact phone' : 'Contact phone — the delivery rider may call you'}
+        </Text>
+        <TextInput
+          style={styles.input}
+          placeholder="e.g. +1 555 987 6543"
+          keyboardType="phone-pad"
+          value={phone}
+          onChangeText={setPhone}
+        />
+
         {!!error && <Text style={styles.error}>{error}</Text>}
 
         <Pressable style={styles.button} onPress={placeOrder} disabled={busy}>
@@ -167,6 +184,7 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   formRow: { flexDirection: 'row', gap: 10 },
+  fieldLabel: { fontSize: 12, fontWeight: '700', color: colors.muted, marginTop: 8, marginBottom: 6 },
   error: { color: colors.danger, fontSize: 13, marginTop: 6 },
   button: {
     backgroundColor: colors.brand,

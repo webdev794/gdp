@@ -15,7 +15,7 @@ class AdminDashboardTest extends TestCase
     public function test_metrics_summarise_orders_and_paid_revenue(): void
     {
         $this->order('confirmed', 'paid', 2000);
-        $this->order('preparing', 'paid', 3000);
+        $this->order('packing', 'paid', 3000);
         $this->order('pending_payment', 'pending', 1500);
 
         Sanctum::actingAs($this->admin());

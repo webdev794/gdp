@@ -18,6 +18,10 @@ return [
         'key' => env('POSTMARK_API_KEY'),
     ],
 
+    'nominatim' => [
+        'user_agent' => env('NOMINATIM_USER_AGENT', 'gdp-grocery/1.0 (+https://github.com/webdev794/gdp)'),
+    ],
+
     'resend' => [
         'key' => env('RESEND_API_KEY'),
     ],

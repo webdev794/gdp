@@ -60,6 +60,11 @@ export function AppProvider({ children }) {
         await setToken(null);
         setUser(null);
       },
+      async refreshUser() {
+        try {
+          setUser(await api.me());
+        } catch {}
+      },
       addToCart(product) {
         setCart((current) => {
           const found = current.find((item) => item.id === product.id);

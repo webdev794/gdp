@@ -20,6 +20,10 @@ class PaymentController extends Controller
     {
         abort_unless($order->user_id === $request->user()->id, 404);
 
+        if ($order->isCashOnDelivery()) {
+            return response()->json(['message' => 'This order is cash on delivery.'], 422);
+        }
+
         if (! config('services.stripe.secret')) {
             return response()->json([
                 'message' => 'Stripe is not configured. Add STRIPE_SECRET to the backend environment.',
@@ -75,6 +79,105 @@ class PaymentController extends Controller
                 'client_secret' => $intent->client_secret,
             ],
         ]);
+    }
+
+    /**
+     * Admin-triggered Stripe refund. Full or partial: a bare call refunds the
+     * remaining balance; `item_ids` sums those line totals; `amount_cents`
+     * overrides. Refunds stack until they reach the order total. When linked to
+     * a support thread, a system note is added to the conversation.
+     */
+    public function refund(Request $request, Order $order): JsonResponse
+    {
+        $validated = $request->validate([
+            'amount_cents' => ['sometimes', 'integer', 'min:1'],
+            'item_ids' => ['sometimes', 'array'],
+            'item_ids.*' => ['integer'],
+            'support_thread_id' => ['sometimes', 'nullable', 'integer', 'exists:support_threads,id'],
+            'reason' => ['sometimes', 'nullable', 'string', 'max:200'],
+        ]);
+
+        if (! in_array($order->payment_status, ['refund_pending', 'paid', 'partially_refunded'], true)) {
+            return response()->json(['message' => 'This order is not in a refundable state.'], 422);
+        }
+
+        if (! $order->stripe_payment_intent_id) {
+            return response()->json(['message' => 'This order has no Stripe payment to refund (cash on delivery?). Mark it refunded manually.'], 422);
+        }
+
+        $remaining = $order->refundableRemainingCents();
+        if ($remaining <= 0) {
+            return response()->json(['message' => 'This order is already fully refunded.'], 422);
+        }
+
+        $amount = match (true) {
+            isset($validated['amount_cents']) => (int) $validated['amount_cents'],
+            ! empty($validated['item_ids']) => (int) $order->items()->whereIn('id', $validated['item_ids'])->sum('line_total_cents'),
+            default => $remaining,
+        };
+
+        if ($amount <= 0 || $amount > $remaining) {
+            return response()->json(['message' => "Refund amount must be between \$0.01 and \${$this->dollars($remaining)}."], 422);
+        }
+
+        if (! config('services.stripe.secret')) {
+            return response()->json(['message' => 'Stripe is not configured.'], 503);
+        }
+
+        $stripe = new StripeClient(config('services.stripe.secret'));
+
+        try {
+            $refund = $stripe->refunds->create([
+                'payment_intent' => $order->stripe_payment_intent_id,
+                'amount' => $amount,
+            ]);
+        } catch (ApiErrorException $exception) {
+            if ($exception->getStripeCode() === 'charge_already_refunded') {
+                $order->update(['payment_status' => 'refunded', 'refunded_amount_cents' => $order->total_cents]);
+
+                return response()->json(['data' => $this->orderPayload($order)]);
+            }
+
+            Log::error('Stripe refund failed', ['order_id' => $order->id, 'error' => $exception->getMessage()]);
+
+            return response()->json(['message' => 'Stripe declined the refund. Check the dashboard.'], 502);
+        }
+
+        $refundedTotal = $order->refunded_amount_cents + $amount;
+
+        $order->refunds()->create([
+            'support_thread_id' => $validated['support_thread_id'] ?? null,
+            'created_by' => $request->user()->id,
+            'amount_cents' => $amount,
+            'reason' => $validated['reason'] ?? null,
+            'stripe_refund_id' => $refund->id,
+        ]);
+
+        $order->update([
+            'refunded_amount_cents' => $refundedTotal,
+            'stripe_refund_id' => $refund->id,
+            'payment_status' => $refundedTotal >= $order->total_cents ? 'refunded' : 'partially_refunded',
+        ]);
+
+        if (! empty($validated['support_thread_id'])) {
+            $note = 'Refund of $'.$this->dollars($amount).' issued'
+                .(! empty($validated['reason']) ? " — {$validated['reason']}." : '.');
+            \App\Models\SupportThread::find($validated['support_thread_id'])?->post(null, $note, isStaff: true, system: true);
+        }
+
+        Log::info('Order refunded via Stripe', ['order_id' => $order->id, 'amount' => $amount, 'refund' => $refund->id]);
+
+        return response()->json(['data' => $this->orderPayload($order)]);
+    }
+
+    private function orderPayload(Order $order): Order
+    {
+        return $order->fresh(['items', 'user:id,name,email', 'refunds']);
+    }
+
+    private function dollars(int $cents): string
+    {
+        return number_format($cents / 100, 2);
     }
 
     public function webhook(Request $request): JsonResponse

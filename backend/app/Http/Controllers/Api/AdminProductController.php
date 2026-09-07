@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -20,7 +22,7 @@ class AdminProductController extends Controller
         ]);
 
         $products = Product::query()
-            ->with('category:id,name')
+            ->with(['category:id,name', 'variants'])
             ->when($validated['search'] ?? null, fn ($query, $search) => $query->where(
                 fn ($inner) => $inner->where('name', 'like', "%{$search}%")->orWhere('sku', 'like', "%{$search}%")
             ))
@@ -41,20 +43,30 @@ class AdminProductController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $this->validated($request);
+        $variants = $this->pullVariants($data);
         $data['slug'] ??= $this->uniqueSlug($data['name']);
 
-        $product = Product::create($data);
+        $product = DB::transaction(function () use ($data, $variants): Product {
+            $product = Product::create($data);
+            $this->syncVariants($product, $variants);
 
-        return response()->json(['data' => $product->load('category:id,name')], 201);
+            return $product;
+        });
+
+        return response()->json(['data' => $product->load('category:id,name', 'variants')], 201);
     }
 
     public function update(Request $request, Product $product): JsonResponse
     {
         $data = $this->validated($request, $product);
+        $variants = $this->pullVariants($data);
 
-        $product->update($data);
+        DB::transaction(function () use ($product, $data, $variants): void {
+            $product->update($data);
+            $this->syncVariants($product, $variants);
+        });
 
-        return response()->json(['data' => $product->fresh()->load('category:id,name')]);
+        return response()->json(['data' => $product->fresh()->load('category:id,name', 'variants')]);
     }
 
     public function destroy(Product $product): JsonResponse
@@ -84,7 +96,83 @@ class AdminProductController extends Controller
             'inventory_quantity' => ['sometimes', 'integer', 'min:0'],
             'image_url' => ['sometimes', 'nullable', 'url', 'max:500'],
             'is_active' => ['sometimes', 'boolean'],
+
+            'variants' => ['sometimes', 'array'],
+            'variants.*.id' => ['sometimes', 'nullable', 'integer'],
+            'variants.*._delete' => ['sometimes', 'boolean'],
+            'variants.*.label' => ['required_with:variants', 'string', 'max:80'],
+            'variants.*.sku' => ['required_with:variants', 'string', 'max:60'],
+            'variants.*.price_cents' => ['required_with:variants', 'integer', 'min:0'],
+            'variants.*.inventory_quantity' => ['sometimes', 'integer', 'min:0'],
+            'variants.*.image_url' => ['sometimes', 'nullable', 'url', 'max:500'],
+            'variants.*.sort_order' => ['sometimes', 'integer', 'min:0'],
+            'variants.*.is_active' => ['sometimes', 'boolean'],
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<int, array<string, mixed>>|null
+     */
+    private function pullVariants(array &$data): ?array
+    {
+        if (! array_key_exists('variants', $data)) {
+            return null;
+        }
+
+        $variants = $data['variants'];
+        unset($data['variants']);
+
+        return $variants;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>|null  $rows
+     */
+    private function syncVariants(Product $product, ?array $rows): void
+    {
+        if ($rows === null) {
+            return;
+        }
+
+        foreach ($rows as $index => $row) {
+            $existing = ! empty($row['id'])
+                ? $product->variants()->whereKey($row['id'])->first()
+                : null;
+
+            if (! empty($row['_delete'])) {
+                if ($existing) {
+                    try {
+                        $existing->delete();
+                    } catch (QueryException) {
+                        abort(422, "\"{$existing->label}\" is on an existing order — deactivate it instead of deleting.");
+                    }
+                }
+
+                continue;
+            }
+
+            $skuOwner = ProductVariant::where('sku', $row['sku'])->first();
+            if ($skuOwner && $skuOwner->id !== ($existing->id ?? null)) {
+                abort(422, "The variant SKU \"{$row['sku']}\" is already in use.");
+            }
+
+            $attributes = [
+                'label' => $row['label'],
+                'sku' => $row['sku'],
+                'price_cents' => (int) $row['price_cents'],
+                'inventory_quantity' => (int) ($row['inventory_quantity'] ?? 0),
+                'image_url' => $row['image_url'] ?? null,
+                'sort_order' => (int) ($row['sort_order'] ?? $index),
+                'is_active' => (bool) ($row['is_active'] ?? true),
+            ];
+
+            if ($existing) {
+                $existing->update($attributes);
+            } else {
+                $product->variants()->create($attributes);
+            }
+        }
     }
 
     private function uniqueSlug(string $name): string

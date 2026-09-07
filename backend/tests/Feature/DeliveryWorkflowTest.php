@@ -17,7 +17,7 @@ class DeliveryWorkflowTest extends TestCase
         $order = $this->paidOrder();
         Sanctum::actingAs($this->admin());
 
-        foreach (['preparing', 'out_for_delivery', 'completed'] as $status) {
+        foreach (['packing', 'ready_for_delivery', 'out_for_delivery', 'completed'] as $status) {
             $this->patchJson("/api/admin/orders/{$order->id}", ['status' => $status])
                 ->assertOk()
                 ->assertJsonPath('data.status', $status);
@@ -40,7 +40,7 @@ class DeliveryWorkflowTest extends TestCase
         $order = $this->paidOrder(['status' => 'pending_payment', 'payment_status' => 'pending']);
         Sanctum::actingAs($this->admin());
 
-        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'preparing'])
+        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'packing'])
             ->assertUnprocessable();
     }
 
@@ -49,13 +49,13 @@ class DeliveryWorkflowTest extends TestCase
         $order = $this->paidOrder(['status' => 'completed']);
         Sanctum::actingAs($this->admin());
 
-        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'preparing'])
+        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'packing'])
             ->assertUnprocessable();
     }
 
-    public function test_admin_can_cancel_a_preparing_order(): void
+    public function test_admin_can_cancel_a_packing_order(): void
     {
-        $order = $this->paidOrder(['status' => 'preparing']);
+        $order = $this->paidOrder(['status' => 'packing']);
         Sanctum::actingAs($this->admin());
 
         $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'cancelled'])
@@ -65,13 +65,13 @@ class DeliveryWorkflowTest extends TestCase
 
     public function test_admin_can_assign_a_courier_without_changing_status(): void
     {
-        $order = $this->paidOrder(['status' => 'preparing']);
+        $order = $this->paidOrder(['status' => 'packing']);
         Sanctum::actingAs($this->admin());
 
         $this->patchJson("/api/admin/orders/{$order->id}", ['courier_name' => 'Sam Rider'])
             ->assertOk()
             ->assertJsonPath('data.courier_name', 'Sam Rider')
-            ->assertJsonPath('data.status', 'preparing');
+            ->assertJsonPath('data.status', 'packing');
     }
 
     public function test_patch_requires_a_status_or_courier_field(): void
@@ -98,7 +98,7 @@ class DeliveryWorkflowTest extends TestCase
         Sanctum::actingAs(User::factory()->create());
 
         $this->getJson('/api/admin/orders')->assertForbidden();
-        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'preparing'])->assertForbidden();
+        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'packing'])->assertForbidden();
     }
 
     public function test_guest_cannot_reach_admin_endpoints(): void
@@ -120,14 +120,14 @@ class DeliveryWorkflowTest extends TestCase
 
     public function test_admin_can_filter_orders_by_status(): void
     {
-        $this->paidOrder(['status' => 'preparing']);
+        $this->paidOrder(['status' => 'packing']);
         $this->paidOrder(['status' => 'confirmed']);
         Sanctum::actingAs($this->admin());
 
-        $this->getJson('/api/admin/orders?status=preparing')
+        $this->getJson('/api/admin/orders?status=packing')
             ->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.status', 'preparing');
+            ->assertJsonPath('data.0.status', 'packing');
     }
 
     private function admin(): User

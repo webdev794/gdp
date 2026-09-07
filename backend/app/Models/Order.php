@@ -13,22 +13,29 @@ class Order extends Model
 
     /**
      * Delivery states an administrator may move a paid order through, and the
-     * states each one may advance to. Steps cannot be skipped, and completed or
-     * cancelled orders are terminal.
+     * states each one may advance to. Steps cannot be skipped, an order can be
+     * cancelled up until it leaves the store, and completed or cancelled orders
+     * are terminal.
      */
     public const DELIVERY_TRANSITIONS = [
-        'confirmed' => ['preparing', 'cancelled'],
-        'preparing' => ['out_for_delivery', 'cancelled'],
+        'confirmed' => ['packing', 'cancelled'],
+        'packing' => ['ready_for_delivery', 'cancelled'],
+        'ready_for_delivery' => ['out_for_delivery', 'cancelled'],
         'out_for_delivery' => ['completed'],
         'completed' => [],
         'cancelled' => [],
     ];
 
     protected $fillable = [
-        'user_id', 'status', 'courier_name', 'payment_status', 'subtotal_cents', 'tax_cents',
-        'delivery_fee_cents', 'total_cents', 'delivery_address',
-        'stripe_payment_intent_id',
+        'user_id', 'status', 'courier_name', 'payment_status', 'payment_method',
+        'subtotal_cents', 'tax_cents', 'delivery_fee_cents', 'handling_fee_cents',
+        'small_cart_fee_cents', 'total_cents', 'delivery_address', 'delivery_instructions',
+        'stripe_payment_intent_id', 'stripe_refund_id', 'refunded_amount_cents',
+        'delivery_partner_id',
     ];
+
+    /** A Stripe dashboard link for support/audit; the payment page shows the refund. */
+    protected $appends = ['stripe_dashboard_url'];
 
     protected function casts(): array
     {
@@ -36,17 +43,47 @@ class Order extends Model
             'subtotal_cents' => 'integer',
             'tax_cents' => 'integer',
             'delivery_fee_cents' => 'integer',
+            'handling_fee_cents' => 'integer',
+            'small_cart_fee_cents' => 'integer',
             'total_cents' => 'integer',
+            'refunded_amount_cents' => 'integer',
             'delivery_address' => 'array',
         ];
     }
 
     public function user(): BelongsTo { return $this->belongsTo(User::class); }
+    public function deliveryPartner(): BelongsTo { return $this->belongsTo(User::class, 'delivery_partner_id'); }
     public function items(): HasMany { return $this->hasMany(OrderItem::class); }
+    public function refunds(): HasMany { return $this->hasMany(OrderRefund::class); }
+
+    public function refundableRemainingCents(): int
+    {
+        return max(0, (int) $this->total_cents - (int) $this->refunded_amount_cents);
+    }
+
+    public function isCashOnDelivery(): bool
+    {
+        return $this->payment_method === 'cod';
+    }
+
+    public function getStripeDashboardUrlAttribute(): ?string
+    {
+        if (! $this->stripe_payment_intent_id) {
+            return null;
+        }
+
+        $prefix = str_starts_with((string) config('services.stripe.secret'), 'sk_test_') ? 'test/' : '';
+
+        return "https://dashboard.stripe.com/{$prefix}payments/{$this->stripe_payment_intent_id}";
+    }
 
     public function canTransitionTo(string $status): bool
     {
-        return $this->payment_status === 'paid'
+        // A cash-on-delivery order is collected on hand-off, so it may move
+        // through the delivery states before payment_status becomes 'paid'.
+        $paymentReady = $this->payment_status === 'paid' || $this->isCashOnDelivery();
+
+        return $paymentReady
             && in_array($status, self::DELIVERY_TRANSITIONS[$this->status] ?? [], true);
     }
 }

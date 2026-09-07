@@ -30,7 +30,7 @@ class CatalogController extends Controller
         ]);
 
         $products = Product::query()
-            ->with('category')
+            ->with(['category', 'variants' => fn ($query) => $query->where('is_active', true)])
             ->where('is_active', true)
             ->whereHas('category', fn ($query) => $query->where('is_active', true))
             ->when(isset($validated['search']), function ($query) use ($validated) {
@@ -40,7 +40,10 @@ class CatalogController extends Controller
                     $searchQuery
                         ->where('name', 'like', "%{$search}%")
                         ->orWhere('description', 'like', "%{$search}%")
-                        ->orWhere('sku', 'like', "%{$search}%");
+                        ->orWhere('sku', 'like', "%{$search}%")
+                        ->orWhereHas('variants', fn ($variantQuery) => $variantQuery
+                            ->where('label', 'like', "%{$search}%")
+                            ->orWhere('sku', 'like', "%{$search}%"));
                 });
             })
             ->when(isset($validated['category']), fn ($query) => $query->whereHas(
@@ -48,7 +51,8 @@ class CatalogController extends Controller
                 fn ($categoryQuery) => $categoryQuery->where('slug', $validated['category'])
             ))
             ->orderBy('name')
-            ->paginate($validated['per_page'] ?? 20);
+            ->paginate($validated['per_page'] ?? 20)
+            ->through(fn (Product $product) => $this->withPricing($product));
 
         return response()->json($products);
     }
@@ -60,8 +64,26 @@ class CatalogController extends Controller
             404
         );
 
+        $product->load(['category', 'variants' => fn ($query) => $query->where('is_active', true)]);
+
         return response()->json([
-            'data' => $product->load('category'),
+            'data' => $this->withPricing($product),
         ]);
+    }
+
+    /**
+     * Attach the price range across active variants (or the product price when
+     * there are none) so the storefront can show "from $x".
+     */
+    private function withPricing(Product $product): Product
+    {
+        // The base product is always a selectable option, so its price counts
+        // toward the range too.
+        $prices = $product->variants->pluck('price_cents')->push($product->price_cents);
+
+        $product->setAttribute('price_min_cents', (int) $prices->min());
+        $product->setAttribute('price_max_cents', (int) $prices->max());
+
+        return $product;
     }
 }

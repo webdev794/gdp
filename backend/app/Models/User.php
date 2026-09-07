@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'phone'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -35,6 +35,11 @@ class User extends Authenticatable
         return $this->hasMany(Order::class);
     }
 
+    public function supportThreads(): HasMany
+    {
+        return $this->hasMany(SupportThread::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -46,6 +51,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_admin' => 'boolean',
+            'is_rider' => 'boolean',
         ];
     }
 }

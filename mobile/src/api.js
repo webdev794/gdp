@@ -61,6 +61,7 @@ export const api = {
   verifyOtp: (payload) => request('/auth/verify-otp', { method: 'POST', body: payload }),
   resendOtp: (payload) => request('/auth/resend-otp', { method: 'POST', body: payload }),
   me: () => request('/user', { auth: true }),
+  updateProfile: (payload) => request('/profile', { method: 'PATCH', body: payload, auth: true }),
   logout: () => request('/auth/logout', { method: 'POST', auth: true }),
 
   categories: () => request('/categories'),
@@ -85,4 +86,28 @@ export const api = {
     request(`/orders/${orderId}/payment-intent`, { method: 'POST', auth: true }),
   orders: () => request('/orders', { auth: true }),
   order: (id) => request(`/orders/${id}`, { auth: true }),
+  cancelOrder: (id) => request(`/orders/${id}/cancel`, { method: 'POST', auth: true }),
+
+  supportThreads: () => request('/support/threads', { auth: true }),
+  supportThread: (id) => request(`/support/threads/${id}`, { auth: true }),
+  createSupportThread: (payload) =>
+    request('/support/threads', { method: 'POST', body: payload, auth: true }),
+  supportReply: (id, body) =>
+    request(`/support/threads/${id}/messages`, { method: 'POST', body: { body }, auth: true }),
+
+  riderOrders: () => request('/rider/orders', { auth: true }),
+  claimOrder: (id) => request(`/rider/orders/${id}/claim`, { method: 'POST', auth: true }),
+  riderStatus: (id, status) =>
+    request(`/rider/orders/${id}/status`, { method: 'POST', body: { status }, auth: true }),
+  riderCashCollected: (id) =>
+    request(`/rider/orders/${id}/cash-collected`, { method: 'POST', auth: true }),
 };
+
+export const ISSUE_TYPES = [
+  ['item_missing', 'Item missing'],
+  ['item_damaged', 'Item damaged'],
+  ['wrong_item', 'Wrong item'],
+  ['not_delivered', "Didn't receive order"],
+  ['payment_issue', 'Payment issue'],
+  ['other', 'Something else'],
+];

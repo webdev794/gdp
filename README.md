@@ -1,5 +1,11 @@
 # GDP Grocery Delivery Platform
 
+start "GDP API" cmd /k "cd /d D:\gdp\backend && D:\xampp8-2-12\php84\php.exe -d display_errors=0 artisan serve" && start "GDP Web" cmd /k "cd /d D:\gdp\web && npm.cmd --cache D:\gdp\.tmp\npm-cache run dev -- --host 127.0.0.1 --port 5173"
+
+admin:	test@example.com
+
+client: testcaresort@outlook.com
+
 ## See Output Quickly
 
 Open Windows Command Prompt and run:
@@ -115,8 +121,10 @@ Administrators must be able to manage:
 - [x] Customers
 - [x] Orders
 - [x] Payment status
-- [x] Delivery assignment (free-text courier on the order)
+- [x] Delivery assignment — assign a rider or leave for the pool; free-text courier still allowed
 - [x] Delivery and order status
+- [x] Checkout settings (cash on delivery on/off)
+- [x] Stores and delivery-area radius
 - [ ] Customer support conversations (see priority 11)
 
 ## Backend Requirements
@@ -181,6 +189,9 @@ Administrators must be able to manage:
 - [x] Customer order history and order detail API endpoints
 - [x] Storefront order history view with payment status badges
 - [x] Resume payment for an unpaid order from order history
+- [x] Customer order cancellation until dispatch; one-click Stripe refund from the admin panel
+- [x] Support chat (web + Expo) with admin inbox; partial/full Stripe refunds issued from a thread
+- [x] Delivery rider role + Expo rider mode: admin-assign or pool claim, rider status + COD collection
 - [x] Server reconciles an order from Stripe when the webhook is missed or delayed
 - [x] Checkout address modal dismissed when payment begins
 - [x] Admin role flag on users, denied by default and never mass-assignable
@@ -193,6 +204,9 @@ Administrators must be able to manage:
 - [x] Admin console in the storefront: dashboard, orders, products, categories, customers
 - [x] Order status advancing, cancellation, and courier assignment from the admin order table
 - [x] Admin product create, edit, delete with slug generation and order-safety guard
+- [x] Product variants (Blinkit-style pack sizes): per-variant price, stock, SKU, image
+- [x] Admin image upload for products and variants (`POST /api/admin/media`, swappable to S3)
+- [x] Optional delivery instructions at checkout, shown to the admin on the order
 - [x] Admin category create, edit, delete with in-use guard
 - [x] Admin customer detail with address and order history
 - [x] Admin dashboard, product, and category feature tests
@@ -200,6 +214,11 @@ Administrators must be able to manage:
 - [x] Storefront OTP entry screen with resend
 - [x] Throttled auth routes and OTP feature tests
 - [x] Public `GET /api/config` for client Stripe key and checkout fees
+- [x] Cash on delivery at checkout, with a runtime admin on/off toggle
+- [x] Admin store manager: address + delivery radius, with out-of-area checkout block
+- [x] Storefront map pin + backend geocoding (`/api/geocode/*`), store-biased search
+- [x] Blinkit-style checkout charges: tiered delivery + handling + small-cart fee
+- [x] Admin-editable charges + fixed-or-distance delivery fee (near→far across the radius)
 - [x] Expo (React Native) Android customer app scaffolded in `mobile/`
 - [x] Mobile: OTP auth, catalog, search, product detail, cart, checkout, order tracking
 - [x] Mobile: in-app Stripe card payment via a WebView on the PaymentIntent flow
@@ -221,58 +240,76 @@ Administrators must be able to manage:
 9. [x] Admin panel
 10. [ ] Mobile applications for Android and iOS
     - [x] Android customer app (Expo): auth + OTP, catalog, cart, checkout, Stripe payment, order tracking
+    - [x] Rider mode in the Expo app: a user with `is_rider` sees the delivery queue (pool + assigned) instead of the shop
     - [ ] Push notifications
-    - [ ] In-app customer support (depends on priority 11)
+    - [x] In-app customer support (Support + conversation screens, shared API)
     - [ ] iOS pass: same Expo codebase, needs a Mac / EAS build and testing
     - [ ] Standalone build config (`expo-build-properties` for cleartext, app icons, EAS)
-11. [ ] Live chat and customer support
+11. [x] Support chat (per-order + general threads, polling) with admin inbox + refunds from a thread
 12. [ ] Testing and deployment hardening
 
 ### Known Gaps To Revisit
 
-- Support-conversation management is not in the admin panel yet; it is tracked with priority 11 (Live chat and customer support).
-- `PaymentController::intent()` reconciliation from the live Stripe API is verified manually but not covered by an automated test (needs a Stripe client fake).
-- Courier assignment is a free-text `courier_name` on the order. A delivery-partner directory with real assignment is future work.
+- `PaymentController::intent()` reconciliation and `PaymentController::refund()` call the live Stripe API; the guard/validation paths are tested, the SDK call itself is verified manually (needs a Stripe client fake).
+- Support chat is polling-based (~4 s while the thread is open). A customer isn't notified of a staff reply when the app is closed — push/email is priority 10.
+- Rider location / live tracking and auto-dispatch (nearest available rider, batching) are not built — assignment is admin-pick or first-come pool claim.
+- Phone + OTP login is not wired — the phone field is captured (required at checkout) but a real SMS gateway (Twilio/MSG91/SNS) is still a later config step; see **Authentication → Phone number**.
 - The React app has no router; the admin console is a full-screen overlay shown to `is_admin` users. Revisit if the panel grows.
-- Product and category images are stored as `image_url` only; no upload UI yet.
+- Product and variant images can be uploaded (admin) or pasted as a URL; category and store images are still URL-only.
+- Uploads land on the local `public` disk (`storage/app/public`, served via the `storage` symlink). Swap `FILESYSTEM_DISK` to S3 for production — `MediaController` and callers don't change.
+- Product variants are one flat axis (a "pack size" list). A multi-axis matrix (size × colour) is out of scope for the grocery MVP.
 - The mobile app confirms card payments in a WebView (Stripe Elements). A native
   `@stripe/stripe-react-native` PaymentSheet would need an Expo dev/EAS build and is a later option.
 - `mobile/` has no app icon or splash image assets yet; Expo uses defaults.
 
 ## Delivery Workflow
 
-The administrator must be able to move an order through controlled server-side states:
+Two tracks run in parallel:
 
-1. Confirmed
-2. Preparing
-3. Out for delivery
-4. Completed
-
-The design must also support cancellation and payment failure without incorrectly marking an order as paid or completed.
+- **Fulfilment `status`** — `pending_payment → confirmed → packing → ready_for_delivery → out_for_delivery → completed` (labelled "Delivered" in the UI), with `cancelled` as an off-ramp.
+- **`payment_status`** — `pending → paid` (or `failed` / `cancelled`). "Paid" is not a fulfilment step; being paid is what produces `confirmed`.
 
 ### How it works
 
-An order becomes `confirmed` only when Stripe confirms payment. From there an administrator advances it one step at a time:
+A card order becomes `confirmed` only when Stripe confirms payment; a COD order is
+`confirmed` at checkout (and marked `paid` later when the admin records cash
+collected). From `confirmed`, an administrator advances one step at a time:
 
-`confirmed → preparing → out_for_delivery → completed`
+`confirmed → packing → ready_for_delivery → out_for_delivery → completed`
 
 Rules enforced server-side by `Order::canTransitionTo()` and `EnsureUserIsAdmin`:
 
 - Only a user with `is_admin = true` may call the admin endpoints; everyone else gets `403`.
 - Steps cannot be skipped and `completed` / `cancelled` are terminal.
-- An order that is not `paid` cannot move into the delivery states.
-- An administrator may cancel an order that is `confirmed` or `preparing`.
+- An order that is not `paid` (and not COD) cannot move into the delivery states.
+- An administrator may cancel any time before dispatch — `confirmed`, `packing`, or `ready_for_delivery`.
+- **The customer can also cancel** their own order in those same stages, from Order
+  history (`POST /api/orders/{order}/cancel`). Once `out_for_delivery` it's
+  support-only. A paid order becomes `payment_status = refund_pending`; an unpaid
+  order just goes `cancelled`.
+- **Refunding** a cancelled paid order: the admin's "Refund via Stripe" button
+  (`POST /api/admin/orders/{order}/refund`) issues a full Stripe refund against the
+  order's PaymentIntent, sets `payment_status = refunded`, and stores
+  `stripe_refund_id`. A cash-on-delivery order (no PaymentIntent) instead uses
+  "Mark refunded" (`PATCH …/orders/{order}` `{"refunded": true}`) after the cash is
+  returned by hand.
+- Every order carries a `stripe_dashboard_url` (test/live inferred from the secret
+  key); after a refund the admin row shows a **"View in Stripe ↗"** link to that
+  payment, where the refund is listed.
 - Payment failure and cancellation never set `paid` or `completed`.
+- The customer's order-history tracker shows each stage live as the store team advances it.
 
 Admin endpoints (bearer token belonging to an admin user):
 
 ```text
 GET    /api/admin/metrics              dashboard counts, paid revenue, low stock
+GET    /api/admin/metrics/timeseries   orders bucketed over time — ?bucket=day|week|month (+ optional ?from=&to=)
+GET    /api/admin/metrics/compare       one period-to-date vs the previous equal period — ?preset=day|two_day|week|month|six_month|year|custom (custom needs ?days=N)
 GET    /api/admin/customers            customers with order count and paid spend
 GET    /api/admin/customers/{user}     customer detail: addresses and order history
 GET    /api/admin/orders               list every order, newest first, optional ?status=
 GET    /api/admin/orders/{order}       order detail with items and customer
-PATCH  /api/admin/orders/{order}       body: {"status":"preparing"} and/or {"courier_name":"Sam Rider"}
+PATCH  /api/admin/orders/{order}       body: {"status":"packing"} and/or {"courier_name":"Sam Rider"} and/or {"cash_collected":true}
 GET    /api/admin/products             all products incl. inactive, optional ?search=
 POST   /api/admin/products             create; slug is generated from name when omitted
 PATCH  /api/admin/products/{product}   partial update
@@ -284,11 +321,96 @@ DELETE /api/admin/categories/{category}   409 while the category still has produ
 ```
 
 In the storefront, an `is_admin` account sees an **Admin** link in the header that opens a
-full-screen console with tabs for the dashboard, orders (status controls + courier field),
-products, categories, and customers (with a per-customer order drawer).
+full-screen console. A **left sidebar** holds the primary sections (Dashboard, Orders,
+Products, Categories, Customers, Stores, **Store settings**, **Secure access**) plus a
+collapsible **Pages** group (Homepage layout editor, then every content page);
+Support, Settings, the chat-sound toggle and **Back to store** stay in the
+top-right bar. The **☰** button collapses the
+sidebar for a full-width view (remembered per browser in `localStorage`); on narrow
+screens the sidebar overlays the content and a tap outside closes it. The main area is the
+only scroll container, so it always fits the viewport.
 
-Customer support conversations are part of the admin panel requirements but are being built
-under priority 11.
+The **dashboard** tab has three blocks:
+
+- **Headline metric cards** — `GET /api/admin/metrics`.
+- **Period-over-period comparison** — `GET /api/admin/metrics/compare?preset=`
+  picks one span: `day` (today vs yesterday), `two_day`, `week`, `month`,
+  `six_month`, `year`, or `custom` with `&days=N` (rolling N-day window vs the N
+  days before it). Each is *period-to-date vs the previous equal-length period*
+  (e.g. Sep 1–7 vs Aug 1–7). The response has `current` / `previous` window totals
+  (`orders`, `paid_orders`, `revenue_cents`) plus an **aligned per-bucket
+  `series`** (hour / day / month buckets, chosen by span) so bucket *i* of the
+  current window lines up with bucket *i* of the previous one. The console renders
+  it as a **single grouped bar chart** (previous vs current per bucket) with a
+  period dropdown, a custom-days input, an orders ↔ revenue toggle, and a ▲/▼ %
+  delta headline.
+- **Orders trend** — `GET /api/admin/metrics/timeseries` returns a gap-filled
+  series bucketed by **day / week / month** (default window 14 days / 12 weeks /
+  12 months; a custom `from`/`to` is accepted and capped), with `by_status` and
+  `by_payment_method` counts for the window. Rendered as a bar chart (toggle
+  orders ↔ revenue) plus two pie charts.
+
+Charts are hand-drawn SVG in `web/src/Charts.jsx` — no charting dependency. All
+bucketing / windowing is done in PHP (or portable SQL) so it behaves identically
+on SQLite (tests) and MySQL (runtime).
+
+## Delivery riders
+
+A third role, **`is_rider`** (deny-by-default like `is_admin`, never
+mass-assignable — set via `PATCH /api/admin/customers/{user}` `{is_rider}` from
+the admin Customers drawer). The seeder creates `rider@example.com` / `password`.
+
+- **Assignment**: from the admin Orders tab, either pick a rider from the
+  dropdown (`delivery_partner_id`, which also fills `courier_name`) or leave it —
+  any unassigned order that reaches `ready_for_delivery` sits in a **pool**.
+- **Rider API** (`auth:sanctum` + `rider`): `GET /api/rider/orders` →
+  `{ assigned, pool }`; `POST /api/rider/orders/{order}/claim` (pool →
+  `out_for_delivery`, sets the rider); `POST …/status` (`out_for_delivery` /
+  `completed`, own orders only, guarded by the same `Order::canTransitionTo`);
+  `POST …/cash-collected` (COD → `payment_status = paid`).
+- **Rider app**: the same Expo project — a user with `is_rider` gets the
+  **Deliveries** screen (My deliveries + Available to pick up, item list, address
+  → Maps link, COD amount) instead of the shop. Pick up → Cash collected (COD) →
+  Mark delivered. The customer's order tracker follows along.
+- Admins can still override any status / courier from the Orders tab.
+
+## Customer support
+
+Customers raise issues from **Order history → "Get help"** (or the header **Help**
+link): pick one of their orders (or "General"), pick an **issue type**
+(`item_missing`, `item_damaged`, `wrong_item`, `not_delivered`, `payment_issue`,
+`other`), then chat. Threads carry a `status` (`open` / `resolved`); a customer
+reply re-opens a resolved thread. The client polls the thread every ~4 s while
+it's open — no websocket server.
+
+- Customer API (`auth:sanctum`): `GET/POST /api/support/threads`,
+  `GET /api/support/threads/{thread}`, `POST …/{thread}/messages`.
+- Admin API (`+admin`): `GET /api/admin/support/threads` (`?status=`,
+  `?issue_type=`), `GET …/{thread}` (includes the linked order's items + refunds),
+  `POST …/{thread}/messages` (staff reply), `PATCH …/{thread}` (`status`).
+- Admin **Support** tab: an inbox (open-first) → thread drawer with the chat, a
+  reply box, resolve/re-open, and — when the thread is linked to an order — a
+  **Refund** panel.
+- **Admin notifications**: the console polls open threads every 10 s on *any*
+  tab. A new customer message (`needs_reply` — a customer message newer than the
+  last staff reply) plays a two-tone Web-Audio chime, drops a clickable toast,
+  and shows a count badge on the Support tab. A 🔔/🔕 toggle in the header mutes
+  the sound (per browser). Each admin browser/login notifies independently, so
+  several admins can work different chats at once.
+
+### Refunds from a thread
+
+`POST /api/admin/orders/{order}/refund` (admin) issues a **full or partial**
+Stripe refund and is never automatic. Body: `item_ids[]` (sum those line totals),
+`amount_cents` (override), `support_thread_id`, `reason`. A bare call refunds the
+remaining balance. Each refund is an `order_refunds` row; `orders.refunded_amount_cents`
+accumulates; `payment_status` becomes `partially_refunded` until it reaches
+`total_cents`, then `refunded`. A thread-linked refund posts a system note into
+the conversation. Cash-on-delivery orders (no PaymentIntent) still use the manual
+`PATCH …/orders/{order}` `{"refunded": true}`.
+
+The same flows are in the Expo app (`Support` / `SupportThread` screens,
+`mobile/src/api.js` helpers) — verified in Expo Go, not automated here.
 
 Grant admin rights to an existing account:
 
@@ -320,6 +442,271 @@ line as `OTP for <email> (<purpose>): <code>`. Watch it live with:
 
 To sign in with password only (no code), set `AUTH_OTP_ENABLED=false` in `backend/.env` and
 run `php artisan config:clear`.
+
+### Phone number
+
+`users.phone` is **optional at sign-up** and **required before the first
+checkout** — the delivery rider needs a number to call.
+
+- `POST /api/auth/register` accepts an optional `phone`. The passwordless email
+  flow (`/api/auth/start`) never asks for one.
+- `POST /api/checkout` takes a top-level `phone`. If the account has none and the
+  request omits it, checkout returns `422` (`phone`). A supplied number is saved
+  to the account and frozen onto `orders.delivery_address.phone`; a later profile
+  edit doesn't rewrite past orders.
+- `PATCH /api/profile` (`auth:sanctum`) updates the signed-in customer's own
+  `name` / `phone` outside checkout.
+- The web checkout modal and the Expo checkout screen show a phone field
+  (prefilled from the account). The rider app (`GET /api/rider/orders` →
+  `customer_phone`) and the admin Orders table / Customers drawer surface it,
+  with a tap-to-call link on mobile.
+- **Phone + OTP login** is not built. Delivering a code to a real handset needs a
+  paid SMS gateway (Twilio / MSG91 / SNS) — there's no free in-app equivalent of
+  `MAIL_MAILER=log` — so it's deferred to a config-only step once a provider is
+  chosen. `OtpService` / `auth_otps` / `/api/auth/start` are already
+  channel-agnostic and would be reused.
+
+## Cash on Delivery
+
+Checkout supports a second payment method: **cash on delivery (COD)**. It ships
+**disabled**. An administrator turns it on under **Admin console -> settings**
+("Accept cash on delivery"); the toggle is stored in the `settings` table
+(`cod_enabled`) and read by `GET /api/config`.
+
+- `POST /api/checkout` accepts `{"payment_method": "card" | "cod"}` (default
+  `card`). A `cod` request while the toggle is off returns `422`.
+- A COD order is created `status = confirmed`, `payment_status = pending`,
+  `payment_method = cod`, with no Stripe PaymentIntent. It enters the delivery
+  pipeline immediately.
+- `POST /api/orders/{order}/payment-intent` returns `422` for a COD order.
+- The courier collects cash on hand-off; an admin then marks the order paid with
+  `PATCH /api/admin/orders/{order}` body `{"cash_collected": true}` (button:
+  **Mark cash collected** on the Orders tab), which sets `payment_status = paid`.
+- Cancelling an unpaid COD order also voids its payment (`payment_status =
+  cancelled`).
+
+## Delivery Area
+
+An administrator defines where the service delivers under **Admin console ->
+stores**. Each store has an address and a **delivery radius in km**. Leave
+latitude/longitude blank and the address is geocoded on save (OpenStreetMap
+Nominatim); if it can't be located, the row shows *"not located"* and does not
+enforce anything until coordinates are added.
+
+- A checkout whose address falls outside **every** active, located store's radius
+  is rejected with `422` and the message *"We don't deliver to your area yet — we're
+  expanding fast and will reach you soon."*
+- Out-of-area customers can still browse the catalog and build a cart. The
+  storefront checks `GET /api/delivery-eta?lat&lng` when a location is set and
+  shows the same message at the location step, a banner under the header, and a
+  disabled checkout button.
+- Enforcement is automatic whenever at least one active store has coordinates. It
+  can be turned off globally with `CHECKOUT_ENFORCE_RADIUS=false` in
+  `backend/.env` (then `php artisan config:clear`).
+- Admin store endpoints (admin bearer token): `GET/POST /api/admin/stores`,
+  `PATCH/DELETE /api/admin/stores/{store}`.
+
+### Setting a delivery location (storefront)
+
+The "Deliver to" modal has **Detect my location**, an address **search box**, and
+a **draggable map pin** (Leaflet + OpenStreetMap tiles). The pin's coordinates
+are authoritative for the radius check, so a customer can place it on an exact
+building even when the street isn't in the geocoder.
+
+Address lookups go through the backend, not the browser:
+
+- `GET /api/geocode/search?q=` — forward search, **restricted** to a box around
+  the first active store (`viewbox` + `bounded=1`) and to ~4x the delivery radius,
+  so a sparse street query lands near the store instead of on a namesake in
+  another city. Falls back to a wider pass only if nothing local matches. Works
+  in the USA or India (no country lock); relaxes the query progressively
+  (drops a trailing `"..., CH"`, the house number, then trailing parts). With no
+  store located yet there is no centre, so results come from anywhere — set the
+  store's coordinates (drag its pin in Admin -> stores) to focus them.
+- `GET /api/geocode/reverse?lat=&lng=` — used by Detect my location and the pin.
+- Both reuse `App\Support\Geo` (day-long cache, Nominatim `User-Agent` from
+  `NOMINATIM_USER_AGENT`) and are rate limited to 30/min per IP.
+
+OpenStreetMap tiles are fine for local development; a production deployment
+should switch `Storefront.jsx`'s `tileLayer` URL to a keyed provider.
+
+OSM has thin street data in parts of the world, so an exact house number may not
+resolve. Search jumps the map to the closest locality it can find and the
+customer drops the pin on the exact spot; the admin store form has the same pin.
+
+**Outbound HTTPS / CA bundle.** XAMPP's PHP often ships without `curl.cainfo` /
+`openssl.cafile`, so every server-side HTTPS call (geocoding, Stripe) fails with
+*"unable to get local issuer certificate"*. `AppServiceProvider` falls back to
+the CA bundle committed at `backend/resources/certs/cacert.pem` when the ini has
+none. The proper fix is to point `php.ini` at a real bundle:
+
+```ini
+curl.cainfo = "D:\xampp8-2-12\php84\extras\ssl\cacert.pem"
+openssl.cafile = "D:\xampp8-2-12\php84\extras\ssl\cacert.pem"
+```
+
+## Product Variants
+
+Products can carry **variants** (Blinkit's "unit" selector) — one flat list of
+labelled options, each with its own **price, stock, SKU and image**. The label is
+free text, so it covers pack size, weight, colour, flavour or a mix
+("1 kg", "Red / Large"). There are no structured Size × Colour axes — one row per
+sellable option.
+
+- **Opt-in.** A product with no variant rows works exactly as before
+  (price/stock/SKU/image on the product). Add rows under **Admin console →
+  products → Options / variants** to switch it on.
+- Schema: `product_variants` (`label, sku, price_cents, inventory_quantity,
+  image_url, sort_order, is_active`). `cart_items` / `order_items` gain a nullable
+  `product_variant_id`; order items also snapshot `variant_label`.
+- `App\Support\Purchasable::resolve($product, $variant)` returns the effective
+  price / stock / availability — "variant if present, else product" — reused by
+  `CartController`, `CheckoutController` and the catalog.
+- `GET /api/products` embeds active `variants` plus `price_min_cents` /
+  `price_max_cents` (range spans the base product **and** its variants). The
+  plain product is always the first ("base") option in the storefront dropdown;
+  the cart/checkout accept `product_variant_id: null` (base) or an active variant
+  id of that product.
+- Checkout bills the variant's price and decrements the **variant's** stock;
+  the order line records the pack label + variant SKU.
+- Deleting a variant that is on an existing order is blocked (deactivate it
+  instead), mirroring the product delete guard.
+- Images: the product form and each variant row take a **file upload** (`POST
+  /api/admin/media`, admin only — jpg/png/webp/gif, ≤ 4 MB) or a pasted URL.
+  Files go to the `public` disk; the endpoint returns the stored URL, which is
+  saved into `image_url`. `FILESYSTEM_DISK=s3` moves storage to the cloud with no
+  code change.
+
+## Checkout Charges
+
+Every charge is **editable from Admin console → settings** ("Delivery &
+charges"). The values live in the `settings` table under `checkout_fees`;
+`config/checkout.php` / the `CHECKOUT_*` env vars are just the initial defaults.
+`App\Support\CheckoutFees::current()` merges the two, `CheckoutController`
+computes the order, and `GET /api/config` exposes the effective values.
+
+| Charge | Rule | Default |
+| --- | --- | --- |
+| Delivery fee | **Fixed** (flat) **or** **distance** (linear: `near` at the store → `far` at that store's `delivery_radius_km`, clamped). Waived once subtotal ≥ the free-delivery threshold either way. | fixed `$2.99` · near `$1.99` / far `$5.99`, free ≥ `$35.00` |
+| Handling fee | Flat, on **every** order | `$0.99` |
+| Small-cart fee | Added when subtotal is **below the soft minimum** (no hard minimum order) | `$1.99` below `$10.00` |
+| Tax | `subtotal × tax_rate_bps / 10000` (on the subtotal only) | `8.87%` |
+
+`total = subtotal + tax + delivery_fee + handling_fee + small_cart_fee`. The
+order row stores each line (`delivery_fee_cents`, `handling_fee_cents`,
+`small_cart_fee_cents`, `tax_cents`, `total_cents`).
+
+In **distance** mode the fee needs the customer's location: `GET /api/delivery-eta`
+returns `delivery_mode` + `delivery_fee_cents` for a point and re-fires as the map
+pin moves, so the cart drawer updates live. An address with **no coordinates**
+(typed, un-geocoded) is charged the **far** price — the customer lowers it by
+dropping the pin. The cart drawer shows an estimate and nudges ("Add $X more for
+free delivery"); the server total is authoritative.
+
+## Store settings & Secure access
+
+Two admin sections back onto the `settings` key/value table (like the checkout
+fees) and are exposed through `GET /api/config` / `GET /api/admin/settings`;
+`PATCH /api/admin/settings` writes them.
+
+- **Store settings** (`branding` key) — store name, tagline, **logo** and
+  **favicon** (paste a URL or upload via `POST /api/admin/media`), a **light /
+  dark theme**, and three brand colours (buttons, accent, headings). Defaults
+  come from `config/branding.php` / `STORE_*` env vars; `App\Support\Branding`
+  merges and normalises (hex-validated, theme whitelisted). The storefront reads
+  `data.branding` from `/api/config` and applies it at runtime — CSS custom
+  properties for the palette, `document.title`, and the `<link rel=icon>`. The
+  admin console re-pins its own tokens so it stays readable whatever the store
+  theme is.
+- **Secure access** (sidebar: **Secure access**) — a step-up-guarded section
+  holding the Stripe keys and the admin's own **email / phone / name**.
+  - *Stripe* (`payments` key) — **publishable key**, **secret key**, **webhook
+    signing secret**, editable so a live store can rotate keys without touching
+    `.env`. `App\Support\Payments::stripe()` returns "saved value, else `STRIPE_*`
+    config", and `AppServiceProvider` overlays the saved values onto
+    `config('services.stripe.*')` at boot so the Stripe SDK calls in
+    `PaymentController` pick them up. Secrets are write-only over the API:
+    responses give the publishable key in full but only a **hint**
+    (`sk_live_•••••1234`) for secrets, and a blank field keeps the stored value.
+  - *Admin account* — `PATCH /api/admin/secure-access/account` (`name`, `email`,
+    unique-checked, `phone`) updates the signed-in admin.
+
+  **Step-up unlock.** `config/secure_access.php` `method` chooses how:
+  - `password` (default, `SECURE_ACCESS_METHOD=password`) — the admin re-enters
+    their **account password** (`POST /api/admin/secure-access/unlock`
+    `{password}`). Handy while email delivery isn't wired up; the seeded admin's
+    password is `password`.
+  - `otp` — `POST /api/admin/secure-access/challenge` e-mails a code (reusing
+    `OtpService` / `auth_otps`), then `unlock` takes `{code}`.
+
+  Either way `unlock` returns a short-lived token (15 min cache grant). Any
+  `stripe_*` change on `PATCH /api/admin/settings`, and the account endpoint,
+  require it as `X-Secure-Access`. Non-sensitive settings are unaffected. Leaving
+  the section re-locks it.
+
+## Homepage editor
+
+The storefront homepage (no search, no category selected) is a Blinkit-style feed
+curated from **Admin console → homepage**:
+
+1. **Promo banners** — the first (lowest `sort_order`) active banner is a
+   full-width hero; the rest form a horizontal strip below it.
+2. **Curated category tiles** — the first three active tiles render as large
+   feature cards (image, item count, sample product names); the rest as a grid.
+
+Both a banner and a tile link the same way: a chosen **category** wins, otherwise
+a custom **`link_url`** opens in a new tab.
+
+**Banners** (`banners` table) — `image_url` (paste a URL or upload via
+`POST /api/admin/media`), optional `headline`, `category_slug` **or** `link_url`,
+`sort_order`, `is_active`.
+
+**Category tiles** (`home_tiles` table) — `category_slug` (the link target — "pick
+up the category"), optional `title` and `image_url` overrides (blank falls back to
+the category's own name/image), optional `link_url` for a non-category tile,
+`sort_order`, `is_active`. With **no active tiles** the homepage falls back to
+listing every category.
+
+Admin API (`+admin`): `GET/POST /api/admin/banners`,
+`PATCH/DELETE /api/admin/banners/{banner}`; `GET/POST /api/admin/home-tiles`,
+`PATCH/DELETE /api/admin/home-tiles/{homeTile}`. `GET /api/config` exposes the
+resolved `data.banners` and `data.home_tiles` (title/image already coalesced with
+the category; tiles that resolve to no destination are dropped).
+
+The seeder ships ~16 grocery categories (each with a few products), three demo
+banners, and one tile per category so the editor is populated on a fresh install.
+
+## Content pages
+
+The storefront has a **Blinkit-style footer**: a **Useful Links** column, a
+**Categories** column with "see all", then a row with the copyright line, the
+**Download App** badges (App Store / Google Play) and **social icons**
+(Facebook, X, Instagram, LinkedIn, YouTube), and a disclaimer note. "Useful Links"
+lists the published **content pages** plus any extra links set in the footer editor.
+
+Everything except the pages is a `footer` settings blob (`config/footer.php`
+defaults, `App\Support\FooterConfig` merges/normalises, `GET /api/config` exposes
+`data.footer`), edited under **Admin console → Pages → Footer**: copyright line
+(`{year}` is substituted), disclaimer note, App Store / Play Store URLs, a URL per
+social platform (blank hides that icon), and a list of extra label+URL links.
+`PATCH /api/admin/settings` accepts a nested `footer` object.
+
+- `pages` table: `slug` (unique), `title`, `content` (**Markdown**), `is_published`,
+  `show_in_footer`, `footer_group`, `sort_order`.
+- Public API: `GET /api/pages` (published, footer metadata) and
+  `GET /api/pages/{slug}` (title + content).
+- Admin: **Admin console → Pages** — a collapsible sidebar group whose first
+  items are the **Homepage** layout editor (banners + category tiles) and the
+  **Footer** editor, followed by every content page; each page opens an editor
+  (title, auto-slug, Markdown body with a Write/Preview toggle, footer group,
+  show-in-footer, published, sort order). Endpoints `GET/POST /api/admin/pages`,
+  `PATCH/DELETE /api/admin/pages/{page}`.
+- The storefront renders a page in-place at `#/p/<slug>` (hash route, so links are
+  shareable and Back works). Markdown is rendered by a tiny built-in converter
+  (`web/src/markdown.js`) — HTML-escaped first, so page content can't inject
+  scripts — no Markdown dependency.
+- The seeder creates About, Blog, Contact, FAQs, Privacy, Terms and Security with
+  placeholder copy.
 
 ## Local Backend Setup
 
@@ -413,3 +800,10 @@ See `mobile/README.md` for how to run the app in Expo Go and point it at the API
 ## Backup Repository
 
 GitHub repository: <https://github.com/webdev794/gdp>
+
+-----
+Tasks to do: 
+Add footer menu page designs editable.
+Mobile android app.
+Mobile ios app. 
+Work on client dashboard, support access, etc.

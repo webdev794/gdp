@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Cart;
 use App\Models\CartItem;
 use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Support\Purchasable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,33 +26,31 @@ class CartController extends Controller
     {
         $validated = $request->validate([
             'product_id' => ['required', 'integer', 'exists:products,id'],
+            'product_variant_id' => ['sometimes', 'nullable', 'integer', 'exists:product_variants,id'],
             'quantity' => ['required', 'integer', 'min:1', 'max:1000'],
         ]);
 
         $cart = $this->cartFor($request);
 
         DB::transaction(function () use ($cart, $validated): void {
-            $product = Product::query()
-                ->whereKey($validated['product_id'])
-                ->lockForUpdate()
-                ->firstOrFail();
+            $product = Product::query()->whereKey($validated['product_id'])->lockForUpdate()->firstOrFail();
+            $variant = $this->resolveVariant($product, $validated['product_variant_id'] ?? null, true);
 
-            $this->ensurePurchasable($product);
+            $state = Purchasable::resolve($product, $variant);
+            $this->ensurePurchasable($state);
 
-            $item = $cart->items()
+            $existing = $cart->items()
                 ->where('product_id', $product->id)
+                ->where('product_variant_id', $variant?->id)
                 ->lockForUpdate()
                 ->first();
-            $quantity = ($item?->quantity ?? 0) + $validated['quantity'];
+            $quantity = ($existing?->quantity ?? 0) + $validated['quantity'];
 
-            $this->ensureStock($product, $quantity);
+            $this->ensureStock($state, $quantity);
 
             $cart->items()->updateOrCreate(
-                ['product_id' => $product->id],
-                [
-                    'quantity' => $quantity,
-                    'unit_price_cents' => $product->price_cents,
-                ]
+                ['product_id' => $product->id, 'product_variant_id' => $variant?->id],
+                ['quantity' => $quantity, 'unit_price_cents' => $state['price_cents']],
             );
         });
 
@@ -67,17 +67,18 @@ class CartController extends Controller
         abort_unless($cartItem->cart_id === $cart->id, 404);
 
         DB::transaction(function () use ($cartItem, $validated): void {
-            $product = Product::query()
-                ->whereKey($cartItem->product_id)
-                ->lockForUpdate()
-                ->firstOrFail();
+            $product = Product::query()->whereKey($cartItem->product_id)->lockForUpdate()->firstOrFail();
+            $variant = $cartItem->product_variant_id
+                ? ProductVariant::query()->whereKey($cartItem->product_variant_id)->lockForUpdate()->first()
+                : null;
 
-            $this->ensurePurchasable($product);
-            $this->ensureStock($product, $validated['quantity']);
+            $state = Purchasable::resolve($product, $variant);
+            $this->ensurePurchasable($state);
+            $this->ensureStock($state, $validated['quantity']);
 
             $cartItem->update([
                 'quantity' => $validated['quantity'],
-                'unit_price_cents' => $product->price_cents,
+                'unit_price_cents' => $state['price_cents'],
             ]);
         });
 
@@ -107,9 +108,32 @@ class CartController extends Controller
         return Cart::firstOrCreate(['user_id' => $request->user()->id]);
     }
 
+    /**
+     * Resolve the requested variant. Null is allowed — it means the base
+     * product option. When an id is given it must be an active variant of this
+     * product.
+     */
+    private function resolveVariant(Product $product, ?int $variantId, bool $lock = false): ?ProductVariant
+    {
+        if ($variantId === null) {
+            return null;
+        }
+
+        $query = $product->variants()->whereKey($variantId)->where('is_active', true);
+        $variant = $lock ? $query->lockForUpdate()->first() : $query->first();
+
+        if (! $variant) {
+            throw ValidationException::withMessages([
+                'product_variant_id' => ['That option is not available.'],
+            ]);
+        }
+
+        return $variant;
+    }
+
     private function payload(Cart $cart): array
     {
-        $cart->load('items.product.category');
+        $cart->load(['items.product.category', 'items.productVariant']);
         $items = $cart->items->map(function (CartItem $item): array {
             return [
                 'id' => $item->id,
@@ -117,6 +141,7 @@ class CartController extends Controller
                 'unit_price_cents' => $item->unit_price_cents,
                 'line_total_cents' => $item->quantity * $item->unit_price_cents,
                 'product' => $item->product,
+                'product_variant' => $item->productVariant,
             ];
         })->values();
 
@@ -130,18 +155,24 @@ class CartController extends Controller
         ];
     }
 
-    private function ensurePurchasable(Product $product): void
+    /**
+     * @param  array{active: bool, ...}  $state
+     */
+    private function ensurePurchasable(array $state): void
     {
-        if (! $product->is_active || ! $product->category?->is_active) {
+        if (! $state['active']) {
             throw ValidationException::withMessages([
                 'product_id' => ['This product is not available.'],
             ]);
         }
     }
 
-    private function ensureStock(Product $product, int $quantity): void
+    /**
+     * @param  array{inventory_quantity: int, ...}  $state
+     */
+    private function ensureStock(array $state, int $quantity): void
     {
-        if ($quantity > $product->inventory_quantity) {
+        if ($quantity > $state['inventory_quantity']) {
             throw ValidationException::withMessages([
                 'quantity' => ['The requested quantity is not available.'],
             ]);

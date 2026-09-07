@@ -40,7 +40,8 @@ class DeliveryRadiusTest extends TestCase
         // ~40 km north of the store.
         $this->postJson('/api/checkout', ['address' => $this->address(41.10, -73.9855)])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['address']);
+            ->assertJsonValidationErrors(['address'])
+            ->assertJsonPath('errors.address.0', "We don't deliver to your area yet — we're expanding fast and will reach you soon.");
 
         $this->assertDatabaseCount('orders', 0);
     }

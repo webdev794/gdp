@@ -16,10 +16,11 @@ export const money = (cents) => `$${((cents ?? 0) / 100).toFixed(2)}`;
 export const STATUS_LABELS = {
   pending_payment: 'Awaiting payment',
   confirmed: 'Confirmed',
-  preparing: 'Preparing',
+  packing: 'Packing',
+  ready_for_delivery: 'Ready for delivery',
   out_for_delivery: 'Out for delivery',
   completed: 'Delivered',
   cancelled: 'Cancelled',
 };
 
-export const DELIVERY_STAGES = ['confirmed', 'preparing', 'out_for_delivery', 'completed'];
+export const DELIVERY_STAGES = ['confirmed', 'packing', 'ready_for_delivery', 'out_for_delivery', 'completed'];

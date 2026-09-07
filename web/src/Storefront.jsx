@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
 import Admin from './Admin'
+import { renderMarkdown } from './markdown'
 import './StorefrontBase.css'
 import './Storefront.css'
 import './Checkout.css'
@@ -24,6 +25,25 @@ const categoriesFallback = [
 ]
 
 function price(cents) { return `$${(cents / 100).toFixed(2)}` }
+
+// How to title a chosen option. If the variant label already carries the
+// product identity ("Large Spinach") show it alone; if it's just an attribute
+// ("Green", "1 kg") keep the product name for context ("Baby Spinach · Green").
+function variantTitle(productName, variantLabel) {
+  if (!variantLabel) return productName
+  const words = productName.toLowerCase().split(/\s+/).filter((w) => w.length > 2)
+  const label = variantLabel.toLowerCase()
+  return words.some((w) => label.includes(w)) ? variantLabel : `${productName} · ${variantLabel}`
+}
+
+// [key, label, SVG path (24x24)] — rendered in the footer when a URL is set.
+const FOOTER_SOCIALS = [
+  ['facebook', 'Facebook', 'M9.198 21.5h4v-8.01h3.604l.396-3.98h-4V7.5a1 1 0 0 1 1-1h3v-4h-3a5 5 0 0 0-5 5v2.01h-2l-.396 3.98h2.396v8.01Z'],
+  ['x', 'X', 'M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77Z'],
+  ['instagram', 'Instagram', 'M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069ZM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0Zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324ZM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8Zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881Z'],
+  ['linkedin', 'LinkedIn', 'M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286ZM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065Zm1.782 13.019H3.555V9h3.564v11.452ZM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003Z'],
+  ['youtube', 'YouTube', 'M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814ZM9.545 15.568V8.432L15.818 12l-6.273 3.568Z'],
+]
 
 const CATEGORY_EMOJI = [
   [/produce|fruit|veg|green/i, '\u{1F955}'], [/dairy|egg|milk|cheese/i, '\u{1F9C0}'],
@@ -50,35 +70,31 @@ const PRODUCT_EMOJI = [
 ]
 function productEmoji(name = '') { return (PRODUCT_EMOJI.find(([re]) => re.test(name)) ?? [null, '\u{1F6D2}'])[1] }
 
-const NOMINATIM = 'https://nominatim.openstreetmap.org'
 
-// Map an OpenStreetMap Nominatim result to the app's address shape.
-function toAddress(place) {
-  const a = place.address ?? {}
-  const city = a.city || a.town || a.village || a.suburb || a.county || a.state_district || ''
-  const state = (a['ISO3166-2-lvl4'] || '').split('-')[1] || a.state || ''
-  const parts = (place.display_name || '').split(',').map((s) => s.trim())
-  return {
-    label: parts.slice(0, 2).join(', ') || 'Selected location',
-    full: place.display_name || '',
-    line1: [a.house_number, a.road].filter(Boolean).join(' '),
-    city,
-    state,
-    postal_code: a.postcode || '',
-    lat: place.lat,
-    lon: place.lon,
-  }
-}
+const CANCELLABLE_STAGES = ['confirmed', 'packing', 'ready_for_delivery']
+
+const ISSUE_TYPES = [
+  ['item_missing', 'Item missing'],
+  ['item_damaged', 'Item damaged'],
+  ['wrong_item', 'Wrong item'],
+  ['not_delivered', "Didn't receive order"],
+  ['payment_issue', 'Payment issue'],
+  ['other', 'Something else'],
+]
+const issueLabel = (type) => (ISSUE_TYPES.find(([t]) => t === type) ?? [null, type])[1]
 
 function orderLabel(order) {
-  if (order.payment_status === 'paid') return 'Paid'
+  if (order.payment_status === 'refund_pending') return 'Refund pending'
+  if (order.payment_status === 'refunded') return 'Refunded'
+  if (order.payment_status === 'paid') return order.payment_method === 'cod' ? 'Cash collected' : 'Paid'
   if (order.payment_status === 'failed') return 'Payment failed'
   if (order.payment_status === 'cancelled') return 'Cancelled'
+  if (order.payment_method === 'cod') return 'Cash on delivery'
   return 'Awaiting payment'
 }
 
-const DELIVERY_STAGES = ['confirmed', 'preparing', 'out_for_delivery', 'completed']
-const DELIVERY_LABELS = { confirmed: 'Confirmed', preparing: 'Preparing', out_for_delivery: 'Out for delivery', completed: 'Delivered', cancelled: 'Cancelled' }
+const DELIVERY_STAGES = ['confirmed', 'packing', 'ready_for_delivery', 'out_for_delivery', 'completed']
+const DELIVERY_LABELS = { confirmed: 'Confirmed', packing: 'Packing', ready_for_delivery: 'Ready for delivery', out_for_delivery: 'Out for delivery', completed: 'Delivered', cancelled: 'Cancelled' }
 
 async function responseJson(response) {
   const text = await response.text()
@@ -115,11 +131,16 @@ export default function Storefront() {
   const [query, setQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState(null)
   const [cart, setCart] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('gdp_cart') ?? '[]') }
-    catch { return [] }
+    try {
+      const saved = JSON.parse(localStorage.getItem('gdp_cart') ?? '[]')
+      return saved.map((item) => ({ variantId: null, ...item, key: item.key ?? `${item.id}:${item.variantId ?? ''}` }))
+    } catch { return [] }
   })
+  const [pickedVariant, setPickedVariant] = useState({})
   const [loading, setLoading] = useState(true)
   const [offline, setOffline] = useState(false)
+  const [pages, setPages] = useState([])
+  const [pageView, setPageView] = useState(null) // { slug, title, content } | 'loading' | null
   const [location, setLocation] = useState(() => {
     try { return JSON.parse(localStorage.getItem('gdp_location') ?? 'null') }
     catch { return null }
@@ -133,6 +154,15 @@ export default function Storefront() {
   const [locationResults, setLocationResults] = useState([])
   const [locationBusy, setLocationBusy] = useState(false)
   const [locationMsg, setLocationMsg] = useState('')
+  const [stores, setStores] = useState([])
+  const [banners, setBanners] = useState([])
+  const [homeTiles, setHomeTiles] = useState([])
+  const [branding, setBranding] = useState(null)
+  const [footer, setFooter] = useState(null)
+  const mapRef = useRef(null)
+  const markerRef = useRef(null)
+  const mapNodeRef = useRef(null)
+  const locationRef = useRef(null)
   const [cartOpen, setCartOpen] = useState(false)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [authMode, setAuthMode] = useState(null)
@@ -142,7 +172,13 @@ export default function Storefront() {
   const [otpCode, setOtpCode] = useState('')
   const [authMessage, setAuthMessage] = useState('')
   const [checkoutForm, setCheckoutForm] = useState({ name: '', line1: '', city: '', state: '', postal_code: '' })
+  const [deliveryNote, setDeliveryNote] = useState('')
+  const [phone, setPhone] = useState('')
   const [checkoutMessage, setCheckoutMessage] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('card')
+  const [codEnabled, setCodEnabled] = useState(false)
+  const [fees, setFees] = useState({ tax_rate_bps: 0, delivery_mode: 'fixed', delivery_fee_cents: 0, delivery_near_fee_cents: 0, delivery_far_fee_cents: 0, free_delivery_threshold_cents: 0, handling_fee_cents: 0, small_cart_fee_cents: 0, small_cart_min_cents: 0 })
+  const [serviceable, setServiceable] = useState(null)
   const [order, setOrder] = useState(null)
   const [currentUser, setCurrentUser] = useState(() => {
     try { return JSON.parse(localStorage.getItem('gdp_user') ?? 'null') }
@@ -155,10 +191,22 @@ export default function Storefront() {
   const [ordersLoading, setOrdersLoading] = useState(false)
   const [ordersMessage, setOrdersMessage] = useState('')
   const [adminOpen, setAdminOpen] = useState(false)
+  const [supportView, setSupportView] = useState(null) // null | 'list' | 'new' | thread object
+  const [threads, setThreads] = useState([])
+  const [supportForm, setSupportForm] = useState({ order_id: '', issue_type: 'item_missing', message: '' })
+  const [supportReply, setSupportReply] = useState('')
+  const [supportBusy, setSupportBusy] = useState(false)
+  const [supportMsg, setSupportMsg] = useState('')
 
   useEffect(() => {
     localStorage.setItem('gdp_cart', JSON.stringify(cart))
   }, [cart])
+
+  // Prefill the checkout phone field from the account once it loads, without
+  // clobbering anything the customer is mid-way through typing.
+  useEffect(() => {
+    if (currentUser?.phone) setPhone((current) => current || currentUser.phone)
+  }, [currentUser])
 
   useEffect(() => {
     if (!checkoutOpen && !locationOpen) return
@@ -183,6 +231,74 @@ export default function Storefront() {
       .catch(() => setOrders([]))
       .finally(() => setOrdersLoading(false))
   }, [ordersOpen])
+
+  useEffect(() => {
+    fetch(`${API_URL}/config`, { headers: { Accept: 'application/json' } })
+      .then(responseJson)
+      .then((data) => { setCodEnabled(!!data.data?.cod_enabled); setStores(data.data?.stores ?? []); setBanners(data.data?.banners ?? []); setHomeTiles(data.data?.home_tiles ?? []); setBranding(data.data?.branding ?? null); setFooter(data.data?.footer ?? null); if (data.data) setFees(data.data) })
+      .catch(() => { setCodEnabled(false); setStores([]); setBanners([]); setHomeTiles([]) })
+  }, [])
+
+  // Apply admin-configured branding: theme palette, accent colours, tab title
+  // and favicon, all driven from GET /api/config.
+  useEffect(() => {
+    if (!branding) return
+    const root = document.documentElement
+    const s = root.style
+    const dark = branding.theme === 'dark'
+    s.setProperty('--paper', dark ? '#12160f' : '#f3f5f2')
+    s.setProperty('--surface', dark ? '#1b211a' : '#ffffff')
+    s.setProperty('--line', dark ? '#2b332a' : '#e4e8e3')
+    s.setProperty('--muted', dark ? '#9aa79c' : '#6b7770')
+    s.setProperty('--ink', dark ? '#eef1ec' : '#18211c')
+    s.setProperty('--lime', dark ? '#1c2a1c' : '#eaf7e5')
+    if (branding.color_brand) s.setProperty('--green', branding.color_brand)
+    if (branding.color_accent) s.setProperty('--yellow', branding.color_accent)
+    // The heading colour only overrides the theme default when it was actually customised.
+    if (branding.color_heading && branding.color_heading.toLowerCase() !== '#18211c') s.setProperty('--ink', branding.color_heading)
+    root.style.colorScheme = dark ? 'dark' : 'light'
+
+    const name = branding.store_name || 'Grocerly'
+    document.title = branding.tagline ? `${name} | ${branding.tagline}` : name
+    if (branding.favicon_url) {
+      let link = document.querySelector("link[rel='icon']")
+      if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link) }
+      link.href = branding.favicon_url
+    }
+  }, [branding])
+
+  useEffect(() => { locationRef.current = location })
+
+  // Prefill the checkout address text from the chosen location when the modal opens.
+  useEffect(() => {
+    if (!checkoutOpen || !location) return
+    setCheckoutForm((form) => {
+      if (form.line1) return form
+      const line1 = location.line1 || (location.full || location.label || '').split(',').slice(0, 3).join(', ').trim()
+      if (!line1 && !location.city) return form
+      return {
+        ...form,
+        line1: line1 || form.line1,
+        city: form.city || location.city || '',
+        state: form.state || location.state || '',
+        postal_code: form.postal_code || location.postal_code || '',
+      }
+    })
+  }, [checkoutOpen, location])
+
+  // Check the saved location against the store delivery radius. Runs on mount
+  // for a stored location and again whenever the location's coordinates change.
+  useEffect(() => {
+    const lat = location?.lat
+    const lng = location?.lon
+    if (lat == null || lng == null) { setServiceable(null); return }
+    let cancelled = false
+    fetch(`${API_URL}/delivery-eta?lat=${lat}&lng=${lng}`, { headers: { Accept: 'application/json' } })
+      .then(responseJson)
+      .then((data) => { if (!cancelled) setServiceable(data.data ?? null) })
+      .catch(() => { if (!cancelled) setServiceable(null) })
+    return () => { cancelled = true }
+  }, [location?.lat, location?.lon])
 
   useEffect(() => {
     const token = localStorage.getItem('gdp_token')
@@ -211,12 +327,52 @@ export default function Storefront() {
     loadCatalog()
   }, [])
 
+  // Content pages: load the footer list once, and keep the open page in sync
+  // with a #/p/<slug> hash so links are shareable and Back works.
+  useEffect(() => {
+    fetch(`${API_URL}/pages`, { headers: { Accept: 'application/json' } })
+      .then(responseJson).then((data) => setPages(data.data ?? [])).catch(() => setPages([]))
+  }, [])
+
+  useEffect(() => {
+    const sync = () => {
+      const match = window.location.hash.match(/^#\/p\/([a-z0-9-]+)$/)
+      if (!match) { setPageView(null); return }
+      const slug = match[1]
+      setPageView((current) => (current && current.slug === slug ? current : 'loading'))
+      fetch(`${API_URL}/pages/${slug}`, { headers: { Accept: 'application/json' } })
+        .then(responseJson)
+        .then((data) => setPageView(data.data ?? null))
+        .catch(() => setPageView({ slug, title: 'Page not found', content: 'That page does not exist.' }))
+    }
+    sync()
+    window.addEventListener('hashchange', sync)
+    return () => window.removeEventListener('hashchange', sync)
+  }, [])
+
+  function openPage(slug) {
+    window.location.hash = `#/p/${slug}`
+    window.scrollTo({ top: 0 })
+  }
+  function closePage() {
+    if (window.location.hash) window.location.hash = ''
+    else setPageView(null)
+  }
+
   const searching = query.trim().length > 0
   const locationUsable = !!(location && location.city && (location.line1 || location.postal_code))
   const defaultAddress = addresses.find((address) => address.is_default) ?? addresses[0] ?? null
   // How checkout resolves the delivery address, unless the user edits it:
   // the location just entered, else the account's saved address, else a form.
   const deliveryMode = editAddress ? 'form' : locationUsable ? 'location' : defaultAddress ? 'saved' : 'form'
+
+  const outOfArea = !!(serviceable && serviceable.configured && !serviceable.deliverable)
+  const needsPhone = !phone.trim()
+  const blockCheckout = (outOfArea && deliveryMode === 'location') || needsPhone
+  const UNSERVICEABLE_MSG = "We don't deliver to your area yet — we're expanding fast and will reach you soon."
+  const etaText = serviceable?.deliverable && serviceable?.minutes
+    ? `Delivery in ~${serviceable.minutes} min`
+    : outOfArea ? 'Not available here yet' : 'Delivery in 12 min'
 
   const visibleProducts = useMemo(() => {
     const term = query.trim().toLowerCase()
@@ -236,20 +392,66 @@ export default function Storefront() {
     return counts
   }, [products])
 
+  // A few product names per category for the homepage feature cards.
+  const categorySamples = useMemo(() => {
+    const samples = {}
+    for (const product of products) {
+      const name = product.category?.name
+      if (!name) continue
+      ;(samples[name] ??= []).push(product.name)
+    }
+    return samples
+  }, [products])
+
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
   const cartTotal = cart.reduce((sum, item) => sum + item.price_cents * item.quantity, 0)
-  const cartQty = useMemo(() => Object.fromEntries(cart.map((item) => [item.id, item.quantity])), [cart])
+  const cartQty = useMemo(() => Object.fromEntries(cart.map((item) => [item.key, item.quantity])), [cart])
 
-  function add(product) {
+  // Client-side estimate of the fee breakdown; the server total is authoritative.
+  const est = useMemo(() => {
+    const sub = cartTotal
+    const tax = Math.round((sub * fees.tax_rate_bps) / 10000)
+    // Distance mode: the fee for the current pin comes from /api/delivery-eta,
+    // which re-fires as the pin moves. Otherwise the flat fee.
+    const baseDelivery = fees.delivery_mode === 'distance' && serviceable?.delivery_fee_cents != null
+      ? serviceable.delivery_fee_cents
+      : fees.delivery_fee_cents
+    const delivery = sub >= fees.free_delivery_threshold_cents ? 0 : baseDelivery
+    const handling = sub > 0 ? fees.handling_fee_cents : 0
+    const smallCart = sub > 0 && sub < fees.small_cart_min_cents ? fees.small_cart_fee_cents : 0
+    return {
+      sub, tax, delivery, handling, smallCart,
+      total: sub + tax + delivery + handling + smallCart,
+      toFreeDelivery: delivery > 0 ? fees.free_delivery_threshold_cents - sub : 0,
+      toNoSmallCart: smallCart > 0 ? fees.small_cart_min_cents - sub : 0,
+    }
+  }, [cartTotal, fees, serviceable])
+
+  function lineKey(productId, variantId) {
+    return `${productId}:${variantId ?? ''}`
+  }
+
+  function add(product, variant) {
+    const key = lineKey(product.id, variant?.id)
     setCart((current) => {
-      const found = current.find((item) => item.id === product.id)
-      return found ? current.map((item) => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item) : [...current, { ...product, quantity: 1 }]
+      const found = current.find((item) => item.key === key)
+      if (found) return current.map((item) => item.key === key ? { ...item, quantity: item.quantity + 1 } : item)
+      return [...current, {
+        key,
+        id: product.id,
+        variantId: variant?.id ?? null,
+        variantLabel: variant?.label ?? null,
+        name: product.name,
+        price_cents: variant?.price_cents ?? product.price_cents,
+        image_url: variant?.image_url || product.image_url,
+        quantity: 1,
+      }]
     })
   }
 
-  function updateQuantity(productId, amount) {
+  function updateQuantity(key, amount) {
     setCart((current) => current.flatMap((item) => {
-      if (item.id !== productId) return [item]
+      if (item.key !== key) return [item]
       const quantity = item.quantity + amount
       return quantity > 0 ? [{ ...item, quantity }] : []
     }))
@@ -328,32 +530,63 @@ export default function Storefront() {
 
     try {
       for (const item of cart) {
-        await fetch(`${API_URL}/cart/items`, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ product_id: item.id, quantity: item.quantity }) })
+        await fetch(`${API_URL}/cart/items`, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ product_id: item.id, product_variant_id: item.variantId ?? null, quantity: item.quantity }) })
       }
       let checkoutBody
-      if (selectedAddressId) {
+      if (deliveryMode !== 'location' && selectedAddressId) {
         checkoutBody = { address_id: Number(selectedAddressId) }
       } else if (deliveryMode === 'saved' && defaultAddress) {
         checkoutBody = { address_id: defaultAddress.id }
       } else {
-        const addressPayload = { ...checkoutForm, name: checkoutForm.name || currentUser?.name || 'Customer', label: 'Home', is_default: addresses.length === 0 }
+        // Fall back to the chosen location's fields (and finally its display
+        // string) so line1 is never blank even if the form wasn't touched.
+        const fromFull = (location?.full || location?.label || '').split(',').slice(0, 3).join(', ').trim()
+        const addressPayload = {
+          ...checkoutForm,
+          name: checkoutForm.name || currentUser?.name || 'Customer',
+          line1: checkoutForm.line1?.trim() || location?.line1 || fromFull,
+          city: checkoutForm.city || location?.city || null,
+          state: checkoutForm.state || location?.state || null,
+          postal_code: checkoutForm.postal_code || location?.postal_code || null,
+          label: 'Home',
+          is_default: addresses.length === 0,
+        }
+        if (!addressPayload.line1) throw new Error('Add a street / house detail for the delivery address.')
+        // Carry the map pin's exact coordinates so the server checks delivery
+        // against the pin, not a re-geocode of the typed address.
+        if (location?.lat != null && location?.lon != null) {
+          addressPayload.latitude = Number(location.lat)
+          addressPayload.longitude = Number(location.lon)
+        }
         const addressResponse = await fetch(`${API_URL}/addresses`, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(addressPayload) })
         const addressData = await responseJson(addressResponse)
         if (!addressResponse.ok) throw new Error(addressData.message ?? 'Address could not be saved.')
         checkoutBody = { address_id: addressData.data.id }
       }
-      const response = await fetch(`${API_URL}/checkout`, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(checkoutBody) })
+      const method = codEnabled ? paymentMethod : 'card'
+      const trimmedPhone = phone.trim()
+      const response = await fetch(`${API_URL}/checkout`, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ ...checkoutBody, payment_method: method, delivery_instructions: deliveryNote.trim() || null, phone: trimmedPhone }) })
       const data = await responseJson(response)
       if (!response.ok) throw new Error(data.message ?? 'Checkout could not be completed.')
-      if (!stripePromise) throw new Error('Add VITE_STRIPE_PUBLISHABLE_KEY to the web environment before paying.')
-      const paymentResponse = await fetch(`${API_URL}/orders/${data.data.id}/payment-intent`, { method: 'POST', headers: { Accept: 'application/json', Authorization: `Bearer ${token}` } })
-      const paymentData = await responseJson(paymentResponse)
-      if (!paymentResponse.ok) throw new Error(paymentData.message ?? 'Payment setup could not be completed.')
-      setOrder({ ...data.data, clientSecret: paymentData.data.client_secret })
+      if (trimmedPhone && currentUser && currentUser.phone !== trimmedPhone) {
+        const updated = { ...currentUser, phone: trimmedPhone }
+        setCurrentUser(updated)
+        localStorage.setItem('gdp_user', JSON.stringify(updated))
+      }
+      if (method === 'cod') {
+        setOrder({ ...data.data, cod: true })
+      } else {
+        if (!stripePromise) throw new Error('Add VITE_STRIPE_PUBLISHABLE_KEY to the web environment before paying.')
+        const paymentResponse = await fetch(`${API_URL}/orders/${data.data.id}/payment-intent`, { method: 'POST', headers: { Accept: 'application/json', Authorization: `Bearer ${token}` } })
+        const paymentData = await responseJson(paymentResponse)
+        if (!paymentResponse.ok) throw new Error(paymentData.message ?? 'Payment setup could not be completed.')
+        setOrder({ ...data.data, clientSecret: paymentData.data.client_secret })
+      }
       setCart([])
       setCartOpen(false)
       setCheckoutOpen(false)
       setCheckoutMessage('')
+      setDeliveryNote('')
     } catch (error) { setCheckoutMessage(error.message) }
   }
 
@@ -375,6 +608,100 @@ export default function Storefront() {
     } catch (error) { setOrdersMessage(error.message) }
   }
 
+  async function cancelOrder(entry) {
+    if (!window.confirm(`Cancel order #${entry.id}? This can't be undone.`)) return
+    setOrdersMessage('')
+    const token = localStorage.getItem('gdp_token')
+    if (!token) { setOrdersMessage('Please sign in first.'); return }
+    try {
+      const response = await fetch(`${API_URL}/orders/${entry.id}/cancel`, { method: 'POST', headers: { Accept: 'application/json', Authorization: `Bearer ${token}` } })
+      const data = await responseJson(response)
+      if (!response.ok) throw new Error(data.message ?? 'Could not cancel the order.')
+      setOrders((current) => current.map((row) => row.id === entry.id ? { ...row, ...data.data } : row))
+      setOrdersMessage(data.data.payment_status === 'refund_pending' ? 'Order cancelled — your refund is being processed.' : 'Order cancelled.')
+    } catch (error) { setOrdersMessage(error.message) }
+  }
+
+  const authGet = (path) => fetch(`${API_URL}${path}`, { headers: { Accept: 'application/json', Authorization: `Bearer ${localStorage.getItem('gdp_token')}` } })
+  const authPost = (path, body) => fetch(`${API_URL}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${localStorage.getItem('gdp_token')}` }, body: JSON.stringify(body) })
+
+  async function openSupport(order) {
+    if (!localStorage.getItem('gdp_token')) { setAuthMode('login'); setAuthMessage('Sign in to contact support.'); return }
+    setSupportMsg('')
+    setSupportView('list')
+    loadThreads()
+    if (!orders.length) authGet('/orders').then(responseJson).then((d) => setOrders(d.data ?? [])).catch(() => {})
+    if (order) { setSupportForm({ order_id: String(order.id), issue_type: 'item_missing', message: '' }); setSupportView('new') }
+  }
+
+  function loadThreads() {
+    authGet('/support/threads').then(responseJson).then((d) => setThreads(d.data ?? [])).catch(() => {})
+  }
+
+  async function openThread(id) {
+    setSupportMsg('')
+    try {
+      const data = await responseJson(await authGet(`/support/threads/${id}`))
+      setSupportView(data.data)
+    } catch { setSupportMsg('Could not open that conversation.') }
+  }
+
+  async function submitSupport() {
+    if (!supportForm.message.trim()) { setSupportMsg('Add a message describing the problem.'); return }
+    setSupportBusy(true); setSupportMsg('')
+    try {
+      const body = { issue_type: supportForm.issue_type, message: supportForm.message.trim() }
+      if (supportForm.order_id) body.order_id = Number(supportForm.order_id)
+      const response = await authPost('/support/threads', body)
+      const data = await responseJson(response)
+      if (!response.ok) throw new Error(data.message ?? 'Could not send your request.')
+      setSupportForm({ order_id: '', issue_type: 'item_missing', message: '' })
+      setSupportView(data.data)
+      loadThreads()
+    } catch (error) { setSupportMsg(error.message) } finally { setSupportBusy(false) }
+  }
+
+  async function sendSupportReply() {
+    const body = supportReply.trim()
+    if (!body || typeof supportView !== 'object' || !supportView) return
+    setSupportBusy(true)
+    try {
+      const response = await authPost(`/support/threads/${supportView.id}/messages`, { body })
+      const data = await responseJson(response)
+      if (!response.ok) throw new Error(data.message ?? 'Message not sent.')
+      setSupportReply('')
+      setSupportView(data.data)
+    } catch (error) { setSupportMsg(error.message) } finally { setSupportBusy(false) }
+  }
+
+  // Poll the open conversation for new staff replies.
+  const activeThreadId = (supportView && typeof supportView === 'object') ? supportView.id : null
+  useEffect(() => {
+    if (!activeThreadId) return
+    const timer = setInterval(async () => {
+      try {
+        const response = await fetch(`${API_URL}/support/threads/${activeThreadId}`, { headers: { Accept: 'application/json', Authorization: `Bearer ${localStorage.getItem('gdp_token')}` } })
+        const data = await responseJson(response)
+        setSupportView((current) => (current && typeof current === 'object' && current.id === activeThreadId ? data.data : current))
+      } catch { /* keep last */ }
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [activeThreadId])
+
+  async function switchToCashOnDelivery() {
+    const current = order
+    const token = localStorage.getItem('gdp_token')
+    if (!token || !current) return
+    try {
+      const response = await fetch(`${API_URL}/orders/${current.id}/payment-method`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ payment_method: 'cod' }) })
+      const data = await responseJson(response)
+      if (!response.ok) throw new Error(data.message ?? 'Could not switch to cash on delivery.')
+      setOrder({ ...current, ...data.data, clientSecret: null, cod: true })
+      setCart([])
+      setOrders([])
+    } catch (error) { setOrder((o) => o ? { ...o, switchError: error.message } : o) }
+  }
+
   async function finalizePayment() {
     const paid = order
     setOrder((current) => current ? { ...current, clientSecret: null, paid: true } : current)
@@ -386,22 +713,37 @@ export default function Storefront() {
     setOrders([])
   }
 
-  function applyLocation(address) {
+  function applyLocation(address, { close = true } = {}) {
     setLocation(address)
     localStorage.setItem('gdp_location', JSON.stringify(address))
-    if (address.city || address.postal_code) {
+    // Seed the checkout address text. line1 falls back to the display name so it
+    // is never blank; city/state/postcode are best-effort now.
+    const line1 = address.line1 || (address.full || address.label || '').split(',').slice(0, 3).join(', ').trim()
+    if (line1 || address.city || address.postal_code) {
       setCheckoutForm((form) => ({
         ...form,
-        line1: address.line1 || form.line1,
+        line1: line1 || form.line1,
         city: address.city || form.city,
         state: address.state || form.state,
         postal_code: address.postal_code || form.postal_code,
       }))
     }
-    setLocationOpen(false)
-    setLocationResults([])
-    setLocationQuery('')
-    setLocationMsg('')
+    if (close) {
+      setLocationOpen(false)
+      setLocationResults([])
+      setLocationQuery('')
+      setLocationMsg('')
+    }
+  }
+
+  // Reverse geocode a point via the backend; the returned lat/lon is forced to
+  // the exact point asked for so the delivery-radius check uses it verbatim.
+  async function reverseGeocode(lat, lng) {
+    try {
+      const data = await responseJson(await fetch(`${API_URL}/geocode/reverse?lat=${lat}&lng=${lng}`, { headers: { Accept: 'application/json' } }))
+      if (data.data) return { ...data.data, lat, lon: lng }
+    } catch { /* fall through to a bare pin */ }
+    return { label: 'Pinned location', full: '', line1: '', city: '', state: '', postal_code: '', lat, lon: lng }
   }
 
   async function detectLocation() {
@@ -411,12 +753,11 @@ export default function Storefront() {
     navigator.geolocation.getCurrentPosition(async (pos) => {
       try {
         const { latitude, longitude } = pos.coords
-        const response = await fetch(`${NOMINATIM}/reverse?format=jsonv2&addressdetails=1&lat=${latitude}&lon=${longitude}`, { headers: { 'Accept-Language': 'en' } })
-        const data = await response.json()
-        if (!data || data.error) throw new Error('Could not read that location.')
-        applyLocation(toAddress(data))
-      } catch (error) {
-        setLocationMsg(error.message ?? 'Could not read that location.')
+        const address = await reverseGeocode(latitude, longitude)
+        mapRef.current?.setView([latitude, longitude], 16)
+        applyLocation(address)
+      } catch {
+        setLocationMsg('Could not read that location.')
       } finally {
         setLocationBusy(false)
       }
@@ -433,10 +774,17 @@ export default function Storefront() {
     setLocationBusy(true)
     setLocationMsg('')
     try {
-      const response = await fetch(`${NOMINATIM}/search?format=jsonv2&addressdetails=1&limit=6&q=${encodeURIComponent(term)}`, { headers: { 'Accept-Language': 'en' } })
-      const data = await response.json()
-      setLocationResults(Array.isArray(data) ? data : [])
-      if (!data.length) setLocationMsg('No matches. Try a more specific address.')
+      const data = await responseJson(await fetch(`${API_URL}/geocode/search?q=${encodeURIComponent(term)}`, { headers: { Accept: 'application/json' } }))
+      const results = Array.isArray(data.data) ? data.data : []
+      setLocationResults(results.slice(1))
+      if (!results.length) {
+        setLocationMsg('No match for that address — drop the pin on the map instead.')
+      } else {
+        // Jump the map and pin straight to the best match; the user fine-tunes
+        // by dragging, or picks one of the other matches below.
+        mapRef.current?.setView([Number(results[0].lat), Number(results[0].lon)], 16)
+        applyLocation(results[0], { close: false })
+      }
     } catch {
       setLocationMsg('Address lookup is unavailable right now.')
     } finally {
@@ -444,14 +792,107 @@ export default function Storefront() {
     }
   }
 
+  // Build the Leaflet map while the location modal is open. Leaflet and its CSS
+  // are loaded on demand so they stay out of the initial bundle.
+  useEffect(() => {
+    if (!locationOpen) return
+    let cancelled = false
+    ;(async () => {
+      const [{ default: L }] = await Promise.all([
+        import('leaflet'),
+        import('leaflet/dist/leaflet.css'),
+      ])
+      if (cancelled || !mapNodeRef.current || mapRef.current) return
+
+      const [icon2x, icon1x, shadow] = await Promise.all([
+        import('leaflet/dist/images/marker-icon-2x.png'),
+        import('leaflet/dist/images/marker-icon.png'),
+        import('leaflet/dist/images/marker-shadow.png'),
+      ])
+      const icon = L.icon({
+        iconRetinaUrl: icon2x.default, iconUrl: icon1x.default, shadowUrl: shadow.default,
+        iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
+      })
+
+      const loc = locationRef.current
+      const firstStore = stores.find((s) => s.latitude != null && s.longitude != null)
+      const start = loc?.lat != null && loc?.lon != null
+        ? [Number(loc.lat), Number(loc.lon)]
+        : firstStore ? [Number(firstStore.latitude), Number(firstStore.longitude)] : [20, 0]
+
+      const map = L.map(mapNodeRef.current, { zoomControl: true, scrollWheelZoom: false }).setView(start, (loc?.lat != null || firstStore) ? 14 : 2)
+      mapRef.current = map
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19, attribution: '&copy; OpenStreetMap contributors',
+      }).addTo(map)
+
+      stores.forEach((s) => {
+        if (s.latitude == null || s.longitude == null) return
+        L.circle([Number(s.latitude), Number(s.longitude)], {
+          radius: Number(s.delivery_radius_km) * 1000, color: '#3f7d43', weight: 1, fillColor: '#3f7d43', fillOpacity: 0.06,
+        }).addTo(map)
+      })
+
+      const marker = L.marker(start, { draggable: true, icon }).addTo(map)
+      markerRef.current = marker
+      const pick = (latlng) => {
+        marker.setLatLng(latlng)
+        setLocationMsg('')
+        reverseGeocode(latlng.lat, latlng.lng).then((address) => applyLocation(address, { close: false }))
+      }
+      marker.on('dragend', () => pick(marker.getLatLng()))
+      map.on('click', (event) => pick(event.latlng))
+      setTimeout(() => map.invalidateSize(), 0)
+    })()
+
+    return () => {
+      cancelled = true
+      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; markerRef.current = null }
+    }
+  }, [locationOpen, stores])
+
+  // Keep the map marker on the current location (search jump, detect, saved address).
+  useEffect(() => {
+    if (!mapRef.current || !markerRef.current || location?.lat == null || location?.lon == null) return
+    const point = [Number(location.lat), Number(location.lon)]
+    markerRef.current.setLatLng(point)
+    mapRef.current.setView(point, Math.max(mapRef.current.getZoom(), 15))
+  }, [location?.lat, location?.lon])
+
+  // A banner or homepage tile: an in-app category link wins, else a custom URL.
+  function openHomeTarget(target) {
+    if (target.category_slug) {
+      const cat = categories.find((c) => c.slug === target.category_slug)
+      if (cat) { setActiveCategory(cat.name); setQuery(''); window.scrollTo({ top: 0, behavior: 'smooth' }); return }
+    }
+    if (target.link_url) window.open(target.link_url, '_blank', 'noopener')
+  }
+
+  // Curated homepage tiles when an admin has set them; otherwise every category.
+  const catBySlug = Object.fromEntries(categories.map((c) => [c.slug, c]))
+  const homeTileList = homeTiles.length
+    ? homeTiles
+    : categories.map((c) => ({ id: `cat-${c.id}`, title: c.name, image_url: c.image_url, category_slug: c.slug, link_url: null }))
+  const tileMeta = (tile) => {
+    const name = tile.category_slug ? catBySlug[tile.category_slug]?.name : null
+    return {
+      label: tile.title || name || 'Shop',
+      count: name ? (categoryCounts[name] ?? 0) : null,
+      samples: name ? (categorySamples[name] ?? []) : [],
+    }
+  }
+
   return <div className="app-shell">
     <header className="topbar">
       <div className="topbar-row">
-        <a className="brand" href="/" aria-label="Grocerly home"><span className="brand-mark">g</span>grocerly</a>
-        <button className="deliver-to" type="button" onClick={() => { setLocationOpen(true); setLocationMsg('') }}><span className="deliver-eta">Delivery in 12 min</span><strong>{location ? location.label : 'Set your location'} <em aria-hidden>&#9662;</em></strong></button>
+        <a className="brand" href="/" aria-label={`${branding?.store_name || 'Grocerly'} home`}>{branding?.logo_url
+          ? <img className="brand-logo" src={branding.logo_url} alt={branding?.store_name || 'Grocerly'} />
+          : <><span className="brand-mark">{(branding?.store_name || 'g').trim().charAt(0).toLowerCase() || 'g'}</span>{(branding?.store_name || 'grocerly').toLowerCase()}</>}</a>
+        <button className="deliver-to" type="button" onClick={() => { setLocationOpen(true); setLocationMsg('') }}><span className="deliver-eta">{etaText}</span><strong>{location ? location.label : 'Set your location'} <em aria-hidden>&#9662;</em></strong></button>
         <div className="topbar-actions">
           {currentUser ? <>
             <button className="link-btn" type="button" onClick={() => { setOrdersOpen(true); setOrdersLoading(true); setOrders([]); setOrdersMessage('') }}>Orders</button>
+            <button className="link-btn" type="button" onClick={() => openSupport()}>Help</button>
             {currentUser.is_admin && <button className="link-btn" type="button" onClick={() => setAdminOpen(true)}>Admin</button>}
             <button className="link-btn" type="button" onClick={logout}>{currentUser.name.split(' ')[0]} &middot; Log out</button>
           </> : <button className="link-btn" type="button" onClick={() => { setAuthMode('login'); setAuthMessage('') }}>Sign in</button>}
@@ -461,18 +902,53 @@ export default function Storefront() {
       <label className="searchbar"><span aria-hidden>&#8981;</span><input aria-label="Search groceries" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search for milk, bananas, bread…" /></label>
     </header>
     <main className="catalog">
+      {pageView ? (
+        <article className="page-view">
+          <button type="button" className="page-back" onClick={closePage}>&larr; Back to shopping</button>
+          {pageView === 'loading'
+            ? <div className="empty-state">Loading…</div>
+            : <><h1>{pageView.title}</h1><div className="page-content" dangerouslySetInnerHTML={{ __html: renderMarkdown(pageView.content) }} /></>}
+        </article>
+      ) : <>
       {offline && <div className="api-note">Showing sample products while the API is offline.</div>}
+      {outOfArea && <div className="area-note">{UNSERVICEABLE_MSG}</div>}
 
       {loading ? <div className="empty-state">Loading…</div> : (!searching && !activeCategory) ? (
         <>
-          <div className="catalog-head"><h2>Shop by category</h2><span>{categories.length} categories</span></div>
-          <div className="cat-grid">
-            {categories.map((category) => <button className="cat-card" type="button" key={category.id} onClick={() => setActiveCategory(category.name)}>
-              <span className="cat-card-img" aria-hidden>{categoryEmoji(category.name)}{category.image_url && <img src={category.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
-              <strong>{category.name}</strong>
-              <span className="cat-card-count">{categoryCounts[category.name] ?? 0} items</span>
-            </button>)}
-          </div>
+          {banners.length > 0 && <section className="home-banners" aria-label="Offers">
+            <button className="home-hero" type="button" onClick={() => openHomeTarget(banners[0])}>
+              <img src={banners[0].image_url} alt={banners[0].headline || 'Featured offer'} loading="eager" />
+              {banners[0].headline && <span className="home-hero-cap">{banners[0].headline}</span>}
+            </button>
+            {banners.length > 1 && <div className="home-strip">
+              {banners.slice(1).map((banner) => <button className="home-strip-card" type="button" key={banner.id} onClick={() => openHomeTarget(banner)}>
+                <img src={banner.image_url} alt={banner.headline || 'Offer'} loading="lazy" />
+                {banner.headline && <span>{banner.headline}</span>}
+              </button>)}
+            </div>}
+          </section>}
+
+          {homeTileList.length > 0 && <section className="home-featured" aria-label="Featured categories">
+            {homeTileList.slice(0, 3).map((tile) => { const meta = tileMeta(tile); return <button className="feature-card" type="button" key={tile.id} onClick={() => openHomeTarget(tile)}>
+              <span className="feature-card-img" aria-hidden>{categoryEmoji(meta.label)}{tile.image_url && <img src={tile.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
+              <span className="feature-card-body">
+                <strong>{meta.label}</strong>
+                {meta.count != null && <span className="feature-card-count">{meta.count} items</span>}
+                {meta.samples.length > 0 && <span className="feature-card-list">{meta.samples.slice(0, 3).join(' · ')}</span>}
+              </span>
+            </button> })}
+          </section>}
+
+          {homeTileList.length > 3 && <>
+            <div className="catalog-head"><h2>Shop by category</h2><span>{homeTileList.length} shortcuts</span></div>
+            <div className="cat-grid">
+              {homeTileList.slice(3).map((tile) => { const meta = tileMeta(tile); return <button className="cat-card" type="button" key={tile.id} onClick={() => openHomeTarget(tile)}>
+                <span className="cat-card-img" aria-hidden>{categoryEmoji(meta.label)}{tile.image_url && <img src={tile.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
+                <strong>{meta.label}</strong>
+                {meta.count != null && <span className="cat-card-count">{meta.count} items</span>}
+              </button> })}
+            </div>
+          </>}
         </>
       ) : (
         <>
@@ -482,35 +958,114 @@ export default function Storefront() {
           </nav>
           <div className="catalog-head"><h2>{searching ? `Results for “${query.trim()}”` : activeCategory}</h2><span>{visibleProducts.length} items</span></div>
           <div className="product-grid">{visibleProducts.map((product) => {
-            const qty = cartQty[product.id] ?? 0
+            const variants = product.variants ?? []
+            const hasVariants = variants.length > 0
+            // The plain product is always the first ("base") option.
+            const options = hasVariants
+              ? [{ id: '', label: product.name, price_cents: product.price_cents, inventory_quantity: product.inventory_quantity, image_url: product.image_url }, ...variants]
+              : []
+            const chosen = hasVariants
+              ? (options.find((o) => String(o.id) === String(pickedVariant[product.id] ?? '')) ?? options[0])
+              : null
+            const variant = chosen && chosen.id !== '' ? chosen : null
+            const unitPrice = chosen ? chosen.price_cents : product.price_cents
+            const stock = chosen ? chosen.inventory_quantity : product.inventory_quantity
+            const key = lineKey(product.id, variant?.id)
+            const qty = cartQty[key] ?? 0
+            const img = (chosen?.image_url) || product.image_url
             return <article className="pcard" key={product.id}>
-              <div className="pcard-img" aria-hidden>{productEmoji(product.name)}{product.image_url && <img src={product.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
+              <div className="pcard-img" aria-hidden>{productEmoji(product.name)}{img && <img src={img} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
               <p className="pcard-cat">{product.category?.name ?? 'Grocery'}</p>
-              <h3>{product.name}</h3>
-              <div className="pcard-foot"><strong>{price(product.price_cents)}</strong>{qty === 0
-                ? <button className="add-btn" type="button" onClick={() => add(product)}>ADD</button>
-                : <span className="stepper"><button type="button" aria-label="Remove one" onClick={() => updateQuantity(product.id, -1)}>&minus;</button><b>{qty}</b><button type="button" aria-label="Add one" onClick={() => updateQuantity(product.id, 1)}>+</button></span>}</div>
+              <h3>{variantTitle(product.name, variant?.label)}</h3>
+              {hasVariants && <select className="pcard-variant" aria-label={`${product.name} option`} value={String(chosen?.id ?? '')} onChange={(event) => setPickedVariant((current) => ({ ...current, [product.id]: event.target.value }))}>{options.map((o) => <option key={o.id === '' ? 'base' : o.id} value={String(o.id)}>{o.label} — {price(o.price_cents)}</option>)}</select>}
+              <div className="pcard-foot"><strong>{price(unitPrice)}</strong>{qty === 0
+                ? <button className="add-btn" type="button" disabled={stock === 0} onClick={() => add(product, variant)}>{stock === 0 ? 'OUT' : 'ADD'}</button>
+                : <span className="stepper"><button type="button" aria-label="Remove one" onClick={() => updateQuantity(key, -1)}>&minus;</button><b>{qty}</b><button type="button" aria-label="Add one" disabled={stock != null && qty >= stock} onClick={() => updateQuantity(key, 1)}>+</button></span>}</div>
             </article>
           })}{!visibleProducts.length && <p className="empty-state">Nothing here yet.</p>}</div>
         </>
       )}
+      </>}
+
+      <footer className="site-footer">
+        <div className="site-footer-cols">
+          {(pages.some((p) => p.show_in_footer) || (footer?.links?.length ?? 0) > 0) && <div>
+            <h4>Useful Links</h4>
+            <ul>
+              {pages.filter((p) => p.show_in_footer).map((p) => <li key={p.slug}><button type="button" onClick={() => openPage(p.slug)}>{p.title}</button></li>)}
+              {(footer?.links ?? []).map((link, index) => <li key={`fl-${index}`}><a href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a></li>)}
+            </ul>
+          </div>}
+          <div>
+            <div className="site-footer-cathead"><h4>Categories</h4><button type="button" className="site-footer-seeall" onClick={() => { setActiveCategory(null); setQuery(''); closePage(); window.scrollTo({ top: 0 }) }}>see all</button></div>
+            <ul className="site-footer-cats">{categories.slice(0, 24).map((c) => <li key={c.id}><button type="button" onClick={() => { closePage(); setActiveCategory(c.name); setQuery(''); window.scrollTo({ top: 0 }) }}>{c.name}</button></li>)}</ul>
+          </div>
+        </div>
+        <div className="site-footer-bottom">
+          <span className="site-footer-copy">{(footer?.copyright || '© {year} Grocerly').replace('{year}', String(new Date().getFullYear()))}</span>
+          {(footer?.app_store_url || footer?.play_store_url) && <span className="site-footer-app">
+            <b>Download App</b>
+            {footer?.app_store_url && <a className="store-badge" href={footer.app_store_url} target="_blank" rel="noopener noreferrer">App Store</a>}
+            {footer?.play_store_url && <a className="store-badge" href={footer.play_store_url} target="_blank" rel="noopener noreferrer">Google Play</a>}
+          </span>}
+          {FOOTER_SOCIALS.some(([key]) => footer?.socials?.[key]) && <span className="site-footer-socials">
+            {FOOTER_SOCIALS.filter(([key]) => footer?.socials?.[key]).map(([key, label, path]) => (
+              <a key={key} href={footer.socials[key]} target="_blank" rel="noopener noreferrer" aria-label={label}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d={path} /></svg>
+              </a>
+            ))}
+          </span>}
+        </div>
+        {footer?.note && <p className="site-footer-note">{footer.note}</p>}
+      </footer>
     </main>
     <aside className="cart-tray" aria-live="polite"><div><strong>{cartCount ? `${cartCount} ${cartCount === 1 ? 'item' : 'items'} in your cart` : 'Your cart is ready'}</strong><span>{cartCount ? `${price(cartTotal)} subtotal` : 'Add something delicious'}</span></div><button type="button" onClick={() => setCartOpen(true)}>View cart <span>-&gt;</span></button></aside>
-    {cartOpen && <div className="overlay" role="presentation" onClick={() => setCartOpen(false)}><aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" onClick={(event) => event.stopPropagation()}><div className="drawer-header"><div><p className="eyebrow">Ready when you are</p><h2 id="cart-title">Your cart</h2></div><button className="close-button" type="button" onClick={() => setCartOpen(false)} aria-label="Close cart">x</button></div>{cart.length ? <><div className="drawer-items">{cart.map((item) => <div className="drawer-item" key={item.id}><div className="mini-visual" aria-hidden>{productEmoji(item.name)}</div><div className="drawer-item-copy"><strong>{item.name}</strong><span>{price(item.price_cents)}</span></div><div className="quantity"><button type="button" onClick={() => updateQuantity(item.id, -1)}>-</button><span>{item.quantity}</span><button type="button" onClick={() => updateQuantity(item.id, 1)}>+</button></div></div>)}</div><div className="drawer-total"><span>Subtotal</span><strong>{price(cartTotal)}</strong></div><button className="checkout-button" type="button" onClick={() => { setCartOpen(false); setCheckoutOpen(true); setCheckoutMessage('') }}>Continue to checkout <span>-&gt;</span></button></> : <div className="empty-cart"><div className="empty-cart-mark">+</div><h3>Your cart is empty</h3><p>Find something good in the essentials below.</p><button type="button" onClick={() => setCartOpen(false)}>Keep shopping</button></div>}</aside></div>}
+    {cartOpen && <div className="overlay" role="presentation" onClick={() => setCartOpen(false)}><aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" onClick={(event) => event.stopPropagation()}><div className="drawer-header"><div><p className="eyebrow">Ready when you are</p><h2 id="cart-title">Your cart</h2></div><button className="close-button" type="button" onClick={() => setCartOpen(false)} aria-label="Close cart">x</button></div>{cart.length ? <><div className="drawer-items">{cart.map((item) => <div className="drawer-item" key={item.key}><div className="mini-visual" aria-hidden>{productEmoji(item.name)}</div><div className="drawer-item-copy"><strong>{variantTitle(item.name, item.variantLabel)}</strong><span>{price(item.price_cents)}</span></div><div className="quantity"><button type="button" onClick={() => updateQuantity(item.key, -1)}>-</button><span>{item.quantity}</span><button type="button" onClick={() => updateQuantity(item.key, 1)}>+</button></div></div>)}</div><div className="drawer-summary"><div><span>Subtotal</span><span>{price(est.sub)}</span></div><div><span>Delivery</span><span>{est.delivery === 0 ? 'FREE' : price(est.delivery)}</span></div><div><span>Handling</span><span>{price(est.handling)}</span></div>{est.smallCart > 0 && <div><span>Small cart fee</span><span>{price(est.smallCart)}</span></div>}<div><span>Tax</span><span>{price(est.tax)}</span></div><div className="drawer-summary-total"><strong>Estimated total</strong><strong>{price(est.total)}</strong></div></div>{fees.delivery_mode === 'distance' && serviceable?.delivery_fee_cents == null && <p className="drawer-nudge">Delivery fee is based on distance — set your location for the exact amount.</p>}{est.toFreeDelivery > 0 && <p className="drawer-nudge">Add {price(est.toFreeDelivery)} more for free delivery.</p>}{est.toNoSmallCart > 0 && <p className="drawer-nudge">Add {price(est.toNoSmallCart)} more to drop the {price(est.smallCart)} small-cart fee.</p>}<button className="checkout-button" type="button" onClick={() => { setCartOpen(false); setCheckoutOpen(true); setCheckoutMessage('') }}>Continue to checkout <span>-&gt;</span></button></> : <div className="empty-cart"><div className="empty-cart-mark">+</div><h3>Your cart is empty</h3><p>Find something good in the essentials below.</p><button type="button" onClick={() => setCartOpen(false)}>Keep shopping</button></div>}</aside></div>}
     {authMode && <div className="overlay" role="presentation" onClick={() => { setAuthMode(null); setOtpStage(null) }}><div className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => { setAuthMode(null); setOtpStage(null) }} aria-label="Close authentication">x</button><p className="eyebrow">A better grocery run</p>{otpStage ? <><h2 id="auth-title">Enter your code</h2><p className="auth-intro">We emailed a 6-digit code to {otpStage.email}. It expires in 10 minutes.</p><form onSubmit={submitOtp}><input required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength="8" placeholder="6-digit code" value={otpCode} onChange={(event) => setOtpCode(event.target.value.replace(/[^0-9]/g, ''))} /><button className="checkout-button" type="submit">Verify <span>-&gt;</span></button></form>{authMessage && <p className="auth-message">{authMessage}</p>}<button className="switch-auth" type="button" onClick={resendOtp}>Resend code</button><button className="switch-auth" type="button" onClick={() => { setOtpStage(null); setAuthMessage('') }}>Use a different email</button></> : <><h2 id="auth-title">Sign in or sign up</h2><p className="auth-intro">Enter your email and we&rsquo;ll send a 6-digit code. No password needed &mdash; if you&rsquo;re new, your account is created automatically.</p><form onSubmit={submitAuth}><input required type="email" autoComplete="email" placeholder="Email address" value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} /><button className="checkout-button" type="submit">Continue <span>-&gt;</span></button></form>{authMessage && <p className="auth-message">{authMessage}</p>}</>}</div></div>}
-    {checkoutOpen && <div className="overlay" role="presentation" onClick={() => setCheckoutOpen(false)}><div className="auth-modal checkout-modal" role="dialog" aria-modal="true" aria-labelledby="checkout-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setCheckoutOpen(false)} aria-label="Close checkout">x</button><p className="eyebrow">Almost there</p><h2 id="checkout-title">{deliveryMode === 'form' ? 'Where should we deliver?' : 'Confirm delivery address'}</h2><p className="auth-intro">Your total will be calculated and confirmed securely by the server.</p>{deliveryMode === 'location' ? <><div className="loc-current"><strong>Deliver to</strong> {location.full || location.label}</div><input placeholder="Flat / house / building &amp; street" value={checkoutForm.line1} onChange={(event) => setCheckoutForm({ ...checkoutForm, line1: event.target.value })} /><div className="checkout-links"><button type="button" className="switch-auth" onClick={() => { setCheckoutOpen(false); setLocationOpen(true) }}>Change location</button><button type="button" className="switch-auth" onClick={() => setEditAddress(true)}>Edit full address</button></div></> : deliveryMode === 'saved' ? <><div className="loc-current"><strong>Deliver to</strong> {defaultAddress.line1}, {defaultAddress.city} {defaultAddress.state} {defaultAddress.postal_code}</div>{addresses.length > 1 && <label className="address-picker">Choose address<select value={selectedAddressId || String(defaultAddress.id)} onChange={(event) => setSelectedAddressId(event.target.value)}>{addresses.map((address) => <option key={address.id} value={address.id}>{address.label} - {address.line1}, {address.city}</option>)}</select></label>}<div className="checkout-links"><button type="button" className="switch-auth" onClick={() => { setCheckoutOpen(false); setLocationOpen(true) }}>Change location</button><button type="button" className="switch-auth" onClick={() => { setSelectedAddressId(''); setEditAddress(true) }}>Enter a new address</button></div></> : <>{addresses.length > 0 && <label className="address-picker">Saved address<select value={selectedAddressId} onChange={(event) => setSelectedAddressId(event.target.value)}>{addresses.map((address) => <option key={address.id} value={address.id}>{address.label} - {address.line1}, {address.city}</option>)}<option value="">Use a new address</option></select></label>}<form onSubmit={submitCheckout}>{!selectedAddressId && <><input required placeholder="Full name" value={checkoutForm.name} onChange={(event) => setCheckoutForm({ ...checkoutForm, name: event.target.value })} /><input required placeholder="Street address" value={checkoutForm.line1} onChange={(event) => setCheckoutForm({ ...checkoutForm, line1: event.target.value })} /><div className="form-row"><input required placeholder="City" value={checkoutForm.city} onChange={(event) => setCheckoutForm({ ...checkoutForm, city: event.target.value })} /><input required maxLength="60" placeholder="State / region" value={checkoutForm.state} onChange={(event) => setCheckoutForm({ ...checkoutForm, state: event.target.value })} /></div><input required maxLength="12" placeholder="Postal / ZIP code" value={checkoutForm.postal_code} onChange={(event) => setCheckoutForm({ ...checkoutForm, postal_code: event.target.value })} /></>}</form></>}<button className="checkout-button" type="button" onClick={submitCheckout}>Review order <span>-&gt;</span></button>{checkoutMessage && <p className="auth-message">{checkoutMessage}</p>}</div></div>}
-    {order?.clientSecret && <div className="overlay" role="presentation"><div className="auth-modal checkout-modal payment-modal" role="dialog" aria-modal="true" aria-labelledby="payment-title"><p className="eyebrow">Secure payment</p><h2 id="payment-title">Finish your order.</h2><p className="auth-intro">Order #{order.id} · {price(order.total_cents)} USD</p><Elements stripe={stripePromise}><PaymentForm clientSecret={order.clientSecret} onComplete={finalizePayment} /></Elements></div></div>}
-    {order && !order.clientSecret && <div className="overlay" role="presentation" onClick={() => setOrder(null)}><div className="auth-modal order-modal" role="dialog" aria-modal="true" aria-labelledby="order-title" onClick={(event) => event.stopPropagation()}><p className="eyebrow">{order.paid ? 'Payment submitted' : 'Payment setup needed'}</p><h2 id="order-title">{order.paid ? 'You’re all set.' : 'Order created.'}</h2><p className="auth-intro">Order #{order.id} is {order.paid ? 'being confirmed by Stripe.' : 'waiting for Stripe test keys.'}</p><div className="order-total"><span>Order total</span><strong>{price(order.total_cents)}</strong></div><button className="checkout-button" type="button" onClick={() => setOrder(null)}>Keep shopping <span>-&gt;</span></button></div></div>}
-    {ordersOpen && <div className="overlay" role="presentation" onClick={() => setOrdersOpen(false)}><div className="auth-modal orders-modal" role="dialog" aria-modal="true" aria-labelledby="orders-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setOrdersOpen(false)} aria-label="Close orders">x</button><p className="eyebrow">Your grocery runs</p><h2 id="orders-title">Order history</h2>{ordersLoading ? <p className="auth-intro">Loading your orders...</p> : orders.length === 0 ? <p className="auth-intro">No orders yet. Your completed checkouts will appear here.</p> : <ul className="orders-list">{orders.map((entry) => <li className="order-row" key={entry.id}><div className="order-row-head"><strong>Order #{entry.id}</strong><span className={`order-badge order-badge-${entry.payment_status}`}>{orderLabel(entry)}</span></div><div className="order-row-meta"><span>{new Date(entry.created_at).toLocaleDateString()}</span><span>{entry.items?.length ?? 0} {entry.items?.length === 1 ? 'item' : 'items'}</span><strong>{price(entry.total_cents)}</strong></div>{entry.payment_status === 'paid' && DELIVERY_STAGES.includes(entry.status) && <div className="order-track" aria-label={`Delivery status: ${DELIVERY_LABELS[entry.status]}`}>{DELIVERY_STAGES.map((stage, index) => <span key={stage} className={index <= DELIVERY_STAGES.indexOf(entry.status) ? 'track-step done' : 'track-step'} title={DELIVERY_LABELS[stage]} />)}<em>{DELIVERY_LABELS[entry.status]}</em></div>}{entry.payment_status === 'paid' && entry.status === 'cancelled' && <p className="order-track-note">Cancelled</p>}{entry.status !== 'cancelled' && entry.payment_status !== 'paid' && entry.payment_status !== 'cancelled' && <button className="text-button order-pay" type="button" onClick={() => resumePayment(entry)}>Complete payment <span>-&gt;</span></button>}</li>)}</ul>}{ordersMessage && <p className="auth-message">{ordersMessage}</p>}</div></div>}
-    {locationOpen && <div className="overlay" role="presentation" onClick={() => { if (location) setLocationOpen(false) }}><div className="auth-modal location-modal" role="dialog" aria-modal="true" aria-labelledby="loc-title" onClick={(event) => event.stopPropagation()}>{location && <button className="close-button" type="button" onClick={() => setLocationOpen(false)} aria-label="Close location">x</button>}<p className="eyebrow">Deliver to</p><h2 id="loc-title">Where are you?</h2><p className="auth-intro">{location ? 'We use this to show delivery time and fill in checkout.' : 'Set your delivery location to start shopping.'}</p>
-      <button className="checkout-button" type="button" onClick={detectLocation} disabled={locationBusy}>{locationBusy ? 'Locating…' : 'Use my current location'} <span>&#9678;</span></button>
-      <form className="loc-search" onSubmit={searchLocation}><input placeholder="Or type an address, area or ZIP" value={locationQuery} onChange={(event) => setLocationQuery(event.target.value)} /><button type="submit" disabled={locationBusy || locationQuery.trim().length < 3}>Search</button></form>
-      {location && <button className="loc-current" type="button" onClick={() => setLocationOpen(false)}><strong>Current</strong> {location.full || location.label}</button>}
-      {currentUser && addresses.length > 0 && <div className="loc-saved"><p className="loc-saved-h">Saved addresses</p>{addresses.map((address) => <button key={address.id} type="button" className="loc-result" onClick={() => applyLocation({ label: `${address.label || 'Address'} · ${address.city}`, full: `${address.line1}, ${address.city} ${address.state} ${address.postal_code}`, line1: address.line1, city: address.city, state: address.state, postal_code: address.postal_code })}>{address.line1}, {address.city} {address.state} {address.postal_code}</button>)}</div>}
-      {locationResults.length > 0 && <div className="loc-results">{locationResults.map((place) => <button key={place.place_id} type="button" className="loc-result" onClick={() => applyLocation(toAddress(place))}>{place.display_name}</button>)}</div>}
+    {checkoutOpen && <div className="overlay" role="presentation" onClick={() => setCheckoutOpen(false)}><div className="auth-modal checkout-modal" role="dialog" aria-modal="true" aria-labelledby="checkout-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setCheckoutOpen(false)} aria-label="Close checkout">x</button><p className="eyebrow">Almost there</p><h2 id="checkout-title">{deliveryMode === 'form' ? 'Where should we deliver?' : 'Confirm delivery address'}</h2><p className="auth-intro">Your total will be calculated and confirmed securely by the server.</p>{deliveryMode === 'location' ? <><div className="loc-current"><strong>Deliver to</strong> {location.full || location.label}</div><input placeholder="Flat / house / building &amp; street" value={checkoutForm.line1} onChange={(event) => setCheckoutForm({ ...checkoutForm, line1: event.target.value })} /><div className="checkout-links"><button type="button" className="switch-auth" onClick={() => { setCheckoutOpen(false); setLocationOpen(true) }}>Change location</button><button type="button" className="switch-auth" onClick={() => setEditAddress(true)}>Edit full address</button></div></> : deliveryMode === 'saved' ? <><div className="loc-current"><strong>Deliver to</strong> {defaultAddress.line1}, {defaultAddress.city} {defaultAddress.state} {defaultAddress.postal_code}</div>{addresses.length > 1 && <label className="address-picker">Choose address<select value={selectedAddressId || String(defaultAddress.id)} onChange={(event) => setSelectedAddressId(event.target.value)}>{addresses.map((address) => <option key={address.id} value={address.id}>{address.label} - {address.line1}, {address.city}</option>)}</select></label>}<div className="checkout-links"><button type="button" className="switch-auth" onClick={() => { setCheckoutOpen(false); setLocationOpen(true) }}>Change location</button><button type="button" className="switch-auth" onClick={() => { setSelectedAddressId(''); setEditAddress(true) }}>Enter a new address</button></div></> : <>{addresses.length > 0 && <label className="address-picker">Saved address<select value={selectedAddressId} onChange={(event) => setSelectedAddressId(event.target.value)}>{addresses.map((address) => <option key={address.id} value={address.id}>{address.label} - {address.line1}, {address.city}</option>)}<option value="">Use a new address</option></select></label>}<form onSubmit={submitCheckout}>{!selectedAddressId && <><input required placeholder="Full name" value={checkoutForm.name} onChange={(event) => setCheckoutForm({ ...checkoutForm, name: event.target.value })} /><input required placeholder="Street address" value={checkoutForm.line1} onChange={(event) => setCheckoutForm({ ...checkoutForm, line1: event.target.value })} /><div className="form-row"><input required placeholder="City" value={checkoutForm.city} onChange={(event) => setCheckoutForm({ ...checkoutForm, city: event.target.value })} /><input required maxLength="60" placeholder="State / region" value={checkoutForm.state} onChange={(event) => setCheckoutForm({ ...checkoutForm, state: event.target.value })} /></div><input required maxLength="12" placeholder="Postal / ZIP code" value={checkoutForm.postal_code} onChange={(event) => setCheckoutForm({ ...checkoutForm, postal_code: event.target.value })} /></>}</form></>}<label className="checkout-phone"><span>Phone number{currentUser?.phone ? '' : ' — the delivery rider may call you'}</span><input type="tel" required maxLength="32" placeholder="e.g. +1 555 987 6543" value={phone} onChange={(event) => setPhone(event.target.value)} /></label><textarea className="delivery-note" rows="2" maxLength="500" placeholder="Delivery instructions (optional) — e.g. leave at the gate, call on arrival" value={deliveryNote} onChange={(event) => setDeliveryNote(event.target.value)} />{codEnabled && <><p className="pay-methods-label">How would you like to pay?</p><div className="pay-methods" role="radiogroup" aria-label="Payment method"><button type="button" role="radio" aria-checked={paymentMethod === 'card'} className={paymentMethod === 'card' ? 'pay-method active' : 'pay-method'} onClick={() => setPaymentMethod('card')}><strong>Pay online</strong><span>Card via Stripe</span></button><button type="button" role="radio" aria-checked={paymentMethod === 'cod'} className={paymentMethod === 'cod' ? 'pay-method active' : 'pay-method'} onClick={() => setPaymentMethod('cod')}><strong>Cash on delivery</strong><span>Pay when it arrives</span></button></div></>}<button className="checkout-button" type="button" onClick={submitCheckout} disabled={blockCheckout}>{codEnabled && paymentMethod === 'cod' ? 'Place order' : 'Review order'} <span>-&gt;</span></button>{blockCheckout && <p className="auth-message">{outOfArea && deliveryMode === 'location' ? UNSERVICEABLE_MSG : 'Add a phone number so your delivery rider can reach you.'}</p>}{checkoutMessage && <p className="auth-message">{checkoutMessage}</p>}</div></div>}
+    {order?.clientSecret && <div className="overlay" role="presentation" onClick={() => setOrder(null)}><div className="auth-modal checkout-modal payment-modal" role="dialog" aria-modal="true" aria-labelledby="payment-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setOrder(null)} aria-label="Close payment">x</button><p className="eyebrow">Secure payment</p><h2 id="payment-title">Finish your order.</h2><p className="auth-intro">Order #{order.id} · {price(order.total_cents)} USD</p><Elements stripe={stripePromise}><PaymentForm clientSecret={order.clientSecret} onComplete={finalizePayment} /></Elements>{codEnabled && <button className="switch-auth" type="button" onClick={switchToCashOnDelivery}>Pay with cash on delivery instead</button>}<button className="switch-auth" type="button" onClick={() => setOrder(null)}>Pay later from Order history</button>{order.switchError && <p className="auth-message">{order.switchError}</p>}</div></div>}
+    {order && !order.clientSecret && <div className="overlay" role="presentation" onClick={() => setOrder(null)}><div className="auth-modal order-modal" role="dialog" aria-modal="true" aria-labelledby="order-title" onClick={(event) => event.stopPropagation()}><p className="eyebrow">{order.cod ? 'Order confirmed' : order.paid ? 'Payment submitted' : 'Payment setup needed'}</p><h2 id="order-title">{order.cod || order.paid ? 'You’re all set.' : 'Order created.'}</h2><p className="auth-intro">{order.cod ? `Order #${order.id} is confirmed. Pay with cash when your order arrives.` : `Order #${order.id} is ${order.paid ? 'being confirmed by Stripe.' : 'waiting for Stripe test keys.'}`}</p><div className="order-breakdown"><div><span>Subtotal</span><span>{price(order.subtotal_cents)}</span></div><div><span>Delivery</span><span>{order.delivery_fee_cents === 0 ? 'FREE' : price(order.delivery_fee_cents)}</span></div><div><span>Handling</span><span>{price(order.handling_fee_cents ?? 0)}</span></div>{order.small_cart_fee_cents > 0 && <div><span>Small cart fee</span><span>{price(order.small_cart_fee_cents)}</span></div>}<div><span>Tax</span><span>{price(order.tax_cents)}</span></div></div>{order.delivery_instructions && <p className="auth-intro" style={{ margin: '12px 0 0' }}>Note to courier: &ldquo;{order.delivery_instructions}&rdquo;</p>}<div className="order-total"><span>{order.cod ? 'Pay on delivery' : 'Order total'}</span><strong>{price(order.total_cents)}</strong></div><button className="checkout-button" type="button" onClick={() => setOrder(null)}>Keep shopping <span>-&gt;</span></button></div></div>}
+    {ordersOpen && <div className="overlay" role="presentation" onClick={() => setOrdersOpen(false)}><div className="auth-modal orders-modal" role="dialog" aria-modal="true" aria-labelledby="orders-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setOrdersOpen(false)} aria-label="Close orders">x</button><p className="eyebrow">Your grocery runs</p><h2 id="orders-title">Order history</h2>{ordersLoading ? <p className="auth-intro">Loading your orders...</p> : orders.length === 0 ? <p className="auth-intro">No orders yet. Your completed checkouts will appear here.</p> : <ul className="orders-list">{orders.map((entry) => <li className="order-row" key={entry.id}><div className="order-row-head"><strong>Order #{entry.id}</strong><span className={`order-badge order-badge-${entry.payment_status}`}>{orderLabel(entry)}</span></div><div className="order-row-meta"><span>{new Date(entry.created_at).toLocaleDateString()}</span><span>{entry.items?.length ?? 0} {entry.items?.length === 1 ? 'item' : 'items'}</span><strong>{price(entry.total_cents)}</strong></div>{(entry.payment_status === 'paid' || entry.payment_method === 'cod') && DELIVERY_STAGES.includes(entry.status) && <div className="order-track" aria-label={`Delivery status: ${DELIVERY_LABELS[entry.status]}`}>{DELIVERY_STAGES.map((stage, index) => <span key={stage} className={index <= DELIVERY_STAGES.indexOf(entry.status) ? 'track-step done' : 'track-step'} title={DELIVERY_LABELS[stage]} />)}<em>{DELIVERY_LABELS[entry.status]}</em></div>}{entry.status === 'cancelled' && <p className="order-track-note">Cancelled</p>}{entry.payment_method !== 'cod' && entry.status !== 'cancelled' && entry.payment_status !== 'paid' && entry.payment_status !== 'cancelled' && <button className="text-button order-pay" type="button" onClick={() => resumePayment(entry)}>Complete payment <span>-&gt;</span></button>}{CANCELLABLE_STAGES.includes(entry.status) && <button className="text-button order-cancel" type="button" onClick={() => cancelOrder(entry)}>Cancel order</button>}<button className="text-button order-help" type="button" onClick={() => { setOrdersOpen(false); openSupport(entry) }}>Get help</button></li>)}</ul>}{ordersMessage && <p className="auth-message">{ordersMessage}</p>}</div></div>}
+    {locationOpen && <div className="overlay" role="presentation" onClick={() => { if (location) setLocationOpen(false) }}><div className="auth-modal location-modal" role="dialog" aria-modal="true" aria-labelledby="loc-title" onClick={(event) => event.stopPropagation()}>{location && <button className="close-button" type="button" onClick={() => setLocationOpen(false)} aria-label="Close location">x</button>}<p className="eyebrow">Deliver to</p><h2 id="loc-title">Where are you?</h2><p className="auth-intro">Drop the pin on your building — that&rsquo;s the location we deliver to. Search or &ldquo;detect&rdquo; just move the map near your area.</p>
+      {outOfArea && <p className="loc-unserviceable">{UNSERVICEABLE_MSG}</p>}
+      <div className="loc-tools">
+        <button className="loc-detect" type="button" onClick={detectLocation} disabled={locationBusy}>{locationBusy ? 'Locating…' : 'Detect my location'} <span aria-hidden>&#9678;</span></button>
+        <form className="loc-search" onSubmit={searchLocation}><input placeholder="Search an area, road or landmark" value={locationQuery} onChange={(event) => setLocationQuery(event.target.value)} /><button type="submit" disabled={locationBusy || locationQuery.trim().length < 3}>Search</button></form>
+      </div>
+      {locationResults.length > 0 && <div className="loc-results"><p className="loc-saved-h">Move map to</p>{locationResults.map((place, index) => <button key={`${place.lat},${place.lon},${index}`} type="button" className="loc-result" onClick={() => { mapRef.current?.setView([Number(place.lat), Number(place.lon)], 16); applyLocation(place, { close: false }); setLocationResults([]) }}><strong>{place.label}</strong><span>{place.full}</span></button>)}</div>}
+      <div ref={mapNodeRef} className="loc-map" aria-label="Pick your delivery location on the map" />
+      <p className="loc-map-hint">Drag the pin to your exact door. We use the pin, not the typed address.</p>
+      {location && <div className="loc-current"><strong>Pin</strong> {location.full || location.label}</div>}
+      {currentUser && addresses.length > 0 && <div className="loc-saved"><p className="loc-saved-h">Saved addresses</p>{addresses.map((address) => <button key={address.id} type="button" className="loc-result" onClick={() => applyLocation({ label: `${address.label || 'Address'} · ${address.city}`, full: `${address.line1}, ${address.city} ${address.state} ${address.postal_code}`, line1: address.line1, city: address.city, state: address.state, postal_code: address.postal_code })}><strong>{address.label || 'Address'}</strong><span>{address.line1}, {address.city} {address.state} {address.postal_code}</span></button>)}</div>}
       {locationMsg && <p className="auth-message">{locationMsg}</p>}
+      {location && <button className="checkout-button loc-confirm" type="button" onClick={() => { setLocationOpen(false); setLocationResults([]); setLocationQuery(''); setLocationMsg('') }}>Deliver to this location <span>-&gt;</span></button>}
+    </div></div>}
+    {supportView && <div className="overlay" role="presentation" onClick={() => setSupportView(null)}><div className="auth-modal support-modal" role="dialog" aria-modal="true" aria-labelledby="support-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setSupportView(null)} aria-label="Close support">x</button><p className="eyebrow">We&rsquo;re here to help</p>
+      {supportView === 'list' ? <>
+        <h2 id="support-title">Support</h2>
+        <button className="checkout-button" type="button" onClick={() => { setSupportForm({ order_id: '', issue_type: 'item_missing', message: '' }); setSupportView('new') }}>New request <span>-&gt;</span></button>
+        {threads.length === 0 ? <p className="auth-intro">No conversations yet.</p> : <ul className="support-list">{threads.map((t) => <li key={t.id}><button type="button" onClick={() => openThread(t.id)}><strong>{issueLabel(t.issue_type)}{t.order_id ? ` · Order #${t.order_id}` : ''}</strong><span>{t.status === 'resolved' ? 'Resolved' : 'Open'} · {t.last_message_at ? new Date(t.last_message_at).toLocaleDateString() : ''}</span></button></li>)}</ul>}
+      </> : supportView === 'new' ? <>
+        <h2 id="support-title">New request</h2>
+        <label className="support-field">Which order?
+          <select value={supportForm.order_id} onChange={(event) => setSupportForm({ ...supportForm, order_id: event.target.value })}>
+            <option value="">General question</option>
+            {orders.map((o) => <option key={o.id} value={o.id}>Order #{o.id} · {price(o.total_cents)}</option>)}
+          </select>
+        </label>
+        <div className="issue-chips" role="radiogroup" aria-label="Issue type">{ISSUE_TYPES.map(([type, label]) => <button key={type} type="button" role="radio" aria-checked={supportForm.issue_type === type} className={supportForm.issue_type === type ? 'issue-chip active' : 'issue-chip'} onClick={() => setSupportForm({ ...supportForm, issue_type: type })}>{label}</button>)}</div>
+        <textarea className="delivery-note" rows="3" maxLength="2000" placeholder="Tell us what happened" value={supportForm.message} onChange={(event) => setSupportForm({ ...supportForm, message: event.target.value })} />
+        <button className="checkout-button" type="button" disabled={supportBusy} onClick={submitSupport}>Send <span>-&gt;</span></button>
+        <button className="switch-auth" type="button" onClick={() => setSupportView('list')}>Back</button>
+      </> : <>
+        <h2 id="support-title">{issueLabel(supportView.issue_type)}{supportView.order_id ? ` · Order #${supportView.order_id}` : ''}</h2>
+        {supportView.status === 'resolved' && <p className="loc-unserviceable">This conversation is resolved. Reply to re-open it.</p>}
+        <div className="chat-log">{(supportView.messages ?? []).map((m) => <div key={m.id} className={`chat-msg ${m.is_staff ? 'staff' : m.user_id ? 'me' : 'system'}`}><span>{m.body}</span><em>{new Date(m.created_at).toLocaleString()}</em></div>)}</div>
+        <div className="chat-send"><input placeholder="Type a message" value={supportReply} onChange={(event) => setSupportReply(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') sendSupportReply() }} /><button type="button" disabled={supportBusy || !supportReply.trim()} onClick={sendSupportReply}>Send</button></div>
+        <button className="switch-auth" type="button" onClick={() => { setSupportView('list'); loadThreads() }}>All conversations</button>
+      </>}
+      {supportMsg && <p className="auth-message">{supportMsg}</p>}
     </div></div>}
     {adminOpen && currentUser?.is_admin && <Admin token={localStorage.getItem('gdp_token')} onClose={() => setAdminOpen(false)} />}
-    <footer><span>grocerly</span><span>Fresh food. Less fuss.</span><span>USD / United States</span></footer>
   </div>
 }

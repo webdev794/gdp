@@ -24,6 +24,7 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:32'],
             'address' => ['sometimes', 'array'],
             'address.name' => ['required_with:address', 'string', 'max:120'],
             'address.line1' => ['required_with:address', 'string', 'max:255'],

@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { api } from '../api';
 import { colors, money, STATUS_LABELS, DELIVERY_STAGES } from '../theme';
 
@@ -18,7 +18,7 @@ function Tracker({ status }) {
   );
 }
 
-export default function OrdersScreen() {
+export default function OrdersScreen({ navigation }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -93,6 +93,9 @@ export default function OrdersScreen() {
             {!!item.courier_name && paymentPaid && (
               <Text style={styles.courier}>Courier: {item.courier_name}</Text>
             )}
+            <Pressable onPress={() => navigation.navigate('Support', { orderId: item.id })}>
+              <Text style={styles.help}>Get help with this order</Text>
+            </Pressable>
           </View>
         );
       }}
@@ -134,4 +137,5 @@ const styles = StyleSheet.create({
   trackerLabel: { marginLeft: 6, fontSize: 10, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4 },
   cancelled: { marginTop: 12, fontSize: 11, color: colors.danger, textTransform: 'uppercase', letterSpacing: 0.4 },
   courier: { marginTop: 8, fontSize: 12, color: colors.muted },
+  help: { marginTop: 10, fontSize: 12, color: colors.accent, fontWeight: '700' },
 });
