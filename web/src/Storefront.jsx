@@ -377,7 +377,7 @@ export default function Storefront() {
     if (branding.favicon_url) {
       let link = document.querySelector("link[rel='icon']")
       if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link) }
-      link.href = branding.favicon_url
+      link.href = mediaUrl(branding.favicon_url)
     }
   }, [branding])
 
@@ -1170,7 +1170,7 @@ export default function Storefront() {
   return <><div className="app-shell">
     <header className="topbar">
       <div className="topbar-row">
-        <a className="brand" href="/" aria-label={`${branding?.store_name || 'Grocerly'} home`}>{branding?.logo_url
+        <a className="brand" href={import.meta.env.BASE_URL || '/'} aria-label={`${branding?.store_name || 'Grocerly'} home`}>{branding?.logo_url
           ? <img className="brand-logo" src={mediaUrl(branding.logo_url)} alt={branding?.store_name || 'Grocerly'} />
           : <><span className="brand-mark">{(branding?.store_name || 'g').trim().charAt(0).toLowerCase() || 'g'}</span>{(branding?.store_name || 'grocerly').toLowerCase()}</>}</a>
         <button className="deliver-to" type="button" onClick={() => { setLocationOpen(true); setLocationMsg('') }}><span className="deliver-eta">{etaText}</span><strong>{location ? location.label : 'Set your location'} <em aria-hidden>&#9662;</em></strong></button>

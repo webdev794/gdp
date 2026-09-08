@@ -1,0 +1,55 @@
+# Grocerly — Access & Menu Guide
+
+---
+
+## Admin access
+
+**URL:** https://testcaresortwork.co.in/gdp/admin
+**Username:** test@example.com
+**Password:** password
+
+### Admin menus
+
+| Menu | What it does |
+| --- | --- |
+| **Dashboard** | Business overview — revenue, order and customer counts, discounts, refunds, plus orders-trend, payments-vs-refunds, "when orders come in" and period-comparison charts. |
+| **Orders** | View every order, filter by status, advance the delivery stage, assign a rider, mark cash collected, and issue full/partial Stripe refunds. |
+| **Products** | Add, edit and delete products — price, sale price, stock, image, and per-item variants (size/weight/flavour). |
+| **Categories** | Add, edit, delete and reorder product categories, set their image and active/inactive state. |
+| **Customers** | See all customers with order count and spend, open a customer's addresses and order history, and grant the delivery-rider role. |
+| **Stores** | Manage store/hub locations — address, map coordinates, delivery radius and active state. |
+| **Store settings** | Set the store name, tagline, logo, favicon, light/dark theme, brand colours and boxed/full page width. |
+| **Secure access** | Change the admin email/phone and manage the Stripe API keys, protected by a password re-check. |
+| **Pages → Homepage** | Manage the homepage banners (hero and 3-up strip) and the category tiles — images, links, order and visibility. |
+| **Pages → Footer** | Edit the footer copyright, disclaimer, App Store / Play Store links, social-media links and custom links. |
+| **Pages → All pages** | Create and edit content pages (About, Contact, Privacy, etc.) using text or drag-and-drop section blocks and a header banner image. |
+| **Pages → Blogs** | Create and edit blog posts as their own pages, kept in a separate group. |
+| **Support** | Read customer support chats, reply, mark them resolved/reopened, and issue a refund from within a conversation. |
+| **Settings** | Configure checkout charges — tax rate, delivery fee, handling fee, small-cart surcharge, and turn cash-on-delivery on/off. |
+
+---
+
+## Client access
+
+**URL:** https://testcaresortwork.co.in/gdp/
+**Username:** testcaresort@outlook.com
+**Password:** password
+
+### Client menus
+
+| Menu | What a client can do |
+| --- | --- |
+| **Search bar** | Type to find any product by name. |
+| **Set your location** | Drop a map pin, detect location or search an address to check delivery and get an ETA. |
+| **Categories** | Browse products by category from the tiles or the top rail. |
+| **Product / Add** | Pick a variant, see regular vs sale price, and add items to the cart. |
+| **Cart / View cart** | Change quantities, remove items, and see the running subtotal, fees, tax and total. |
+| **Checkout** | Choose a saved or new delivery address, add a phone number and delivery note, and pick card or cash on delivery. |
+| **Payment** | Pay by card (Stripe), use a saved card, or tick "save this card" for next time. |
+| **Orders** | Track delivery status, complete payment, cancel an order, download the bill (PDF), or get help on an order. |
+| **Account → Profile** | Update name and phone number. |
+| **Account → Addresses** | Add, edit, delete and set a default delivery address. |
+| **Account → Payment methods** | Add a card, set a default, and remove saved cards. |
+| **Help** | Start a support chat (optionally linked to an order) and message the store. |
+| **Footer pages** | Read About Us, Blog, Contact, FAQs, Privacy Policy, Terms of Service and Security. |
+| **Sign in / Log out** | Sign in by emailed code or email + password; log out. |
