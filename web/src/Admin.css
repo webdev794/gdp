@@ -30,6 +30,10 @@
 .admin-nav-sub button:hover{background:#232e1c;color:#e6ece2}
 .admin-nav-sub button.active{background:#26311f;color:#fff}
 .admin-nav-sub .nav-sub-add{color:#8bd08f}
+.admin-nav-sub .nav-sub-empty{color:#6f7c6b;font-style:italic;cursor:default}
+.nav-subgroup-toggle{display:flex;align-items:center;width:100%;padding:7px 10px;border:0;border-radius:7px;background:transparent;color:#9aa896;font:11px/1.3 'Manrope',sans-serif;font-weight:700;text-align:left;cursor:pointer}
+.nav-subgroup-toggle:hover{background:#232e1c;color:#e6ece2}
+.nav-subgroup-toggle .nav-caret{margin-left:auto;font-size:10px;opacity:.8}
 
 .admin-main{flex:1 1 auto;min-width:0;overflow:auto;padding-bottom:60px}
 
@@ -144,6 +148,19 @@
 .admin-form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:12px}
 .admin-form label{display:grid;gap:6px;color:var(--muted,#7c857a);font:10px 'DM Mono',monospace;text-transform:uppercase;letter-spacing:.08em}
 .admin-form input,.admin-form select,.admin-form textarea{padding:9px 10px;border:1px solid var(--line,#e4e7df);border-radius:7px;background:white;font:13px 'Manrope',sans-serif;color:var(--ink,#20291f);text-transform:none;letter-spacing:0}
+.admin-sections{display:grid;gap:18px;margin:6px 0 16px}
+.admin-section-card{border:1px solid #b3bda6;border-left:4px solid #2e7d32;border-radius:10px;padding:0 14px 14px;background:#f4f6f0;display:grid;gap:10px;box-shadow:0 1px 3px rgba(20,26,18,.06)}
+.admin-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 -14px 4px;padding:9px 14px;background:#e7ecde;border-bottom:1px solid #c4ccb4;border-radius:6px 6px 0 0}
+.admin-section-head strong{font:11px 'DM Mono',monospace;text-transform:uppercase;letter-spacing:.06em;color:#3b4a32}
+.admin-section-tools{display:flex;gap:6px}
+.admin-section-add{display:flex;flex-wrap:wrap;gap:8px}
+.admin-feature-row{display:grid;grid-template-columns:1fr 1fr 1.4fr auto;gap:8px;align-items:center}
+.admin-feature-row--pair{grid-template-columns:1fr 1.6fr auto}
+.admin-feature-row--quad{grid-template-columns:1fr 1fr 1.4fr 1.2fr auto}
+.admin-faq-row{display:grid;gap:6px;padding:10px;border:1px dashed #b3bda6;border-radius:8px;background:#fff}
+.admin-faq-row .act.danger{justify-self:start}
+@media(max-width:900px){.admin-feature-row--quad{grid-template-columns:1fr 1fr}}
+@media(max-width:720px){.admin-feature-row,.admin-feature-row--pair{grid-template-columns:1fr 1fr}}
 .admin-form .admin-check{flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:12px}
 .admin-form .admin-check input{width:auto}
 .admin-form-actions{display:flex;gap:8px}

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\AdminBannerController;
 use App\Http\Controllers\Api\AdminCategoryController;
 use App\Http\Controllers\Api\AdminController;
@@ -54,6 +55,12 @@ Route::get('/pages/{slug}', [PageController::class, 'show']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/addresses', [AddressController::class, 'index']);
     Route::post('/addresses', [AddressController::class, 'store']);
+    Route::patch('/addresses/{address}', [AddressController::class, 'update']);
+    Route::delete('/addresses/{address}', [AddressController::class, 'destroy']);
+    Route::get('/billing/payment-methods', [BillingController::class, 'paymentMethods']);
+    Route::post('/billing/setup-intent', [BillingController::class, 'setupIntent']);
+    Route::post('/billing/payment-methods/{paymentMethod}/default', [BillingController::class, 'setDefault']);
+    Route::delete('/billing/payment-methods/{paymentMethod}', [BillingController::class, 'detach']);
     Route::get('/cart', [CartController::class, 'show']);
     Route::post('/cart/items', [CartController::class, 'addItem']);
     Route::patch('/cart/items/{cartItem}', [CartController::class, 'updateItem']);

@@ -803,7 +803,5 @@ GitHub repository: <https://github.com/webdev794/gdp>
 
 -----
 Tasks to do: 
-Add footer menu page designs editable.
 Mobile android app.
 Mobile ios app. 
-Work on client dashboard, support access, etc.

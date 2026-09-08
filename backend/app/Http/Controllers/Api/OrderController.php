@@ -43,10 +43,18 @@ class OrderController extends Controller
     /**
      * A printable bill (PDF) for the customer's own order: the shop address, every
      * line with its regular and paid price, the fee breakdown and the total paid.
+     *
+     * Only issued once the order is a committed, payable order — a card order
+     * that has been paid, or a cash-on-delivery order that has been placed
+     * (payment is collected on hand-off, so the bill goes out with the order).
+     * Not available while a card payment is still pending, or once cancelled.
      */
     public function receipt(Request $request, Order $order): Response
     {
         abort_unless($order->user_id === $request->user()->id, 404);
+
+        $billable = $order->payment_status === 'paid' || $order->isCashOnDelivery();
+        abort_unless($billable && $order->status !== 'cancelled', 403, 'The bill for this order is not available yet.');
 
         // Orders placed before line-level price snapshots fall back to the
         // product's / variant's current regular price, the same way the cart does.

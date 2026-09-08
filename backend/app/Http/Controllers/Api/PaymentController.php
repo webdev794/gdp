@@ -41,11 +41,14 @@ class PaymentController extends Controller
         $stripe = new StripeClient(config('services.stripe.secret'));
 
         try {
+            // Always attach the customer so the shopper can pay with a saved
+            // card, or tick "save this card" and have it kept for next time.
             $intent = $order->stripe_payment_intent_id
                 ? $stripe->paymentIntents->retrieve($order->stripe_payment_intent_id)
                 : $stripe->paymentIntents->create([
                     'amount' => $order->total_cents,
                     'currency' => 'usd',
+                    'customer' => $this->customerId($request->user(), $stripe),
                     'automatic_payment_methods' => ['enabled' => true],
                     'metadata' => ['order_id' => (string) $order->id],
                 ]);
@@ -173,6 +176,24 @@ class PaymentController extends Controller
     private function orderPayload(Order $order): Order
     {
         return $order->fresh(['items', 'user:id,name,email', 'refunds']);
+    }
+
+    /** Get-or-create the Stripe Customer for a user, so a card can be saved. */
+    private function customerId(\App\Models\User $user, StripeClient $stripe): string
+    {
+        if ($user->stripe_customer_id) {
+            return $user->stripe_customer_id;
+        }
+
+        $customer = $stripe->customers->create([
+            'email' => $user->email,
+            'name' => $user->name,
+            'metadata' => ['user_id' => (string) $user->id],
+        ]);
+
+        $user->forceFill(['stripe_customer_id' => $customer->id])->save();
+
+        return $customer->id;
     }
 
     private function dollars(int $cents): string

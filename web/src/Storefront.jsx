@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js'
 import { loadStripe } from '@stripe/stripe-js'
 import { renderMarkdown } from './markdown'
+import { mediaUrl } from './mediaUrl'
+import { PageSection } from './PageSections'
 import './StorefrontBase.css'
 import './Storefront.css'
 import './Checkout.css'
@@ -122,23 +124,85 @@ async function responseJson(response) {
   return JSON.parse(text.slice(jsonStart))
 }
 
-function PaymentForm({ clientSecret, onComplete }) {
+function PaymentForm({ clientSecret, onComplete, savedCards = [] }) {
   const stripe = useStripe()
   const elements = useElements()
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const defaultCard = savedCards.find((c) => c.is_default) ?? savedCards[0]
+  const [choice, setChoice] = useState(defaultCard ? defaultCard.id : 'new') // pm id | 'new'
+  const [saveCard, setSaveCard] = useState(false)
+  const usingSaved = choice !== 'new'
 
   async function pay(event) {
     event.preventDefault()
-    if (!stripe || !elements) return
+    if (!stripe) return
+    if (!usingSaved && !elements) return
     setSubmitting(true)
-    const result = await stripe.confirmCardPayment(clientSecret, { payment_method: { card: elements.getElement(CardElement) } })
+    setMessage('')
+    const confirmData = usingSaved
+      ? { payment_method: choice }
+      : { payment_method: { card: elements.getElement(CardElement) }, ...(saveCard ? { setup_future_usage: 'off_session' } : {}) }
+    const result = await stripe.confirmCardPayment(clientSecret, confirmData)
     if (result.error) setMessage(result.error.message)
     else if (result.paymentIntent?.status === 'succeeded') onComplete(result.paymentIntent.id)
     setSubmitting(false)
   }
 
-  return <form className="payment-form" onSubmit={pay}><label>Card details<CardElement options={{ style: { base: { fontSize: '16px', color: '#20291f', fontFamily: 'Manrope, sans-serif' } } }} /></label><button className="checkout-button" type="submit" disabled={submitting || !stripe}>{submitting ? 'Processing...' : 'Pay securely'} <span>-&gt;</span></button>{message && <p className="auth-message">{message}</p>}</form>
+  return <form className="payment-form" onSubmit={pay}>
+    {savedCards.length > 0 && <div className="pay-cards" role="radiogroup" aria-label="Card">
+      {savedCards.map((card) => (
+        <label key={card.id} className={choice === card.id ? 'pay-card active' : 'pay-card'}>
+          <input type="radio" name="paycard" checked={choice === card.id} onChange={() => setChoice(card.id)} />
+          <span style={{ textTransform: 'capitalize' }}>{card.brand} &bull;&bull;&bull;&bull; {card.last4}</span>
+          <em>{String(card.exp_month).padStart(2, '0')}/{String(card.exp_year).slice(-2)}</em>
+        </label>
+      ))}
+      <label className={choice === 'new' ? 'pay-card active' : 'pay-card'}>
+        <input type="radio" name="paycard" checked={choice === 'new'} onChange={() => setChoice('new')} />
+        <span>Use a new card</span>
+      </label>
+    </div>}
+    {!usingSaved && <>
+      <label>Card details<CardElement options={{ style: { base: { fontSize: '16px', color: '#20291f', fontFamily: 'Manrope, sans-serif' } } }} /></label>
+      <label className="account-check"><input type="checkbox" checked={saveCard} onChange={(event) => setSaveCard(event.target.checked)} /> Save this card for next time</label>
+    </>}
+    <button className="checkout-button" type="submit" disabled={submitting || !stripe}>{submitting ? 'Processing...' : 'Pay securely'} <span>-&gt;</span></button>
+    {message && <p className="auth-message">{message}</p>}
+  </form>
+}
+
+// Adds a card to the customer without charging it, via a Stripe SetupIntent.
+function AddCardForm({ onDone, onCancel }) {
+  const stripe = useStripe()
+  const elements = useElements()
+  const [message, setMessage] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function submit(event) {
+    event.preventDefault()
+    if (!stripe || !elements) return
+    setBusy(true)
+    setMessage('')
+    try {
+      const res = await fetch(`${API_URL}/billing/setup-intent`, { method: 'POST', headers: { Accept: 'application/json', Authorization: `Bearer ${localStorage.getItem('gdp_token')}` } })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.message ?? 'Could not start card setup.')
+      const result = await stripe.confirmCardSetup(data.data.client_secret, { payment_method: { card: elements.getElement(CardElement) } })
+      if (result.error) throw new Error(result.error.message)
+      onDone()
+    } catch (error) { setMessage(error.message) }
+    setBusy(false)
+  }
+
+  return <form className="payment-form" onSubmit={submit}>
+    <label>Card details<CardElement options={{ style: { base: { fontSize: '15px', color: '#20291f', fontFamily: 'Manrope, sans-serif' } } }} /></label>
+    <div className="checkout-links">
+      <button className="checkout-button" type="submit" disabled={busy || !stripe}>{busy ? 'Saving…' : 'Save card'}</button>
+      <button className="switch-auth" type="button" onClick={onCancel}>Cancel</button>
+    </div>
+    {message && <p className="auth-message">{message}</p>}
+  </form>
 }
 
 export default function Storefront() {
@@ -182,6 +246,9 @@ export default function Storefront() {
   const mapNodeRef = useRef(null)
   const locationRef = useRef(null)
   const [cartOpen, setCartOpen] = useState(false)
+  const [trayLift, setTrayLift] = useState(0) // px the cart pill is dragged up; snaps back to 0 on scroll
+  const [trayDragging, setTrayDragging] = useState(false)
+  const trayDragRef = useRef(null)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [authMode, setAuthMode] = useState(null)
   const blankAuthForm = { name: '', email: '', password: '', password_confirmation: '', line1: '', city: '', state: '', postal_code: '' }
@@ -208,13 +275,21 @@ export default function Storefront() {
   })
   const [addresses, setAddresses] = useState([])
   const [selectedAddressId, setSelectedAddressId] = useState('')
+  const [accountOpen, setAccountOpen] = useState(false)
+  const [accountTab, setAccountTab] = useState('profile')
+  const [accountMsg, setAccountMsg] = useState('')
+  const [profileForm, setProfileForm] = useState({ name: '', phone: '' })
+  const [addrForm, setAddrForm] = useState(null) // null | { id?, label, name, line1, line2, city, state, postal_code, is_default }
+  const [cards, setCards] = useState(null) // null = not loaded; [] = none
+  const [cardsBusy, setCardsBusy] = useState(false)
+  const [addingCard, setAddingCard] = useState(false)
   const [ordersOpen, setOrdersOpen] = useState(false)
   const [orders, setOrders] = useState([])
   const [ordersLoading, setOrdersLoading] = useState(false)
   const [ordersMessage, setOrdersMessage] = useState('')
   const [supportView, setSupportView] = useState(null) // null | 'list' | 'new' | thread object
   const [threads, setThreads] = useState([])
-  const [supportForm, setSupportForm] = useState({ order_id: '', issue_type: 'item_missing', message: '' })
+  const [supportForm, setSupportForm] = useState({ about_order: false, order_id: '', issue_type: 'item_missing', message: '' })
   const [supportReply, setSupportReply] = useState('')
   const [supportBusy, setSupportBusy] = useState(false)
   const [supportMsg, setSupportMsg] = useState('')
@@ -230,7 +305,7 @@ export default function Storefront() {
   }, [currentUser])
 
   useEffect(() => {
-    if (!checkoutOpen && !locationOpen) return
+    if (!checkoutOpen && !locationOpen && !accountOpen) return
     const token = localStorage.getItem('gdp_token')
     if (!token) return
     fetch(`${API_URL}/addresses`, { headers: { Accept: 'application/json', Authorization: `Bearer ${token}` } })
@@ -240,7 +315,24 @@ export default function Storefront() {
         if (checkoutOpen && data.data?.[0]) setSelectedAddressId(String(data.data[0].id))
       })
       .catch(() => setAddresses([]))
-  }, [checkoutOpen, locationOpen])
+  }, [checkoutOpen, locationOpen, accountOpen])
+
+  useEffect(() => {
+    if (!accountOpen) return
+    setAccountMsg('')
+    setProfileForm({ name: currentUser?.name ?? '', phone: currentUser?.phone ?? '' })
+  }, [accountOpen, currentUser])
+
+  useEffect(() => {
+    if (!accountOpen || accountTab !== 'cards' || cards !== null) return
+    loadCards()
+  }, [accountOpen, accountTab]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Have the shopper's saved cards ready when the payment step opens.
+  useEffect(() => {
+    if (!order?.clientSecret || !stripePromise || cards !== null) return
+    loadCards()
+  }, [order?.clientSecret]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!ordersOpen) return
@@ -331,22 +423,21 @@ export default function Storefront() {
       .catch(() => { localStorage.removeItem('gdp_token'); localStorage.removeItem('gdp_user'); setCurrentUser(null) })
   }, [])
 
+  // Categories are a small payload and feed the homepage tiles, so fetch them
+  // on their own — don't make the homepage wait on the full product list.
   useEffect(() => {
-    async function loadCatalog() {
-      try {
-        const responses = await Promise.all([fetch(`${API_URL}/categories`), fetch(`${API_URL}/products`)] )
-        if (responses.some((response) => !response.ok)) throw new Error('Catalog unavailable')
-        const categoryData = await responseJson(responses[0])
-        const productData = await responseJson(responses[1])
-        setCategories(categoryData.data ?? [])
-        setProducts(productData.data ?? [])
-      } catch {
-        setOffline(true)
-        setCategories(categoriesFallback)
-        setProducts(fallbackProducts)
-      } finally { setLoading(false) }
-    }
-    loadCatalog()
+    fetch(`${API_URL}/categories`, { headers: { Accept: 'application/json' } })
+      .then((response) => { if (!response.ok) throw new Error('offline'); return responseJson(response) })
+      .then((data) => setCategories(data.data ?? []))
+      .catch(() => { setOffline(true); setCategories(categoriesFallback) })
+  }, [])
+
+  useEffect(() => {
+    fetch(`${API_URL}/products`, { headers: { Accept: 'application/json' } })
+      .then((response) => { if (!response.ok) throw new Error('offline'); return responseJson(response) })
+      .then((data) => setProducts(data.data ?? []))
+      .catch(() => { setOffline(true); setProducts(fallbackProducts) })
+      .finally(() => setLoading(false))
   }, [])
 
   // Content pages: load the footer list once, and keep the open page in sync
@@ -490,6 +581,33 @@ export default function Storefront() {
       return quantity > 0 ? [{ ...item, quantity }] : []
     }))
   }
+
+  // The floating "View cart" pill can be dragged upward to reveal text it covers;
+  // it slides back to its resting spot as soon as the page is scrolled.
+  function trayPointerDown(event) {
+    if (event.target.closest('button')) return // let the View cart tap through
+    trayDragRef.current = { startY: event.clientY, base: trayLift }
+    setTrayDragging(true)
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }
+  function trayPointerMove(event) {
+    if (!trayDragRef.current) return
+    const dy = event.clientY - trayDragRef.current.startY
+    setTrayLift(Math.max(-320, Math.min(0, trayDragRef.current.base + dy)))
+  }
+  function trayPointerUp(event) {
+    if (!trayDragRef.current) return
+    trayDragRef.current = null
+    setTrayDragging(false)
+    event.currentTarget.releasePointerCapture?.(event.pointerId)
+  }
+
+  useEffect(() => {
+    if (trayLift === 0) return
+    const reset = () => setTrayLift(0)
+    window.addEventListener('scroll', reset, { passive: true })
+    return () => window.removeEventListener('scroll', reset)
+  }, [trayLift])
 
   async function submitAuth(event) {
     event.preventDefault()
@@ -693,6 +811,7 @@ export default function Storefront() {
     if (!token) { setOrdersMessage('Please sign in first.'); return }
     try {
       const response = await fetch(`${API_URL}/orders/${orderId}/receipt`, { headers: { Accept: 'application/pdf', Authorization: `Bearer ${token}` } })
+      if (response.status === 403) throw new Error('The bill is ready once payment is done — or, for cash on delivery, once the order is placed.')
       if (!response.ok) throw new Error('Could not generate the bill. Please try again.')
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)
@@ -708,6 +827,87 @@ export default function Storefront() {
 
   const authGet = (path) => fetch(`${API_URL}${path}`, { headers: { Accept: 'application/json', Authorization: `Bearer ${localStorage.getItem('gdp_token')}` } })
   const authPost = (path, body) => fetch(`${API_URL}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${localStorage.getItem('gdp_token')}` }, body: JSON.stringify(body) })
+  const authSend = (path, method, body) => fetch(`${API_URL}${path}`, { method, headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${localStorage.getItem('gdp_token')}` }, body: body ? JSON.stringify(body) : undefined })
+
+  function openAccount(tab = 'profile') {
+    if (!localStorage.getItem('gdp_token')) { setAuthMode('login'); setAuthMessage('Sign in to manage your account.'); return }
+    setAccountTab(tab)
+    setAddrForm(null)
+    setAccountOpen(true)
+  }
+
+  async function saveProfile(event) {
+    event.preventDefault()
+    setAccountMsg('')
+    try {
+      const data = await responseJson(await authSend('/profile', 'PATCH', { name: profileForm.name.trim(), phone: profileForm.phone.trim() || null }))
+      const updated = { ...currentUser, name: data.data?.name ?? profileForm.name, phone: data.data?.phone ?? null }
+      setCurrentUser(updated)
+      localStorage.setItem('gdp_user', JSON.stringify(updated))
+      setAccountMsg('Profile saved.')
+    } catch { setAccountMsg('Could not save your profile.') }
+  }
+
+  function reloadAddresses() {
+    authGet('/addresses').then(responseJson).then((d) => setAddresses(d.data ?? [])).catch(() => {})
+  }
+
+  async function saveAddress(event) {
+    event.preventDefault()
+    setAccountMsg('')
+    const { id, ...body } = addrForm
+    body.is_default = !!addrForm.is_default
+    try {
+      const res = await authSend(id ? `/addresses/${id}` : '/addresses', id ? 'PATCH' : 'POST', body)
+      if (!res.ok) throw new Error()
+      setAddrForm(null)
+      reloadAddresses()
+    } catch { setAccountMsg('Could not save that address.') }
+  }
+
+  async function deleteAddress(addressId) {
+    if (!window.confirm('Delete this address?')) return
+    try {
+      const res = await authSend(`/addresses/${addressId}`, 'DELETE')
+      if (!res.ok && res.status !== 204) throw new Error()
+      reloadAddresses()
+    } catch { setAccountMsg('Could not delete that address.') }
+  }
+
+  async function makeDefaultAddress(addressId) {
+    try {
+      await authSend(`/addresses/${addressId}`, 'PATCH', { is_default: true })
+      reloadAddresses()
+    } catch { setAccountMsg('Could not update the default address.') }
+  }
+
+  async function loadCards() {
+    setCardsBusy(true)
+    try {
+      const data = await responseJson(await authGet('/billing/payment-methods'))
+      setCards(data.data ?? [])
+    } catch { setCards([]) }
+    finally { setCardsBusy(false) }
+  }
+
+  async function deleteCard(pmId) {
+    if (!window.confirm('Remove this card?')) return
+    setCardsBusy(true)
+    try {
+      const res = await authSend(`/billing/payment-methods/${pmId}`, 'DELETE')
+      if (!res.ok && res.status !== 204) throw new Error()
+      await loadCards()
+    } catch { setAccountMsg('Could not remove that card.'); setCardsBusy(false) }
+  }
+
+  async function makeDefaultCard(pmId) {
+    setCardsBusy(true)
+    try {
+      const res = await authSend(`/billing/payment-methods/${pmId}/default`, 'POST')
+      if (!res.ok && res.status !== 204) throw new Error()
+      await loadCards()
+    } catch { setAccountMsg('Could not set the default card.'); setCardsBusy(false) }
+  }
 
   async function openSupport(order) {
     if (!localStorage.getItem('gdp_token')) { setAuthMode('login'); setAuthMessage('Sign in to contact support.'); return }
@@ -715,7 +915,7 @@ export default function Storefront() {
     setSupportView('list')
     loadThreads()
     if (!orders.length) authGet('/orders').then(responseJson).then((d) => setOrders(d.data ?? [])).catch(() => {})
-    if (order) { setSupportForm({ order_id: String(order.id), issue_type: 'item_missing', message: '' }); setSupportView('new') }
+    if (order) { setSupportForm({ about_order: true, order_id: String(order.id), issue_type: 'item_missing', message: '' }); setSupportView('new') }
   }
 
   function loadThreads() {
@@ -731,15 +931,16 @@ export default function Storefront() {
   }
 
   async function submitSupport() {
+    if (supportForm.about_order && !supportForm.order_id) { setSupportMsg('Select which order this is about.'); return }
     if (!supportForm.message.trim()) { setSupportMsg('Add a message describing the problem.'); return }
     setSupportBusy(true); setSupportMsg('')
     try {
       const body = { issue_type: supportForm.issue_type, message: supportForm.message.trim() }
-      if (supportForm.order_id) body.order_id = Number(supportForm.order_id)
+      if (supportForm.about_order && supportForm.order_id) body.order_id = Number(supportForm.order_id)
       const response = await authPost('/support/threads', body)
       const data = await responseJson(response)
       if (!response.ok) throw new Error(data.message ?? 'Could not send your request.')
-      setSupportForm({ order_id: '', issue_type: 'item_missing', message: '' })
+      setSupportForm({ about_order: false, order_id: '', issue_type: 'item_missing', message: '' })
       setSupportView(data.data)
       loadThreads()
     } catch (error) { setSupportMsg(error.message) } finally { setSupportBusy(false) }
@@ -966,16 +1167,17 @@ export default function Storefront() {
     }
   }
 
-  return <div className="app-shell">
+  return <><div className="app-shell">
     <header className="topbar">
       <div className="topbar-row">
         <a className="brand" href="/" aria-label={`${branding?.store_name || 'Grocerly'} home`}>{branding?.logo_url
-          ? <img className="brand-logo" src={branding.logo_url} alt={branding?.store_name || 'Grocerly'} />
+          ? <img className="brand-logo" src={mediaUrl(branding.logo_url)} alt={branding?.store_name || 'Grocerly'} />
           : <><span className="brand-mark">{(branding?.store_name || 'g').trim().charAt(0).toLowerCase() || 'g'}</span>{(branding?.store_name || 'grocerly').toLowerCase()}</>}</a>
         <button className="deliver-to" type="button" onClick={() => { setLocationOpen(true); setLocationMsg('') }}><span className="deliver-eta">{etaText}</span><strong>{location ? location.label : 'Set your location'} <em aria-hidden>&#9662;</em></strong></button>
         <div className="topbar-actions">
           {currentUser ? <>
             <button className="link-btn" type="button" onClick={() => { setOrdersOpen(true); setOrdersLoading(true); setOrders([]); setOrdersMessage('') }}>Orders</button>
+            <button className="link-btn" type="button" onClick={() => openAccount('profile')}>Account</button>
             <button className="link-btn" type="button" onClick={() => openSupport()}>Help</button>
             {currentUser.is_admin && <button className="link-btn" type="button" onClick={() => { window.location.href = `${import.meta.env.BASE_URL}admin` }}>Admin</button>}
             <button className="link-btn" type="button" onClick={logout}>{(currentUser.name || currentUser.email || 'Account').split(' ')[0]} &middot; Log out</button>
@@ -986,29 +1188,38 @@ export default function Storefront() {
       <label className="searchbar"><span aria-hidden>&#8981;</span><input aria-label="Search groceries" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search for milk, bananas, bread…" /></label>
     </header>
     <main className="catalog">
-      {pageView ? (
-        <article className="page-view">
+      {pageView ? (() => {
+        const withSections = pageView !== 'loading' && Array.isArray(pageView.sections) && pageView.sections.length > 0
+        const hasBanner = pageView !== 'loading' && !!pageView.banner_image
+        return (
+        <article className={`page-view${withSections ? ' page-view-wide' : (hasBanner ? ' has-banner' : '')}`}>
           <button type="button" className="page-back" onClick={closePage}>&larr; Back to shopping</button>
           {pageView === 'loading'
             ? <div className="empty-state">Loading…</div>
-            : <><h1>{pageView.title}</h1><div className="page-content" dangerouslySetInnerHTML={{ __html: renderMarkdown(pageView.content) }} /></>}
+            : <>{pageView.banner_image
+                ? <div className="page-hero"><img src={mediaUrl(pageView.banner_image)} alt="" /><h1>{pageView.title}</h1></div>
+                : <h1>{pageView.title}</h1>}{withSections
+                ? <div className="page-sections">{pageView.sections.map((section, index) => <PageSection key={index} section={section} />)}</div>
+                : <div className="page-content" dangerouslySetInnerHTML={{ __html: renderMarkdown(pageView.content) }} />}</>}
         </article>
-      ) : <>
+        )
+      })() : <>
       {offline && <div className="api-note">Showing sample products while the API is offline.</div>}
       {outOfArea && <div className="area-note">{UNSERVICEABLE_MSG}</div>}
 
-      {loading ? <div className="empty-state">Loading…</div> : (!searching && !activeCategory) ? (
+      {(!searching && !activeCategory) ? (
         <>
+          {loading && banners.length === 0 && homeTileList.length === 0 && <div className="empty-state">Loading…</div>}
           {banners.length > 0 && (() => {
             const heroBanners = banners.filter((b) => b.placement !== 'strip')
             const stripBanners = banners.filter((b) => b.placement === 'strip')
             return (heroBanners.length > 0 || stripBanners.length > 0) && <section className="home-banners" aria-label="Offers">
               {heroBanners.map((banner) => <button className="home-hero" type="button" key={banner.id} onClick={() => openHomeTarget(banner)}>
-                <img src={banner.image_url} alt={banner.headline || 'Featured offer'} loading="eager" />
+                <img src={mediaUrl(banner.image_url)} alt={banner.headline || 'Featured offer'} loading="eager" />
               </button>)}
               {stripBanners.length > 0 && <div className="home-strip">
                 {stripBanners.map((banner) => <button className="home-strip-card" type="button" key={banner.id} onClick={() => openHomeTarget(banner)}>
-                  <img src={banner.image_url} alt={banner.headline || 'Offer'} loading="lazy" />
+                  <img src={mediaUrl(banner.image_url)} alt={banner.headline || 'Offer'} loading="lazy" />
                 </button>)}
               </div>}
             </section>
@@ -1016,16 +1227,16 @@ export default function Storefront() {
 
           {homeTileList.length > 0 && <section className="home-cats" aria-label="Shop by category">
             {homeTileList.map((tile) => { const meta = tileMeta(tile); return <button className="home-cat" type="button" key={tile.id} onClick={() => openHomeTarget(tile)}>
-              <span className="home-cat-img" aria-hidden>{categoryEmoji(meta.label)}{tile.image_url && <img src={tile.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
+              <span className="home-cat-img" aria-hidden>{categoryEmoji(meta.label)}{tile.image_url && <img src={mediaUrl(tile.image_url)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
               {!tile.image_url && <span className="home-cat-label">{meta.label}</span>}
             </button> })}
           </section>}
         </>
-      ) : (
+      ) : loading ? <div className="empty-state">Loading…</div> : (
         <>
           <nav className="cat-rail" aria-label="Product categories">
             <button className="cat-tile" type="button" onClick={() => { setActiveCategory(null); setQuery('') }}><span className="cat-ico" aria-hidden>&#8592;</span>All</button>
-            {categories.map((category) => <button className={activeCategory === category.name ? 'cat-tile active' : 'cat-tile'} type="button" key={category.id} onClick={() => { setActiveCategory(category.name); setQuery('') }}><span className="cat-ico" aria-hidden>{categoryEmoji(category.name)}{category.image_url && <img src={category.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>{category.name}</button>)}
+            {categories.map((category) => <button className={activeCategory === category.name ? 'cat-tile active' : 'cat-tile'} type="button" key={category.id} onClick={() => { setActiveCategory(category.name); setQuery('') }}><span className="cat-ico" aria-hidden>{categoryEmoji(category.name)}{category.image_url && <img src={mediaUrl(category.image_url)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>{category.name}</button>)}
           </nav>
           <div className="catalog-head"><h2>{searching ? `Results for “${query.trim()}”` : activeCategory}</h2><span>{visibleProducts.length} items</span></div>
           <div className="product-grid">{visibleProducts.map((product) => {
@@ -1048,7 +1259,7 @@ export default function Storefront() {
             const qty = cartQty[key] ?? 0
             const img = (chosen?.image_url) || product.image_url
             return <article className="pcard" key={product.id}>
-              <div className="pcard-img" aria-hidden>{onSale && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(product.name)}{img && <img src={img} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
+              <div className="pcard-img" aria-hidden>{onSale && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
               <p className="pcard-cat">{product.category?.name ?? 'Grocery'}</p>
               <h3>{variantTitle(product.name, variant?.label)}</h3>
               {hasVariants && <select className="pcard-variant" aria-label={`${product.name} option`} value={String(chosen?.id ?? '')} onChange={(event) => setPickedVariant((current) => ({ ...current, [product.id]: event.target.value }))}>{options.map((o) => <option key={o.id === '' ? 'base' : o.id} value={String(o.id)}>{o.label} — {price(o.price_cents)}</option>)}</select>}
@@ -1060,46 +1271,98 @@ export default function Storefront() {
         </>
       )}
       </>}
-
-      <footer className="site-footer">
-        <div className="site-footer-cols">
-          {(pages.some((p) => p.show_in_footer) || (footer?.links?.length ?? 0) > 0) && <div>
-            <h4>Useful Links</h4>
-            <ul>
-              {pages.filter((p) => p.show_in_footer).map((p) => <li key={p.slug}><button type="button" onClick={() => openPage(p.slug)}>{p.title}</button></li>)}
-              {(footer?.links ?? []).map((link, index) => <li key={`fl-${index}`}><a href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a></li>)}
-            </ul>
-          </div>}
-          <div>
-            <div className="site-footer-cathead"><h4>Categories</h4><button type="button" className="site-footer-seeall" onClick={() => { setActiveCategory(null); setQuery(''); closePage(); window.scrollTo({ top: 0 }) }}>see all</button></div>
-            <ul className="site-footer-cats">{categories.slice(0, 24).map((c) => <li key={c.id}><button type="button" onClick={() => { closePage(); setActiveCategory(c.name); setQuery(''); window.scrollTo({ top: 0 }) }}>{c.name}</button></li>)}</ul>
-          </div>
-        </div>
-        <div className="site-footer-bottom">
-          <span className="site-footer-copy">{(footer?.copyright || '© {year} Grocerly').replace('{year}', String(new Date().getFullYear()))}</span>
-          {(footer?.app_store_url || footer?.play_store_url) && <span className="site-footer-app">
-            <b>Download App</b>
-            {footer?.app_store_url && <a className="store-badge" href={footer.app_store_url} target="_blank" rel="noopener noreferrer">App Store</a>}
-            {footer?.play_store_url && <a className="store-badge" href={footer.play_store_url} target="_blank" rel="noopener noreferrer">Google Play</a>}
-          </span>}
-          {FOOTER_SOCIALS.some(([key]) => footer?.socials?.[key]) && <span className="site-footer-socials">
-            {FOOTER_SOCIALS.filter(([key]) => footer?.socials?.[key]).map(([key, label, path]) => (
-              <a key={key} href={footer.socials[key]} target="_blank" rel="noopener noreferrer" aria-label={label}>
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d={path} /></svg>
-              </a>
-            ))}
-          </span>}
-        </div>
-        {footer?.note && <p className="site-footer-note">{footer.note}</p>}
-      </footer>
     </main>
-    <aside className="cart-tray" aria-live="polite"><div><strong>{cartCount ? `${cartCount} ${cartCount === 1 ? 'item' : 'items'} in your cart` : 'Your cart is ready'}</strong><span>{cartCount ? `${price(cartTotal)} subtotal` : 'Add something delicious'}</span></div><button type="button" onClick={() => setCartOpen(true)}>View cart <span>-&gt;</span></button></aside>
-    {cartOpen && <div className="overlay" role="presentation" onClick={() => setCartOpen(false)}><aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" onClick={(event) => event.stopPropagation()}><div className="drawer-header"><div><p className="eyebrow">Ready when you are</p><h2 id="cart-title">Your cart</h2></div><button className="close-button" type="button" onClick={() => setCartOpen(false)} aria-label="Close cart">x</button></div>{cart.length ? <><div className="drawer-items">{cartView.map((item) => <div className="drawer-item" key={item.key}><div className="mini-visual" aria-hidden>{productEmoji(item.name)}{item.image_url && <img src={item.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div><div className="drawer-item-copy"><strong>{variantTitle(item.name, item.variantLabel)}</strong><span>{item.onSale ? <><strong className="on-sale">{price(item.unit)}</strong> <s>{price(item.reg)}</s></> : price(item.unit)}{item.quantity > 1 && <> &middot; {item.quantity} pcs = {item.onSale ? <><strong className="on-sale">{price(item.unit * item.quantity)}</strong> <s>{price(item.lineReg)}</s></> : price(item.unit * item.quantity)}</>}</span></div><div className="quantity"><button type="button" onClick={() => updateQuantity(item.key, -1)}>-</button><span>{item.quantity}</span><button type="button" onClick={() => updateQuantity(item.key, 1)}>+</button></div></div>)}</div><div className="drawer-summary"><div><span>Subtotal</span><span>{cartRegularTotal > est.sub ? <><s className="on-sale">{price(cartRegularTotal)}</s> {price(est.sub)}</> : price(est.sub)}</span></div><div><span>Delivery</span><span>{est.delivery === 0 ? 'FREE' : price(est.delivery)}</span></div><div><span>Handling</span><span>{price(est.handling)}</span></div>{est.smallCart > 0 && <div><span>Small cart fee</span><span>{price(est.smallCart)}</span></div>}<div><span>Tax</span><span>{price(est.tax)}</span></div><div className="drawer-summary-total"><strong>Estimated total</strong><strong>{price(est.total)}</strong></div></div>{fees.delivery_mode === 'distance' && serviceable?.delivery_fee_cents == null && <p className="drawer-nudge">Delivery fee is based on distance — set your location for the exact amount.</p>}{est.toFreeDelivery > 0 && <p className="drawer-nudge">Add {price(est.toFreeDelivery)} more for free delivery.</p>}{est.toNoSmallCart > 0 && <p className="drawer-nudge">Add {price(est.toNoSmallCart)} more to drop the {price(est.smallCart)} small-cart fee.</p>}<button className="checkout-button" type="button" onClick={() => { setCartOpen(false); setCheckoutOpen(true); setCheckoutMessage('') }}>Continue to checkout <span>-&gt;</span></button></> : <div className="empty-cart"><div className="empty-cart-mark">+</div><h3>Your cart is empty</h3><p>Find something good in the essentials below.</p><button type="button" onClick={() => setCartOpen(false)}>Keep shopping</button></div>}</aside></div>}
+    <aside className={`cart-tray${trayDragging ? ' dragging' : ''}`} aria-live="polite" style={{ transform: `translateX(-50%) translateY(${trayLift}px)` }} onPointerDown={trayPointerDown} onPointerMove={trayPointerMove} onPointerUp={trayPointerUp} onPointerCancel={trayPointerUp}><div><strong>{cartCount ? `${cartCount} ${cartCount === 1 ? 'item' : 'items'} in your cart` : 'Your cart is ready'}</strong><span>{cartCount ? `${price(cartTotal)} subtotal` : 'Add something delicious'}</span></div><button type="button" onClick={() => setCartOpen(true)}>View cart <span>-&gt;</span></button></aside>
+    {cartOpen && <div className="overlay" role="presentation" onClick={() => setCartOpen(false)}><aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" onClick={(event) => event.stopPropagation()}><div className="drawer-header"><div><p className="eyebrow">Ready when you are</p><h2 id="cart-title">Your cart</h2></div><button className="close-button" type="button" onClick={() => setCartOpen(false)} aria-label="Close cart">x</button></div>{cart.length ? <><div className="drawer-items">{cartView.map((item) => <div className="drawer-item" key={item.key}><div className="mini-visual" aria-hidden>{productEmoji(item.name)}{item.image_url && <img src={mediaUrl(item.image_url)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div><div className="drawer-item-copy"><strong>{variantTitle(item.name, item.variantLabel)}</strong><span>{item.onSale ? <><strong className="on-sale">{price(item.unit)}</strong> <s>{price(item.reg)}</s></> : price(item.unit)}{item.quantity > 1 && <> &middot; {item.quantity} pcs = {item.onSale ? <><strong className="on-sale">{price(item.unit * item.quantity)}</strong> <s>{price(item.lineReg)}</s></> : price(item.unit * item.quantity)}</>}</span></div><div className="quantity"><button type="button" onClick={() => updateQuantity(item.key, -1)}>-</button><span>{item.quantity}</span><button type="button" onClick={() => updateQuantity(item.key, 1)}>+</button></div></div>)}</div><div className="drawer-summary"><div><span>Subtotal</span><span>{cartRegularTotal > est.sub ? <><s className="on-sale">{price(cartRegularTotal)}</s> {price(est.sub)}</> : price(est.sub)}</span></div><div><span>Delivery</span><span>{est.delivery === 0 ? 'FREE' : price(est.delivery)}</span></div><div><span>Handling</span><span>{price(est.handling)}</span></div>{est.smallCart > 0 && <div><span>Small cart fee</span><span>{price(est.smallCart)}</span></div>}<div><span>Tax</span><span>{price(est.tax)}</span></div><div className="drawer-summary-total"><strong>Estimated total</strong><strong>{price(est.total)}</strong></div></div>{fees.delivery_mode === 'distance' && serviceable?.delivery_fee_cents == null && <p className="drawer-nudge">Delivery fee is based on distance — set your location for the exact amount.</p>}{est.toFreeDelivery > 0 && <p className="drawer-nudge">Add {price(est.toFreeDelivery)} more for free delivery.</p>}{est.toNoSmallCart > 0 && <p className="drawer-nudge">Add {price(est.toNoSmallCart)} more to drop the {price(est.smallCart)} small-cart fee.</p>}<button className="checkout-button" type="button" onClick={() => { setCartOpen(false); setCheckoutOpen(true); setCheckoutMessage('') }}>Continue to checkout <span>-&gt;</span></button></> : <div className="empty-cart"><div className="empty-cart-mark">+</div><h3>Your cart is empty</h3><p>Find something good in the essentials below.</p><button type="button" onClick={() => setCartOpen(false)}>Keep shopping</button></div>}</aside></div>}
     {authMode && <div className="overlay" role="presentation" onClick={() => { setAuthMode(null); setOtpStage(null); setAuthTab('code') }}><div className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => { setAuthMode(null); setOtpStage(null); setAuthTab('code') }} aria-label="Close authentication">x</button><p className="eyebrow">A better grocery run</p>{otpStage ? <><h2 id="auth-title">Enter your code</h2><p className="auth-intro">We emailed a 6-digit code to {otpStage.email}. It expires in 10 minutes.</p><form onSubmit={submitOtp}><input required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength="8" placeholder="6-digit code" value={otpCode} onChange={(event) => setOtpCode(event.target.value.replace(/[^0-9]/g, ''))} /><button className="checkout-button" type="submit">Verify <span>-&gt;</span></button></form>{authMessage && <p className="auth-message">{authMessage}</p>}<button className="switch-auth" type="button" onClick={resendOtp}>Resend code</button><button className="switch-auth" type="button" onClick={() => { setOtpStage(null); setAuthMessage('') }}>Use a different email</button></> : <><h2 id="auth-title">Sign in or sign up</h2><div className="auth-tabs" role="tablist"><button type="button" role="tab" aria-selected={authTab === 'code'} className={authTab === 'code' ? 'auth-tab active' : 'auth-tab'} onClick={() => { setAuthTab('code'); setAuthMessage('') }}>Email code</button><button type="button" role="tab" aria-selected={authTab === 'password'} className={authTab === 'password' ? 'auth-tab active' : 'auth-tab'} onClick={() => { setAuthTab('password'); setAuthMessage('') }}>Password</button></div>{authTab === 'password' ? <><p className="auth-intro">Already have a password? Sign in with your email and password.</p><form onSubmit={submitPassword}><input required type="email" autoComplete="email" placeholder="Email address" value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} /><input required type="password" autoComplete="current-password" placeholder="Password" value={authForm.password} onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })} /><button className="checkout-button" type="submit">Sign in <span>-&gt;</span></button></form></> : <><p className="auth-intro">Enter your email and we&rsquo;ll send a 6-digit code. No password needed &mdash; if you&rsquo;re new, your account is created automatically.</p><form onSubmit={submitAuth}><input required type="email" autoComplete="email" placeholder="Email address" value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} /><button className="checkout-button" type="submit">Continue <span>-&gt;</span></button></form></>}{authMessage && <p className="auth-message">{authMessage}</p>}</>}</div></div>}
     {checkoutOpen && <div className="overlay" role="presentation" onClick={() => setCheckoutOpen(false)}><div className="auth-modal checkout-modal" role="dialog" aria-modal="true" aria-labelledby="checkout-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setCheckoutOpen(false)} aria-label="Close checkout">x</button><p className="eyebrow">Almost there</p><h2 id="checkout-title">{deliveryMode === 'form' ? 'Where should we deliver?' : 'Confirm delivery address'}</h2><p className="auth-intro">Your total will be calculated and confirmed securely by the server.</p>{deliveryMode === 'location' ? <><div className="loc-current"><strong>Deliver to</strong> {location.full || location.label}</div><input placeholder="Flat / house / building &amp; street" value={checkoutForm.line1} onChange={(event) => setCheckoutForm({ ...checkoutForm, line1: event.target.value })} /><div className="checkout-links"><button type="button" className="switch-auth" onClick={() => { setCheckoutOpen(false); setLocationOpen(true) }}>Change location</button><button type="button" className="switch-auth" onClick={() => setEditAddress(true)}>Edit full address</button></div></> : deliveryMode === 'saved' ? <><div className="loc-current"><strong>Deliver to</strong> {defaultAddress.line1}, {defaultAddress.city} {defaultAddress.state} {defaultAddress.postal_code}</div>{addresses.length > 1 && <label className="address-picker">Choose address<select value={selectedAddressId || String(defaultAddress.id)} onChange={(event) => setSelectedAddressId(event.target.value)}>{addresses.map((address) => <option key={address.id} value={address.id}>{address.label} - {address.line1}, {address.city}</option>)}</select></label>}<div className="checkout-links"><button type="button" className="switch-auth" onClick={() => { setCheckoutOpen(false); setLocationOpen(true) }}>Change location</button><button type="button" className="switch-auth" onClick={() => { setSelectedAddressId(''); setEditAddress(true) }}>Enter a new address</button></div></> : <>{addresses.length > 0 && <label className="address-picker">Saved address<select value={selectedAddressId} onChange={(event) => setSelectedAddressId(event.target.value)}>{addresses.map((address) => <option key={address.id} value={address.id}>{address.label} - {address.line1}, {address.city}</option>)}<option value="">Use a new address</option></select></label>}<form onSubmit={submitCheckout}>{!selectedAddressId && <><input required placeholder="Full name" value={checkoutForm.name} onChange={(event) => setCheckoutForm({ ...checkoutForm, name: event.target.value })} /><input required placeholder="Street address" value={checkoutForm.line1} onChange={(event) => setCheckoutForm({ ...checkoutForm, line1: event.target.value })} /><div className="form-row"><input required placeholder="City" value={checkoutForm.city} onChange={(event) => setCheckoutForm({ ...checkoutForm, city: event.target.value })} /><input required maxLength="60" placeholder="State / region" value={checkoutForm.state} onChange={(event) => setCheckoutForm({ ...checkoutForm, state: event.target.value })} /></div><input required maxLength="12" placeholder="Postal / ZIP code" value={checkoutForm.postal_code} onChange={(event) => setCheckoutForm({ ...checkoutForm, postal_code: event.target.value })} /></>}</form></>}<label className="checkout-phone"><span>Phone number{currentUser?.phone ? '' : ' — the delivery rider may call you'}</span><input type="tel" required maxLength="32" placeholder="e.g. +1 555 987 6543" value={phone} onChange={(event) => setPhone(event.target.value)} /></label><textarea className="delivery-note" rows="2" maxLength="500" placeholder="Delivery instructions (optional) — e.g. leave at the gate, call on arrival" value={deliveryNote} onChange={(event) => setDeliveryNote(event.target.value)} />{codEnabled && <><p className="pay-methods-label">How would you like to pay?</p><div className="pay-methods" role="radiogroup" aria-label="Payment method"><button type="button" role="radio" aria-checked={paymentMethod === 'card'} className={paymentMethod === 'card' ? 'pay-method active' : 'pay-method'} onClick={() => setPaymentMethod('card')}><strong>Pay online</strong><span>Card via Stripe</span></button><button type="button" role="radio" aria-checked={paymentMethod === 'cod'} className={paymentMethod === 'cod' ? 'pay-method active' : 'pay-method'} onClick={() => setPaymentMethod('cod')}><strong>Cash on delivery</strong><span>Pay when it arrives</span></button></div></>}<button className="checkout-button" type="button" onClick={submitCheckout} disabled={blockCheckout}>{codEnabled && paymentMethod === 'cod' ? 'Place order' : 'Review order'} <span>-&gt;</span></button>{blockCheckout && <p className="auth-message">{outOfArea && deliveryMode === 'location' ? UNSERVICEABLE_MSG : 'Add a phone number so your delivery rider can reach you.'}</p>}{checkoutMessage && <p className="auth-message">{checkoutMessage}</p>}</div></div>}
-    {order?.clientSecret && <div className="overlay" role="presentation" onClick={() => setOrder(null)}><div className="auth-modal checkout-modal payment-modal" role="dialog" aria-modal="true" aria-labelledby="payment-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setOrder(null)} aria-label="Close payment">x</button><p className="eyebrow">Secure payment</p><h2 id="payment-title">Finish your order.</h2><p className="auth-intro">Order #{order.id} · {price(order.total_cents)} USD</p><Elements stripe={stripePromise}><PaymentForm clientSecret={order.clientSecret} onComplete={finalizePayment} /></Elements>{codEnabled && <button className="switch-auth" type="button" onClick={switchToCashOnDelivery}>Pay with cash on delivery instead</button>}<button className="switch-auth" type="button" onClick={() => setOrder(null)}>Pay later from Order history</button>{order.switchError && <p className="auth-message">{order.switchError}</p>}</div></div>}
-    {order && !order.clientSecret && <div className="overlay" role="presentation" onClick={() => setOrder(null)}><div className="auth-modal order-modal" role="dialog" aria-modal="true" aria-labelledby="order-title" onClick={(event) => event.stopPropagation()}><p className="eyebrow">{order.cod ? 'Order confirmed' : order.paid ? 'Payment submitted' : 'Payment setup needed'}</p><h2 id="order-title">{order.cod || order.paid ? 'You’re all set.' : 'Order created.'}</h2><p className="auth-intro">{order.cod ? `Order #${order.id} is confirmed. Pay with cash when your order arrives.` : `Order #${order.id} is ${order.paid ? 'being confirmed by Stripe.' : 'waiting for Stripe test keys.'}`}</p><div className="order-breakdown"><div><span>Subtotal</span><span>{price(order.subtotal_cents)}</span></div><div><span>Delivery</span><span>{order.delivery_fee_cents === 0 ? 'FREE' : price(order.delivery_fee_cents)}</span></div><div><span>Handling</span><span>{price(order.handling_fee_cents ?? 0)}</span></div>{order.small_cart_fee_cents > 0 && <div><span>Small cart fee</span><span>{price(order.small_cart_fee_cents)}</span></div>}<div><span>Tax</span><span>{price(order.tax_cents)}</span></div></div>{order.delivery_instructions && <p className="auth-intro" style={{ margin: '12px 0 0' }}>Note to courier: &ldquo;{order.delivery_instructions}&rdquo;</p>}<div className="order-total"><span>{order.cod ? 'Pay on delivery' : 'Order total'}</span><strong>{price(order.total_cents)}</strong></div><button className="text-button order-receipt" type="button" onClick={() => downloadReceipt(order.id)}>Download bill (PDF)</button><button className="checkout-button" type="button" onClick={() => setOrder(null)}>Keep shopping <span>-&gt;</span></button>{ordersMessage && <p className="auth-message">{ordersMessage}</p>}</div></div>}
-    {ordersOpen && <div className="overlay" role="presentation" onClick={() => setOrdersOpen(false)}><div className="auth-modal orders-modal" role="dialog" aria-modal="true" aria-labelledby="orders-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setOrdersOpen(false)} aria-label="Close orders">x</button><p className="eyebrow">Your grocery runs</p><h2 id="orders-title">Order history</h2>{ordersLoading ? <p className="auth-intro">Loading your orders...</p> : orders.length === 0 ? <p className="auth-intro">No orders yet. Your completed checkouts will appear here.</p> : <ul className="orders-list">{orders.map((entry) => <li className="order-row" key={entry.id}><div className="order-row-head"><strong>Order #{entry.id}</strong><span className={`order-badge order-badge-${entry.payment_status}`}>{orderLabel(entry)}</span></div><div className="order-row-meta"><span>{new Date(entry.created_at).toLocaleDateString()}</span><span>{entry.items?.length ?? 0} {entry.items?.length === 1 ? 'item' : 'items'}</span><strong>{price(entry.total_cents)}</strong></div>{(entry.payment_status === 'paid' || entry.payment_method === 'cod') && DELIVERY_STAGES.includes(entry.status) && <div className="order-track" aria-label={`Delivery status: ${DELIVERY_LABELS[entry.status]}`}>{DELIVERY_STAGES.map((stage, index) => <span key={stage} className={index <= DELIVERY_STAGES.indexOf(entry.status) ? 'track-step done' : 'track-step'} title={DELIVERY_LABELS[stage]} />)}<em>{DELIVERY_LABELS[entry.status]}</em></div>}{entry.status === 'cancelled' && <p className="order-track-note">Cancelled</p>}{entry.payment_method !== 'cod' && entry.status !== 'cancelled' && entry.payment_status !== 'paid' && entry.payment_status !== 'cancelled' && <button className="text-button order-pay" type="button" onClick={() => resumePayment(entry)}>Complete payment <span>-&gt;</span></button>}{CANCELLABLE_STAGES.includes(entry.status) && <button className="text-button order-cancel" type="button" onClick={() => cancelOrder(entry)}>Cancel order</button>}<button className="text-button order-receipt" type="button" onClick={() => downloadReceipt(entry.id)}>Download bill (PDF)</button><button className="text-button order-help" type="button" onClick={() => { setOrdersOpen(false); openSupport(entry) }}>Get help</button></li>)}</ul>}{ordersMessage && <p className="auth-message">{ordersMessage}</p>}</div></div>}
+    {order?.clientSecret && <div className="overlay" role="presentation" onClick={() => setOrder(null)}><div className="auth-modal checkout-modal payment-modal" role="dialog" aria-modal="true" aria-labelledby="payment-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setOrder(null)} aria-label="Close payment">x</button><p className="eyebrow">Secure payment</p><h2 id="payment-title">Finish your order.</h2><p className="auth-intro">Order #{order.id} · {price(order.total_cents)} USD</p><Elements stripe={stripePromise}><PaymentForm clientSecret={order.clientSecret} onComplete={finalizePayment} savedCards={cards ?? []} /></Elements>{codEnabled && <button className="switch-auth" type="button" onClick={switchToCashOnDelivery}>Pay with cash on delivery instead</button>}<button className="switch-auth" type="button" onClick={() => setOrder(null)}>Pay later from Order history</button>{order.switchError && <p className="auth-message">{order.switchError}</p>}</div></div>}
+    {order && !order.clientSecret && <div className="overlay" role="presentation" onClick={() => setOrder(null)}><div className="auth-modal order-modal" role="dialog" aria-modal="true" aria-labelledby="order-title" onClick={(event) => event.stopPropagation()}><p className="eyebrow">{order.cod ? 'Order confirmed' : order.paid ? 'Payment submitted' : 'Payment setup needed'}</p><h2 id="order-title">{order.cod || order.paid ? 'You’re all set.' : 'Order created.'}</h2><p className="auth-intro">{order.cod ? `Order #${order.id} is confirmed. Pay with cash when your order arrives.` : `Order #${order.id} is ${order.paid ? 'being confirmed by Stripe.' : 'waiting for Stripe test keys.'}`}</p><div className="order-breakdown"><div><span>Subtotal</span><span>{price(order.subtotal_cents)}</span></div><div><span>Delivery</span><span>{order.delivery_fee_cents === 0 ? 'FREE' : price(order.delivery_fee_cents)}</span></div><div><span>Handling</span><span>{price(order.handling_fee_cents ?? 0)}</span></div>{order.small_cart_fee_cents > 0 && <div><span>Small cart fee</span><span>{price(order.small_cart_fee_cents)}</span></div>}<div><span>Tax</span><span>{price(order.tax_cents)}</span></div></div>{order.delivery_instructions && <p className="auth-intro" style={{ margin: '12px 0 0' }}>Note to courier: &ldquo;{order.delivery_instructions}&rdquo;</p>}<div className="order-total"><span>{order.cod ? 'Pay on delivery' : 'Order total'}</span><strong>{price(order.total_cents)}</strong></div>{(order.cod || order.paid) && <button className="text-button order-receipt" type="button" onClick={() => downloadReceipt(order.id)}>Download bill (PDF)</button>}<button className="checkout-button" type="button" onClick={() => setOrder(null)}>Keep shopping <span>-&gt;</span></button>{ordersMessage && <p className="auth-message">{ordersMessage}</p>}</div></div>}
+    {accountOpen && <div className="overlay" role="presentation" onClick={() => { setAccountOpen(false); setAddrForm(null) }}>
+      <div className="auth-modal account-modal" role="dialog" aria-modal="true" aria-labelledby="account-title" onClick={(event) => event.stopPropagation()}>
+        <button className="close-button" type="button" onClick={() => { setAccountOpen(false); setAddrForm(null) }} aria-label="Close account">x</button>
+        <p className="eyebrow">Signed in as {currentUser?.email}</p>
+        <h2 id="account-title">Your account</h2>
+        <div className="auth-tabs" role="tablist">
+          {[['profile', 'Profile'], ['addresses', 'Addresses'], ['cards', 'Payment methods']].map(([key, label]) => (
+            <button key={key} type="button" role="tab" aria-selected={accountTab === key} className={accountTab === key ? 'auth-tab active' : 'auth-tab'} onClick={() => { setAccountTab(key); setAccountMsg(''); setAddrForm(null) }}>{label}</button>
+          ))}
+        </div>
+
+        {accountTab === 'profile' && (
+          <form className="account-form" onSubmit={saveProfile}>
+            <label>Name<input required value={profileForm.name} onChange={(event) => setProfileForm({ ...profileForm, name: event.target.value })} /></label>
+            <label>Phone<input type="tel" maxLength="32" placeholder="+1 555 987 6543" value={profileForm.phone} onChange={(event) => setProfileForm({ ...profileForm, phone: event.target.value })} /></label>
+            {!currentUser?.is_admin && <p className="account-hint">Email is used to sign in and can&rsquo;t be changed here — contact support to update it.</p>}
+            <button className="checkout-button" type="submit">Save profile</button>
+          </form>
+        )}
+
+        {accountTab === 'addresses' && (addrForm ? (
+          <form className="account-form" onSubmit={saveAddress}>
+            <h3 className="account-sub">{addrForm.id ? 'Edit address' : 'New address'}</h3>
+            <label>Label<input maxLength="40" placeholder="Home, Work…" value={addrForm.label ?? ''} onChange={(event) => setAddrForm({ ...addrForm, label: event.target.value })} /></label>
+            <label>Full name<input required maxLength="120" value={addrForm.name ?? ''} onChange={(event) => setAddrForm({ ...addrForm, name: event.target.value })} /></label>
+            <label>Address line 1<input required maxLength="255" value={addrForm.line1 ?? ''} onChange={(event) => setAddrForm({ ...addrForm, line1: event.target.value })} /></label>
+            <label>Address line 2<input maxLength="255" value={addrForm.line2 ?? ''} onChange={(event) => setAddrForm({ ...addrForm, line2: event.target.value })} /></label>
+            <div className="form-row3">
+              <label>City<input maxLength="100" value={addrForm.city ?? ''} onChange={(event) => setAddrForm({ ...addrForm, city: event.target.value })} /></label>
+              <label>State<input maxLength="60" value={addrForm.state ?? ''} onChange={(event) => setAddrForm({ ...addrForm, state: event.target.value })} /></label>
+              <label>ZIP<input maxLength="12" value={addrForm.postal_code ?? ''} onChange={(event) => setAddrForm({ ...addrForm, postal_code: event.target.value })} /></label>
+            </div>
+            <label className="account-check"><input type="checkbox" checked={!!addrForm.is_default} onChange={(event) => setAddrForm({ ...addrForm, is_default: event.target.checked })} /> Use as my default address</label>
+            <div className="checkout-links">
+              <button className="checkout-button" type="submit">{addrForm.id ? 'Save address' : 'Add address'}</button>
+              <button className="switch-auth" type="button" onClick={() => setAddrForm(null)}>Cancel</button>
+            </div>
+          </form>
+        ) : (
+          <>
+            {addresses.length === 0 ? <p className="auth-intro">No saved addresses yet.</p> : <ul className="account-list">
+              {addresses.map((address) => <li key={address.id} className="account-row">
+                <div>
+                  <strong>{address.label || 'Address'}{address.is_default && <span className="account-tag">Default</span>}</strong>
+                  <span>{[address.line1, address.line2, address.city, address.state, address.postal_code].filter(Boolean).join(', ')}</span>
+                </div>
+                <div className="account-row-actions">
+                  {!address.is_default && <button type="button" className="text-button" onClick={() => makeDefaultAddress(address.id)}>Make default</button>}
+                  <button type="button" className="text-button" onClick={() => setAddrForm({ ...address })}>Edit</button>
+                  <button type="button" className="text-button danger" onClick={() => deleteAddress(address.id)}>Delete</button>
+                </div>
+              </li>)}
+            </ul>}
+            <button className="checkout-button" type="button" onClick={() => setAddrForm({ label: '', name: currentUser?.name ?? '', line1: '', line2: '', city: '', state: '', postal_code: '', is_default: addresses.length === 0 })}>Add address</button>
+          </>
+        ))}
+
+        {accountTab === 'cards' && (!stripePromise ? (
+          <p className="auth-intro">Card management needs Stripe keys (<code>VITE_STRIPE_PUBLISHABLE_KEY</code>).</p>
+        ) : addingCard ? (
+          <Elements stripe={stripePromise}>
+            <AddCardForm onDone={() => { setAddingCard(false); loadCards() }} onCancel={() => setAddingCard(false)} />
+          </Elements>
+        ) : (
+          <>
+            {cards === null || cardsBusy ? <p className="auth-intro">Loading cards…</p> : cards.length === 0 ? <p className="auth-intro">No saved cards yet.</p> : <ul className="account-list">
+              {cards.map((card) => <li key={card.id} className="account-row">
+                <div>
+                  <strong style={{ textTransform: 'capitalize' }}>{card.brand} &bull;&bull;&bull;&bull; {card.last4}{card.is_default && <span className="account-tag">Default</span>}</strong>
+                  <span>Expires {String(card.exp_month).padStart(2, '0')}/{String(card.exp_year).slice(-2)}</span>
+                </div>
+                <div className="account-row-actions">
+                  {!card.is_default && <button type="button" className="text-button" disabled={cardsBusy} onClick={() => makeDefaultCard(card.id)}>Make default</button>}
+                  <button type="button" className="text-button danger" disabled={cardsBusy} onClick={() => deleteCard(card.id)}>Remove</button>
+                </div>
+              </li>)}
+            </ul>}
+            <button className="checkout-button" type="button" onClick={() => setAddingCard(true)}>Add a card</button>
+          </>
+        ))}
+
+        {accountMsg && <p className="auth-message">{accountMsg}</p>}
+      </div>
+    </div>}
+    {ordersOpen && <div className="overlay" role="presentation" onClick={() => setOrdersOpen(false)}><div className="auth-modal orders-modal" role="dialog" aria-modal="true" aria-labelledby="orders-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setOrdersOpen(false)} aria-label="Close orders">x</button><p className="eyebrow">Your grocery runs</p><h2 id="orders-title">Order history</h2>{ordersLoading ? <p className="auth-intro">Loading your orders...</p> : orders.length === 0 ? <p className="auth-intro">No orders yet. Your completed checkouts will appear here.</p> : <ul className="orders-list">{orders.map((entry) => <li className="order-row" key={entry.id}><div className="order-row-head"><strong>Order #{entry.id}</strong><span className={`order-badge order-badge-${entry.payment_status}`}>{orderLabel(entry)}</span></div><div className="order-row-meta"><span>{new Date(entry.created_at).toLocaleDateString()}</span><span>{entry.items?.length ?? 0} {entry.items?.length === 1 ? 'item' : 'items'}</span><strong>{price(entry.total_cents)}</strong></div>{(entry.payment_status === 'paid' || entry.payment_method === 'cod') && DELIVERY_STAGES.includes(entry.status) && <div className="order-track" aria-label={`Delivery status: ${DELIVERY_LABELS[entry.status]}`}>{DELIVERY_STAGES.map((stage, index) => <span key={stage} className={index <= DELIVERY_STAGES.indexOf(entry.status) ? 'track-step done' : 'track-step'} title={DELIVERY_LABELS[stage]} />)}<em>{DELIVERY_LABELS[entry.status]}</em></div>}{entry.status === 'cancelled' && <p className="order-track-note">Cancelled</p>}{entry.payment_method !== 'cod' && entry.status !== 'cancelled' && entry.payment_status !== 'paid' && entry.payment_status !== 'cancelled' && <button className="text-button order-pay" type="button" onClick={() => resumePayment(entry)}>Complete payment <span>-&gt;</span></button>}{CANCELLABLE_STAGES.includes(entry.status) && <button className="text-button order-cancel" type="button" onClick={() => cancelOrder(entry)}>Cancel order</button>}{(entry.payment_status === 'paid' || entry.payment_method === 'cod') && entry.status !== 'cancelled' && <button className="text-button order-receipt" type="button" onClick={() => downloadReceipt(entry.id)}>Download bill (PDF)</button>}<button className="text-button order-help" type="button" onClick={() => { setOrdersOpen(false); openSupport(entry) }}>Get help</button></li>)}</ul>}{ordersMessage && <p className="auth-message">{ordersMessage}</p>}</div></div>}
     {locationOpen && <div className="overlay" role="presentation" onClick={() => { if (location) setLocationOpen(false) }}><div className="auth-modal location-modal" role="dialog" aria-modal="true" aria-labelledby="loc-title" onClick={(event) => event.stopPropagation()}>{location && <button className="close-button" type="button" onClick={() => setLocationOpen(false)} aria-label="Close location">x</button>}<p className="eyebrow">Deliver to</p><h2 id="loc-title">Where are you?</h2><p className="auth-intro">Drop the pin on your building — that&rsquo;s the location we deliver to. Search or &ldquo;detect&rdquo; just move the map near your area.</p>
       {outOfArea && <p className="loc-unserviceable">{UNSERVICEABLE_MSG}</p>}
       <div className="loc-tools">
@@ -1117,16 +1380,23 @@ export default function Storefront() {
     {supportView && <div className="overlay" role="presentation" onClick={() => setSupportView(null)}><div className="auth-modal support-modal" role="dialog" aria-modal="true" aria-labelledby="support-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setSupportView(null)} aria-label="Close support">x</button><p className="eyebrow">We&rsquo;re here to help</p>
       {supportView === 'list' ? <>
         <h2 id="support-title">Support</h2>
-        <button className="checkout-button" type="button" onClick={() => { setSupportForm({ order_id: '', issue_type: 'item_missing', message: '' }); setSupportView('new') }}>New request <span>-&gt;</span></button>
+        <button className="checkout-button" type="button" onClick={() => { setSupportForm({ about_order: false, order_id: '', issue_type: 'item_missing', message: '' }); setSupportView('new') }}>New request <span>-&gt;</span></button>
         {threads.length === 0 ? <p className="auth-intro">No conversations yet.</p> : <ul className="support-list">{threads.map((t) => <li key={t.id}><button type="button" onClick={() => openThread(t.id)}><strong>{issueLabel(t.issue_type)}{t.order_id ? ` · Order #${t.order_id}` : ''}</strong><span>{t.status === 'resolved' ? 'Resolved' : 'Open'} · {t.last_message_at ? new Date(t.last_message_at).toLocaleDateString() : ''}</span></button></li>)}</ul>}
       </> : supportView === 'new' ? <>
         <h2 id="support-title">New request</h2>
-        <label className="support-field">Which order?
-          <select value={supportForm.order_id} onChange={(event) => setSupportForm({ ...supportForm, order_id: event.target.value })}>
-            <option value="">General question</option>
-            {orders.map((o) => <option key={o.id} value={o.id}>Order #{o.id} · {price(o.total_cents)}</option>)}
-          </select>
-        </label>
+        <p className="pay-methods-label">Is this about an order?</p>
+        <div className="issue-chips" role="radiogroup" aria-label="Is this about an order?">
+          <button type="button" role="radio" aria-checked={!supportForm.about_order} className={!supportForm.about_order ? 'issue-chip active' : 'issue-chip'} onClick={() => setSupportForm({ ...supportForm, about_order: false, order_id: '' })}>General question</button>
+          <button type="button" role="radio" aria-checked={supportForm.about_order} className={supportForm.about_order ? 'issue-chip active' : 'issue-chip'} onClick={() => setSupportForm({ ...supportForm, about_order: true })}>About an order</button>
+        </div>
+        {supportForm.about_order && (orders.length === 0
+          ? <p className="auth-intro">You have no orders yet.</p>
+          : <label className="support-field">Which order?
+              <select value={supportForm.order_id} onChange={(event) => setSupportForm({ ...supportForm, order_id: event.target.value })}>
+                <option value="">Select an order…</option>
+                {orders.map((o) => <option key={o.id} value={o.id}>Order #{o.id} · {price(o.total_cents)}</option>)}
+              </select>
+            </label>)}
         <div className="issue-chips" role="radiogroup" aria-label="Issue type">{ISSUE_TYPES.map(([type, label]) => <button key={type} type="button" role="radio" aria-checked={supportForm.issue_type === type} className={supportForm.issue_type === type ? 'issue-chip active' : 'issue-chip'} onClick={() => setSupportForm({ ...supportForm, issue_type: type })}>{label}</button>)}</div>
         <textarea className="delivery-note" rows="3" maxLength="2000" placeholder="Tell us what happened" value={supportForm.message} onChange={(event) => setSupportForm({ ...supportForm, message: event.target.value })} />
         <button className="checkout-button" type="button" disabled={supportBusy} onClick={submitSupport}>Send <span>-&gt;</span></button>
@@ -1141,4 +1411,36 @@ export default function Storefront() {
       {supportMsg && <p className="auth-message">{supportMsg}</p>}
     </div></div>}
   </div>
+  <footer className="site-footer">
+    <div className="site-footer-cols">
+      {(pages.some((p) => p.show_in_footer) || (footer?.links?.length ?? 0) > 0) && <div>
+        <h4>Useful Links</h4>
+        <ul>
+          {pages.filter((p) => p.show_in_footer).map((p) => <li key={p.slug}><button type="button" onClick={() => openPage(p.slug)}>{p.title}</button></li>)}
+          {(footer?.links ?? []).map((link, index) => <li key={`fl-${index}`}><a href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a></li>)}
+        </ul>
+      </div>}
+      <div>
+        <div className="site-footer-cathead"><h4>Categories</h4><button type="button" className="site-footer-seeall" onClick={() => { setActiveCategory(null); setQuery(''); closePage(); window.scrollTo({ top: 0 }) }}>see all</button></div>
+        <ul className="site-footer-cats">{categories.slice(0, 24).map((c) => <li key={c.id}><button type="button" onClick={() => { closePage(); setActiveCategory(c.name); setQuery(''); window.scrollTo({ top: 0 }) }}>{c.name}</button></li>)}</ul>
+      </div>
+    </div>
+    <div className="site-footer-bottom">
+      <span className="site-footer-copy">{(footer?.copyright || '© {year} Grocerly').replace('{year}', String(new Date().getFullYear()))}</span>
+      {(footer?.app_store_url || footer?.play_store_url) && <span className="site-footer-app">
+        <b>Download App</b>
+        {footer?.app_store_url && <a className="store-badge" href={footer.app_store_url} target="_blank" rel="noopener noreferrer">App Store</a>}
+        {footer?.play_store_url && <a className="store-badge" href={footer.play_store_url} target="_blank" rel="noopener noreferrer">Google Play</a>}
+      </span>}
+      {FOOTER_SOCIALS.some(([key]) => footer?.socials?.[key]) && <span className="site-footer-socials">
+        {FOOTER_SOCIALS.filter(([key]) => footer?.socials?.[key]).map(([key, label, path]) => (
+          <a key={key} href={footer.socials[key]} target="_blank" rel="noopener noreferrer" aria-label={label}>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d={path} /></svg>
+          </a>
+        ))}
+      </span>}
+    </div>
+    {footer?.note && <p className="site-footer-note">{footer.note}</p>}
+  </footer>
+  </>
 }

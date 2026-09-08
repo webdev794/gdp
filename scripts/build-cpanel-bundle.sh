@@ -142,7 +142,8 @@ cat > "$DEST/_setup.php" <<'PHP'
 <?php
 /**
  * One-time setup. Visit  https://testcaresortwork.co.in/gdp/_setup.php?key=RUNME
- * It runs migrations + seed + caches, then deletes itself.
+ * The database is imported by hand from a local dump, so this only links the
+ * storage dir and clears caches, then deletes itself.
  * DELETE THIS FILE manually if it is still here afterwards.
  */
 if (($_GET['key'] ?? '') !== 'RUNME') { http_response_code(403); exit('Forbidden'); }
@@ -153,7 +154,7 @@ $app->usePublicPath(__DIR__);
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 
 header('Content-Type: text/plain');
-foreach (['migrate --force', 'db:seed --force', 'storage:link', 'config:cache'] as $cmd) {
+foreach (['storage:link', 'optimize:clear'] as $cmd) {
     echo "\$ php artisan $cmd\n";
     try { $kernel->call($cmd); echo $kernel->output(); }
     catch (Throwable $e) { echo 'ERROR: '.$e->getMessage()."\n"; }
@@ -175,21 +176,25 @@ rm -f "$DEST/storage/logs/"*.log 2>/dev/null || true
 
 echo "==> READ_ME_FIRST.txt"
 cat > "$STAGE/READ_ME_FIRST.txt" <<'TXT'
-GROCERLY - cPanel deployment bundle
-===================================
+GROCERLY - cPanel deployment bundle (single folder, DB imported by hand)
+======================================================================
 
 1. In cPanel > File Manager, open  public_html/
 2. Upload this zip INTO public_html/  and Extract it.
    You should end up with:  public_html/gdp/index.php  (and app/, vendor/, assets/, ...)
-3. cPanel > MySQL Databases: create a database + user (All Privileges).
-4. Edit  public_html/gdp/.env  and set the 5 CHANGE_ME / CPUSER values:
-      DB_DATABASE, DB_USERNAME, DB_PASSWORD
-      MAIL_PASSWORD           (or set AUTH_OTP_ENABLED=false and skip mail)
+   Everything lives inside public_html/gdp/ - nothing is placed outside it.
+3. cPanel > MySQL Databases: create a database + user (All Privileges),
+   then import your local dump into it (phpMyAdmin > Import).
+4. Edit  public_html/gdp/.env  and set:
+      DB_DATABASE, DB_USERNAME, DB_PASSWORD   (the DB you just imported into)
+      MAIL_PASSWORD            (or set AUTH_OTP_ENABLED=false and skip mail)
+      STRIPE_WEBHOOK_SECRET    (see Stripe note below)
 5. cPanel > MultiPHP Manager: set this domain to PHP 8.3 (8.2 minimum).
 6. Visit:  https://testcaresortwork.co.in/gdp/_setup.php?key=RUNME
-   Wait for "Done." - it migrates, seeds demo data, and self-deletes.
+   It runs "storage:link" + "optimize:clear" and self-deletes. No migrate,
+   no seed - your imported database is used as-is.
 7. Open  https://testcaresortwork.co.in/gdp/
-      admin login: test@example.com / password
+      admin login (from your dump): test@example.com / password
    OTP codes (if mail not set up) are in  public_html/gdp/storage/logs/laravel.log
 
 Stripe: dashboard > Webhooks > add endpoint
@@ -207,8 +212,29 @@ cd "$STAGE"
 if command -v zip >/dev/null 2>&1; then
   zip -qr "$OUT" gdp READ_ME_FIRST.txt -x '*/\.DS_Store'
 else
-  powershell.exe -NoProfile -Command "Compress-Archive -Path '$(cygpath -w "$STAGE/gdp")','$(cygpath -w "$STAGE/gdp/READ_ME_FIRST.txt")' -DestinationPath '$(cygpath -w "$OUT")' -Force" 2>/dev/null || \
-  powershell.exe -NoProfile -Command "Compress-Archive -Path '$(cygpath -w "$STAGE")/*' -DestinationPath '$(cygpath -w "$OUT")' -Force"
+  # No `zip` binary: use PHP's ZipArchive so every entry keeps forward-slash
+  # paths (PowerShell's Compress-Archive writes backslashes that Linux unzip
+  # mangles). Entries are gdp/... plus READ_ME_FIRST.txt at the archive root.
+  STAGE_WIN=$(cygpath -w "$STAGE"); OUT_WIN=$(cygpath -w "$OUT")
+  php -r '
+    $stage = $argv[1]; $out = $argv[2];
+    @unlink($out);
+    $zip = new ZipArchive();
+    $zip->open($out, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+    $it = new RecursiveIteratorIterator(
+      new RecursiveDirectoryIterator($stage.DIRECTORY_SEPARATOR."gdp", FilesystemIterator::SKIP_DOTS),
+      RecursiveIteratorIterator::SELF_FIRST
+    );
+    $n = 0;
+    foreach ($it as $f) {
+      $rel = "gdp/".str_replace("\\", "/", substr($f->getPathname(), strlen($stage) + 5));
+      if ($f->isDir()) { $zip->addEmptyDir($rel); }
+      else { $zip->addFile($f->getPathname(), $rel); $n++; }
+    }
+    $zip->addFile($stage.DIRECTORY_SEPARATOR."READ_ME_FIRST.txt", "READ_ME_FIRST.txt");
+    $zip->close();
+    echo "files: {$n}\n";
+  ' "$STAGE_WIN" "$OUT_WIN"
 fi
 
 echo

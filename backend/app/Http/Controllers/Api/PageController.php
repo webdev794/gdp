@@ -26,7 +26,9 @@ class PageController extends Controller
         return response()->json(['data' => [
             'slug' => $page->slug,
             'title' => $page->title,
+            'banner_image' => $page->banner_image,
             'content' => (string) $page->content,
+            'sections' => is_array($page->sections) ? array_values($page->sections) : [],
             'updated_at' => $page->updated_at,
         ]]);
     }

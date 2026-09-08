@@ -104,7 +104,37 @@ class OrderReceiptTest extends TestCase
         $this->get("/api/orders/{$order->id}/receipt")->assertUnauthorized();
     }
 
-    private function order(User $user): Order
+    public function test_bill_is_unavailable_while_a_card_payment_is_still_pending(): void
+    {
+        $user = User::factory()->create();
+        $order = $this->order($user, ['payment_status' => 'pending', 'status' => 'pending_payment']);
+
+        Sanctum::actingAs($user);
+
+        $this->get("/api/orders/{$order->id}/receipt")->assertForbidden();
+    }
+
+    public function test_cash_on_delivery_bill_is_available_before_payment(): void
+    {
+        $user = User::factory()->create();
+        $order = $this->order($user, ['payment_method' => 'cod', 'payment_status' => 'pending', 'status' => 'confirmed']);
+
+        Sanctum::actingAs($user);
+
+        $this->get("/api/orders/{$order->id}/receipt")->assertOk();
+    }
+
+    public function test_no_bill_for_a_cancelled_order(): void
+    {
+        $user = User::factory()->create();
+        $order = $this->order($user, ['payment_method' => 'cod', 'payment_status' => 'pending', 'status' => 'cancelled']);
+
+        Sanctum::actingAs($user);
+
+        $this->get("/api/orders/{$order->id}/receipt")->assertForbidden();
+    }
+
+    private function order(User $user, array $attributes = []): Order
     {
         return Order::create([
             'user_id' => $user->id,
@@ -123,6 +153,7 @@ class OrderReceiptTest extends TestCase
                 'phone' => '+1 555 0100',
             ],
             'delivery_instructions' => 'Leave at the door',
+            ...$attributes,
         ]);
     }
 }

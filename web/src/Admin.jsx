@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import MapPicker from './MapPicker'
 import { Delta, Heatmap, LineChart, PieChart } from './Charts'
 import { renderMarkdown } from './markdown'
+import { SECTION_TYPES, blankSection } from './pageSectionTypes'
+import { mediaUrl } from './mediaUrl'
 import './Admin.css'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api'
@@ -63,7 +65,8 @@ const EMPTY_CATEGORY = { name: '', slug: '', sort_order: 0, is_active: true }
 const EMPTY_STORE = { name: '', line1: '', line2: '', city: '', state: '', postal_code: '', latitude: '', longitude: '', delivery_radius_km: 5, is_active: true }
 const EMPTY_BANNER = { image_url: '', headline: '', category_slug: '', link_url: '', placement: 'strip', sort_order: 0, is_active: true }
 const EMPTY_TILE = { title: '', image_url: '', category_slug: '', link_url: '', sort_order: 0, is_active: true }
-const EMPTY_PAGE = { title: '', slug: '', content: '', footer_group: 'useful_links', show_in_footer: true, is_published: true, sort_order: 0 }
+const EMPTY_PAGE = { title: '', slug: '', banner_image: '', content: '', sections: [], footer_group: 'useful_links', show_in_footer: true, is_published: true, sort_order: 0 }
+const sectionLabel = (type) => (SECTION_TYPES.find(([value]) => value === type) ?? [type, type])[1]
 
 const dollars = (cents) => ((cents ?? 0) / 100).toFixed(2)
 const toCents = (value) => Math.max(0, Math.round(Number(value || 0) * 100))
@@ -165,6 +168,7 @@ export default function Admin({ token, onClose }) {
   const [pageForm, setPageForm] = useState(null)
   const [pagePreview, setPagePreview] = useState(false)
   const [pagesExpanded, setPagesExpanded] = useState(false)
+  const [blogsExpanded, setBlogsExpanded] = useState(false)
   const [courierDraft, setCourierDraft] = useState({})
   const [riders, setRiders] = useState([])
   const [settings, setSettings] = useState(null)
@@ -422,7 +426,9 @@ export default function Admin({ token, onClose }) {
   function editPage(page) {
     setPagePreview(false)
     setPageForm({
-      id: page.id, title: page.title ?? '', slug: page.slug ?? '', content: page.content ?? '',
+      id: page.id, title: page.title ?? '', slug: page.slug ?? '', banner_image: page.banner_image ?? '',
+      content: page.content ?? '',
+      sections: Array.isArray(page.sections) ? page.sections : [],
       footer_group: page.footer_group ?? 'useful_links', show_in_footer: page.show_in_footer,
       is_published: page.is_published, sort_order: page.sort_order ?? 0,
     })
@@ -441,6 +447,20 @@ export default function Admin({ token, onClose }) {
       loadPages()
     } catch (error) { fail(error) }
   }
+
+  const patchSection = (i, patch) => setPageForm((f) => ({ ...f, sections: f.sections.map((s, idx) => (idx === i ? { ...s, ...patch } : s)) }))
+  const addSection = (type) => setPageForm((f) => ({ ...f, sections: [...(f.sections ?? []), blankSection(type)] }))
+  const removeSection = (i) => setPageForm((f) => ({ ...f, sections: f.sections.filter((_, idx) => idx !== i) }))
+  const moveSection = (i, dir) => setPageForm((f) => {
+    const next = [...f.sections]
+    const j = i + dir
+    if (j < 0 || j >= next.length) return f
+    ;[next[i], next[j]] = [next[j], next[i]]
+    return { ...f, sections: next }
+  })
+  const patchItem = (si, ii, patch) => setPageForm((f) => ({ ...f, sections: f.sections.map((s, idx) => (idx === si ? { ...s, items: (s.items ?? []).map((it, k) => (k === ii ? { ...it, ...patch } : it)) } : s)) }))
+  const addItem = (si) => setPageForm((f) => ({ ...f, sections: f.sections.map((s, idx) => (idx === si ? { ...s, items: [...(s.items ?? []), { image_url: '', title: '', text: '', link_url: '' }] } : s)) }))
+  const removeItem = (si, ii) => setPageForm((f) => ({ ...f, sections: f.sections.map((s, idx) => (idx === si ? { ...s, items: (s.items ?? []).filter((_, k) => k !== ii) } : s)) }))
 
   async function removePage(page) {
     if (!window.confirm(`Delete the “${page.title}” page?`)) return
@@ -813,10 +833,22 @@ export default function Admin({ token, onClose }) {
               <button type="button" className={tab === 'homepage' ? 'active' : ''} onClick={() => goTab('homepage')}>Homepage</button>
               <button type="button" className={tab === 'footer' ? 'active' : ''} onClick={() => goTab('footer')}>Footer</button>
               <button type="button" className={tab === 'pages' && !pageForm ? 'active' : ''} onClick={() => { goTab('pages'); setPageForm(null) }}>All pages</button>
-              {pages.map((p) => (
+              {pages.filter((p) => p.footer_group !== 'blog').map((p) => (
                 <button key={p.id} type="button" className={tab === 'pages' && pageForm?.id === p.id ? 'active' : ''} onClick={() => { goTab('pages'); editPage(p) }}>{p.title}</button>
               ))}
               <button type="button" className="nav-sub-add" onClick={() => { goTab('pages'); setPagePreview(false); setPageForm({ ...EMPTY_PAGE }) }}>+ New page</button>
+              {(() => { const blogPages = pages.filter((p) => p.footer_group === 'blog'); const blogOpen = blogsExpanded || (tab === 'pages' && pageForm?.footer_group === 'blog'); return <>
+                <button type="button" className="nav-subgroup-toggle" aria-expanded={blogOpen} onClick={() => setBlogsExpanded((v) => !v)}>Blogs<span className="nav-caret" aria-hidden>{blogOpen ? '▾' : '▸'}</span></button>
+                {blogOpen && (
+                  <div className="admin-nav-sub">
+                    {blogPages.length === 0 && <button type="button" disabled className="nav-sub-empty">No blog posts</button>}
+                    {blogPages.map((p) => (
+                      <button key={p.id} type="button" className={tab === 'pages' && pageForm?.id === p.id ? 'active' : ''} onClick={() => { goTab('pages'); editPage(p) }}>{p.title}</button>
+                    ))}
+                    <button type="button" className="nav-sub-add" onClick={() => { goTab('pages'); setPagePreview(false); setPageForm({ ...EMPTY_PAGE, footer_group: 'blog', show_in_footer: false }) }}>+ New blog post</button>
+                  </div>
+                )}
+              </> })()}
             </div>
           )}
           </> })()}
@@ -843,55 +875,6 @@ export default function Admin({ token, onClose }) {
                 <article className="metric"><span>Low stock (&le;5)</span><strong>{metrics.low_stock}</strong></article>
               </>
             )}
-          </section>
-
-          <section className="admin-panel">
-            <h3 className="admin-subhead">Compared to the previous period</h3>
-            <div className="chart-toolbar">
-              <select className="admin-select" value={comparePreset} onChange={(event) => { setCompare(null); setComparePreset(event.target.value) }} aria-label="Comparison period">
-                <option value="day">Today vs yesterday</option>
-                <option value="two_day">Last 2 days vs previous 2 days</option>
-                <option value="week">This week vs last week</option>
-                <option value="month">This month vs last month</option>
-                <option value="six_month">Last 6 months vs previous 6 months</option>
-                <option value="year">This year vs last year</option>
-                <option value="custom">Custom days…</option>
-              </select>
-              {comparePreset === 'custom' && (
-                <form className="compare-custom" onSubmit={(event) => { event.preventDefault(); const n = Math.max(1, Math.min(730, Number(compareDaysDraft) || 0)); if (n) { setCompare(null); setCompareDays(n) } }}>
-                  <input type="number" min="1" max="730" value={compareDaysDraft} onChange={(event) => setCompareDaysDraft(event.target.value)} aria-label="Number of days" />
-                  <span className="muted">days each side</span>
-                  <button className="act" type="submit">Apply</button>
-                </form>
-              )}
-              <div className="seg" role="group" aria-label="Measure">
-                {[['orders', 'Orders'], ['revenue_cents', 'Revenue']].map(([value, label]) => (
-                  <button key={value} type="button" className={compareMetric === value ? 'active' : ''} onClick={() => setCompareMetric(value)}>{label}</button>
-                ))}
-              </div>
-            </div>
-
-            {!compare ? <p className="admin-empty">Loading comparison…</p> : (() => {
-              const fmt = compareMetric === 'orders' ? ((v) => v) : money
-              const cur = compare.current[compareMetric]
-              const prev = compare.previous[compareMetric]
-              return (
-                <>
-                  <div className="compare-head">
-                    <div><span className="compare-measure">{compare.current.label}{compare.partial ? ' (so far)' : ''}</span><strong>{fmt(cur)}</strong></div>
-                    <Delta current={cur} previous={prev} />
-                    <div className="compare-vs"><span className="compare-measure">{compare.previous.label} (full)</span><strong>{fmt(prev)}</strong></div>
-                  </div>
-                  <PieChart
-                    format={fmt}
-                    data={[
-                      { label: `${compare.current.label}${compare.partial ? ' (so far)' : ''}`, value: cur },
-                      { label: `${compare.previous.label} (full)`, value: prev },
-                    ]}
-                  />
-                </>
-              )
-            })()}
           </section>
 
           <section className="admin-panel">
@@ -957,6 +940,55 @@ export default function Admin({ token, onClose }) {
                 <p className="muted chart-range">Orders by weekday and hour &middot; since {insights.activity?.since ?? ''}</p>
               </>
             )}
+          </section>
+
+          <section className="admin-panel admin-panel-compare">
+            <h3 className="admin-subhead">Compared to the previous period</h3>
+            <div className="chart-toolbar">
+              <select className="admin-select" value={comparePreset} onChange={(event) => { setCompare(null); setComparePreset(event.target.value) }} aria-label="Comparison period">
+                <option value="day">Today vs yesterday</option>
+                <option value="two_day">Last 2 days vs previous 2 days</option>
+                <option value="week">This week vs last week</option>
+                <option value="month">This month vs last month</option>
+                <option value="six_month">Last 6 months vs previous 6 months</option>
+                <option value="year">This year vs last year</option>
+                <option value="custom">Custom days…</option>
+              </select>
+              {comparePreset === 'custom' && (
+                <form className="compare-custom" onSubmit={(event) => { event.preventDefault(); const n = Math.max(1, Math.min(730, Number(compareDaysDraft) || 0)); if (n) { setCompare(null); setCompareDays(n) } }}>
+                  <input type="number" min="1" max="730" value={compareDaysDraft} onChange={(event) => setCompareDaysDraft(event.target.value)} aria-label="Number of days" />
+                  <span className="muted">days each side</span>
+                  <button className="act" type="submit">Apply</button>
+                </form>
+              )}
+              <div className="seg" role="group" aria-label="Measure">
+                {[['orders', 'Orders'], ['revenue_cents', 'Revenue']].map(([value, label]) => (
+                  <button key={value} type="button" className={compareMetric === value ? 'active' : ''} onClick={() => setCompareMetric(value)}>{label}</button>
+                ))}
+              </div>
+            </div>
+
+            {!compare ? <p className="admin-empty">Loading comparison…</p> : (() => {
+              const fmt = compareMetric === 'orders' ? ((v) => v) : money
+              const cur = compare.current[compareMetric]
+              const prev = compare.previous[compareMetric]
+              return (
+                <>
+                  <div className="compare-head">
+                    <div><span className="compare-measure">{compare.current.label}{compare.partial ? ' (so far)' : ''}</span><strong>{fmt(cur)}</strong></div>
+                    <Delta current={cur} previous={prev} />
+                    <div className="compare-vs"><span className="compare-measure">{compare.previous.label} (full)</span><strong>{fmt(prev)}</strong></div>
+                  </div>
+                  <PieChart
+                    format={fmt}
+                    data={[
+                      { label: `${compare.current.label}${compare.partial ? ' (so far)' : ''}`, value: cur },
+                      { label: `${compare.previous.label} (full)`, value: prev },
+                    ]}
+                  />
+                </>
+              )
+            })()}
           </section>
         </>
       )}
@@ -1047,7 +1079,7 @@ export default function Admin({ token, onClose }) {
               </div>
               <label>Image
                 <div className="admin-image-field">
-                  {productForm.image_url && <img src={productForm.image_url} alt="" className="admin-image-preview" onError={(event) => { event.currentTarget.style.display = 'none' }} />}
+                  {productForm.image_url && <img src={mediaUrl(productForm.image_url)} alt="" className="admin-image-preview" onError={(event) => { event.currentTarget.style.display = 'none' }} />}
                   <input placeholder="Image URL, or upload →" value={productForm.image_url ?? ''} onChange={(event) => setProductForm({ ...productForm, image_url: event.target.value })} />
                   <input type="file" accept="image/*" disabled={imgBusy} onChange={(event) => uploadImage(event.target.files?.[0], (url) => setProductForm((form) => ({ ...form, image_url: url })))} />
                   {productForm.image_url && <button type="button" className="act ghost" onClick={() => setProductForm({ ...productForm, image_url: '' })}>Clear</button>}
@@ -1253,7 +1285,7 @@ export default function Admin({ token, onClose }) {
               <h3>{bannerForm.id ? `Edit banner #${bannerForm.id}` : 'New banner'}</h3>
               <div className="admin-image-field">
                 {bannerForm.image_url
-                  ? <img className="admin-banner-preview" src={bannerForm.image_url} alt="" />
+                  ? <img className="admin-banner-preview" src={mediaUrl(bannerForm.image_url)} alt="" />
                   : <div className="admin-banner-preview placeholder">No image</div>}
                 <div>
                   <label>Image URL<input value={bannerForm.image_url} onChange={(event) => setBannerForm({ ...bannerForm, image_url: event.target.value })} placeholder="https://…" /></label>
@@ -1282,7 +1314,7 @@ export default function Admin({ token, onClose }) {
               <tbody>
                 {banners.map((banner) => (
                   <tr key={banner.id}>
-                    <td><img className="admin-banner-thumb" src={banner.image_url} alt="" /></td>
+                    <td><img className="admin-banner-thumb" src={mediaUrl(banner.image_url)} alt="" /></td>
                     <td>{banner.headline || <span className="muted">—</span>}</td>
                     <td>{banner.placement === 'strip' ? 'Strip' : 'Hero'}</td>
                     <td>{banner.category_slug ? `#${banner.category_slug}` : (banner.link_url || <span className="muted">—</span>)}</td>
@@ -1309,7 +1341,7 @@ export default function Admin({ token, onClose }) {
               <h3>{tileForm.id ? `Edit tile #${tileForm.id}` : 'New tile'}</h3>
               <div className="admin-image-field">
                 {tileForm.image_url
-                  ? <img className="admin-banner-thumb" src={tileForm.image_url} alt="" />
+                  ? <img className="admin-banner-thumb" src={mediaUrl(tileForm.image_url)} alt="" />
                   : <div className="admin-banner-thumb placeholder">category image</div>}
                 <div>
                   <label>Custom image URL (optional)<input value={tileForm.image_url} onChange={(event) => setTileForm({ ...tileForm, image_url: event.target.value })} placeholder="blank = use the category image" /></label>
@@ -1337,7 +1369,7 @@ export default function Admin({ token, onClose }) {
               <tbody>
                 {homeTiles.map((tile) => (
                   <tr key={tile.id}>
-                    <td>{tile.image_url ? <img className="admin-banner-thumb" src={tile.image_url} alt="" /> : <span className="muted">category</span>}</td>
+                    <td>{tile.image_url ? <img className="admin-banner-thumb" src={mediaUrl(tile.image_url)} alt="" /> : <span className="muted">category</span>}</td>
                     <td>{tile.title || <span className="muted">category name</span>}</td>
                     <td>{tile.category_slug ? `#${tile.category_slug}` : (tile.link_url || <span className="muted">—</span>)}</td>
                     <td>{tile.sort_order}</td>
@@ -1369,10 +1401,106 @@ export default function Admin({ token, onClose }) {
                 <label>Slug (optional)<input value={pageForm.slug} placeholder="auto from title" onChange={(event) => setPageForm({ ...pageForm, slug: event.target.value })} /></label>
                 <label>Footer group<input value={pageForm.footer_group} onChange={(event) => setPageForm({ ...pageForm, footer_group: event.target.value })} /></label>
                 <label>Sort order<input type="number" min="0" max="9999" value={pageForm.sort_order} onChange={(event) => setPageForm({ ...pageForm, sort_order: event.target.value })} /></label>
+                <label>Banner image URL<input value={pageForm.banner_image ?? ''} placeholder="/img/… or https://… — shown above the title" onChange={(event) => setPageForm({ ...pageForm, banner_image: event.target.value })} /></label>
                 <label className="admin-check"><input type="checkbox" checked={pageForm.show_in_footer} onChange={(event) => setPageForm({ ...pageForm, show_in_footer: event.target.checked })} /> Show in footer</label>
                 <label className="admin-check"><input type="checkbox" checked={pageForm.is_published} onChange={(event) => setPageForm({ ...pageForm, is_published: event.target.checked })} /> Published</label>
               </div>
-              <label>Content (Markdown)
+              <div className="admin-sections">
+                <div className="admin-subhead" style={{ marginTop: 4 }}>Sections</div>
+                {(pageForm.sections ?? []).length === 0
+                  ? <p className="muted">No sections yet — the page shows the body text below. Add sections for a richer layout; preview on the storefront at <code>/#/p/{pageForm.slug || 'slug'}</code>.</p>
+                  : null}
+                {(pageForm.sections ?? []).map((s, i) => (
+                  <div className="admin-section-card" key={i}>
+                    <div className="admin-section-head">
+                      <strong>{i + 1}. {sectionLabel(s.type)}</strong>
+                      <div className="admin-section-tools">
+                        <button type="button" className="act ghost" disabled={i === 0} onClick={() => moveSection(i, -1)}>&uarr;</button>
+                        <button type="button" className="act ghost" disabled={i === pageForm.sections.length - 1} onClick={() => moveSection(i, 1)}>&darr;</button>
+                        <button type="button" className="act danger" onClick={() => removeSection(i)}>Remove</button>
+                      </div>
+                    </div>
+                    {s.type === 'rich_text' && (
+                      <label>Markdown<textarea rows="6" value={s.markdown ?? ''} onChange={(event) => patchSection(i, { markdown: event.target.value })} /></label>
+                    )}
+                    {(s.type === 'hero' || s.type === 'cta') && (
+                      <>
+                        {s.type === 'hero' && <label>Image URL<input value={s.image_url ?? ''} onChange={(event) => patchSection(i, { image_url: event.target.value })} placeholder="/img/… or https://…" /></label>}
+                        <label>Heading<input value={s.heading ?? ''} onChange={(event) => patchSection(i, { heading: event.target.value })} /></label>
+                        <label>Text<textarea rows="2" value={s.text ?? ''} onChange={(event) => patchSection(i, { text: event.target.value })} /></label>
+                        <div className="admin-form-grid">
+                          <label>Button label<input value={s.button_label ?? ''} onChange={(event) => patchSection(i, { button_label: event.target.value })} /></label>
+                          <label>Button URL<input value={s.button_url ?? ''} onChange={(event) => patchSection(i, { button_url: event.target.value })} placeholder="https://… or /#/p/…" /></label>
+                        </div>
+                      </>
+                    )}
+                    {s.type === 'media_text' && (
+                      <>
+                        <div className="admin-form-grid">
+                          <label>Image URL<input value={s.image_url ?? ''} onChange={(event) => patchSection(i, { image_url: event.target.value })} /></label>
+                          <label>Image side<select value={s.image_side ?? 'left'} onChange={(event) => patchSection(i, { image_side: event.target.value })}><option value="left">Left</option><option value="right">Right</option></select></label>
+                        </div>
+                        <label>Heading<input value={s.heading ?? ''} onChange={(event) => patchSection(i, { heading: event.target.value })} /></label>
+                        <label>Text (Markdown)<textarea rows="5" value={s.markdown ?? ''} onChange={(event) => patchSection(i, { markdown: event.target.value })} /></label>
+                      </>
+                    )}
+                    {s.type === 'feature_grid' && (
+                      <>
+                        <label>Heading<input value={s.heading ?? ''} onChange={(event) => patchSection(i, { heading: event.target.value })} /></label>
+                        {(s.items ?? []).map((it, ii) => (
+                          <div className="admin-feature-row admin-feature-row--quad" key={ii}>
+                            <input placeholder="Icon / image URL" value={it.image_url ?? ''} onChange={(event) => patchItem(i, ii, { image_url: event.target.value })} />
+                            <input placeholder="Title" value={it.title ?? ''} onChange={(event) => patchItem(i, ii, { title: event.target.value })} />
+                            <input placeholder="Text" value={it.text ?? ''} onChange={(event) => patchItem(i, ii, { text: event.target.value })} />
+                            <input placeholder="Link URL (optional)" value={it.link_url ?? ''} onChange={(event) => patchItem(i, ii, { link_url: event.target.value })} />
+                            <button type="button" className="act danger" onClick={() => removeItem(i, ii)}>&times;</button>
+                          </div>
+                        ))}
+                        <button type="button" className="act ghost" onClick={() => addItem(i)}>+ Card</button>
+                      </>
+                    )}
+                    {(s.type === 'stats' || s.type === 'steps') && (
+                      <>
+                        <label>Heading<input value={s.heading ?? ''} onChange={(event) => patchSection(i, { heading: event.target.value })} /></label>
+                        {(s.items ?? []).map((it, ii) => (
+                          <div className="admin-feature-row admin-feature-row--pair" key={ii}>
+                            <input placeholder={s.type === 'stats' ? 'Value (e.g. 10 min)' : 'Step title'} value={it.title ?? ''} onChange={(event) => patchItem(i, ii, { title: event.target.value })} />
+                            <input placeholder={s.type === 'stats' ? 'Caption' : 'Step description'} value={it.text ?? ''} onChange={(event) => patchItem(i, ii, { text: event.target.value })} />
+                            <button type="button" className="act danger" onClick={() => removeItem(i, ii)}>&times;</button>
+                          </div>
+                        ))}
+                        <button type="button" className="act ghost" onClick={() => addItem(i)}>+ {s.type === 'stats' ? 'Stat' : 'Step'}</button>
+                      </>
+                    )}
+                    {s.type === 'faq' && (
+                      <>
+                        <label>Heading<input value={s.heading ?? ''} onChange={(event) => patchSection(i, { heading: event.target.value })} /></label>
+                        {(s.items ?? []).map((it, ii) => (
+                          <div className="admin-faq-row" key={ii}>
+                            <input placeholder="Question" value={it.title ?? ''} onChange={(event) => patchItem(i, ii, { title: event.target.value })} />
+                            <textarea rows="2" placeholder="Answer (Markdown allowed)" value={it.text ?? ''} onChange={(event) => patchItem(i, ii, { text: event.target.value })} />
+                            <button type="button" className="act danger" onClick={() => removeItem(i, ii)}>Remove</button>
+                          </div>
+                        ))}
+                        <button type="button" className="act ghost" onClick={() => addItem(i)}>+ Question</button>
+                      </>
+                    )}
+                    {s.type === 'quote' && (
+                      <>
+                        <label>Quote<textarea rows="3" value={s.text ?? ''} onChange={(event) => patchSection(i, { text: event.target.value })} /></label>
+                        <label>Attribution<input value={s.author ?? ''} onChange={(event) => patchSection(i, { author: event.target.value })} placeholder="Name, role" /></label>
+                      </>
+                    )}
+                  </div>
+                ))}
+                <div className="admin-section-add">
+                  {SECTION_TYPES.map(([type, label]) => (
+                    <button key={type} type="button" className="act" onClick={() => addSection(type)}>+ {label}</button>
+                  ))}
+                </div>
+              </div>
+
+              <label>Page body (Markdown) — shown when the page has no sections
                 <div className="admin-page-editor">
                   <div className="admin-page-tabs">
                     <button type="button" className={!pagePreview ? 'active' : ''} onClick={() => setPagePreview(false)}>Write</button>
@@ -1511,7 +1639,7 @@ export default function Admin({ token, onClose }) {
 
               <label>Logo
                 <div className="admin-image-field">
-                  {brandingForm.logo_url && <img className="admin-image-preview" src={brandingForm.logo_url} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} />}
+                  {brandingForm.logo_url && <img className="admin-image-preview" src={mediaUrl(brandingForm.logo_url)} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} />}
                   <input placeholder="Logo image URL, or upload →" value={brandingForm.logo_url} onChange={(event) => setBrandingForm({ ...brandingForm, logo_url: event.target.value })} />
                   <input type="file" accept="image/*" disabled={imgBusy} onChange={(event) => uploadImage(event.target.files?.[0], (url) => setBrandingForm((form) => ({ ...form, logo_url: url })))} />
                   {brandingForm.logo_url && <button type="button" className="act ghost" onClick={() => setBrandingForm({ ...brandingForm, logo_url: '' })}>Clear</button>}
@@ -1519,7 +1647,7 @@ export default function Admin({ token, onClose }) {
               </label>
               <label>Favicon
                 <div className="admin-image-field">
-                  {brandingForm.favicon_url && <img className="admin-image-preview" src={brandingForm.favicon_url} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} />}
+                  {brandingForm.favicon_url && <img className="admin-image-preview" src={mediaUrl(brandingForm.favicon_url)} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} />}
                   <input placeholder="Favicon URL (.png / .ico / .svg), or upload →" value={brandingForm.favicon_url} onChange={(event) => setBrandingForm({ ...brandingForm, favicon_url: event.target.value })} />
                   <input type="file" accept="image/*" disabled={imgBusy} onChange={(event) => uploadImage(event.target.files?.[0], (url) => setBrandingForm((form) => ({ ...form, favicon_url: url })))} />
                   {brandingForm.favicon_url && <button type="button" className="act ghost" onClick={() => setBrandingForm({ ...brandingForm, favicon_url: '' })}>Clear</button>}
@@ -1695,26 +1823,53 @@ export default function Admin({ token, onClose }) {
               <button type="button" disabled={!threadReply.trim()} onClick={replyThread}>Send</button>
             </div>
 
-            {thread.order && (
-              <div className="admin-form" style={{ marginTop: 16 }}>
-                <h4>Refund</h4>
-                <p className="muted">Paid {money(thread.order.total_cents)} · refunded {money(thread.order.refunded_amount_cents ?? 0)} · remaining {money(thread.order.total_cents - (thread.order.refunded_amount_cents ?? 0))}</p>
-                {(thread.order.items ?? []).map((item) => (
-                  <label key={item.id} className="admin-check">
-                    <input type="checkbox" checked={refundForm.items.includes(item.id)} onChange={(event) => setRefundForm((f) => ({ ...f, items: event.target.checked ? [...f.items, item.id] : f.items.filter((x) => x !== item.id) }))} />
-                    {item.product_name}{item.variant_label ? ` · ${item.variant_label}` : ''} × {item.quantity} — {money(item.line_total_cents)}
-                  </label>
-                ))}
-                <div className="admin-form-grid" style={{ marginTop: 10 }}>
-                  <label>Or amount ($)<input type="number" min="0" step="0.01" disabled={refundForm.items.length > 0} value={refundForm.amount} onChange={(event) => setRefundForm({ ...refundForm, amount: event.target.value })} /></label>
-                  <label>Reason<input value={refundForm.reason} onChange={(event) => setRefundForm({ ...refundForm, reason: event.target.value })} /></label>
+            {thread.order && (() => {
+              const o = thread.order
+              const remaining = Math.max(0, o.total_cents - (o.refunded_amount_cents ?? 0))
+              const stateOk = ['paid', 'partially_refunded', 'refund_pending'].includes(o.payment_status)
+              const canRefund = !!o.stripe_payment_intent_id && stateOk && remaining > 0
+              const blockReason = !canRefund && (
+                remaining <= 0 || o.payment_status === 'refunded'
+                  ? 'This order is fully refunded.'
+                  : !o.stripe_payment_intent_id
+                    ? 'No online payment to refund (cash on delivery). Use “Mark refunded” on the Orders tab.'
+                    : 'This order is not in a refundable state.'
+              )
+              const selectedSum = (o.items ?? []).filter((i) => refundForm.items.includes(i.id)).reduce((s, i) => s + i.line_total_cents, 0)
+              const bare = refundForm.items.length === 0 && !String(refundForm.amount).trim()
+              const amountCents = refundForm.items.length ? selectedSum : Math.round(Number(refundForm.amount || 0) * 100)
+              const amountOk = bare ? remaining > 0 : (amountCents > 0 && amountCents <= remaining)
+              return (
+                <div className="admin-form" style={{ marginTop: 16 }}>
+                  <h4>Refund</h4>
+                  <p className="muted">Paid {money(o.total_cents)} · refunded {money(o.refunded_amount_cents ?? 0)} · remaining {money(remaining)}</p>
+                  {canRefund ? (
+                    <>
+                      {(o.items ?? []).map((item) => (
+                        <label key={item.id} className="admin-check">
+                          <input type="checkbox" checked={refundForm.items.includes(item.id)} onChange={(event) => setRefundForm((f) => ({ ...f, items: event.target.checked ? [...f.items, item.id] : f.items.filter((x) => x !== item.id) }))} />
+                          {item.product_name}{item.variant_label ? ` · ${item.variant_label}` : ''} × {item.quantity} — {money(item.line_total_cents)}
+                        </label>
+                      ))}
+                      <div className="admin-form-grid" style={{ marginTop: 10 }}>
+                        <label>Or amount ($)<input type="number" min="0" step="0.01" disabled={refundForm.items.length > 0} value={refundForm.amount} onChange={(event) => setRefundForm({ ...refundForm, amount: event.target.value })} /></label>
+                        <label>Reason<input value={refundForm.reason} onChange={(event) => setRefundForm({ ...refundForm, reason: event.target.value })} /></label>
+                      </div>
+                      {refundForm.items.length > 0 && <p className="muted">Selected items: {money(selectedSum)}{selectedSum > remaining ? ' — more than the remaining balance' : ' (tax and fees are refunded separately)'}.</p>}
+                      <div className="admin-form-actions">
+                        <button className="act" type="button" disabled={busyId === thread.id || !amountOk} onClick={issueRefund}>Issue refund</button>
+                        {o.stripe_dashboard_url && <a className="act ghost" href={o.stripe_dashboard_url} target="_blank" rel="noreferrer">View in Stripe ↗</a>}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="muted">{blockReason}</p>
+                      {o.stripe_dashboard_url && <div className="admin-form-actions"><a className="act ghost" href={o.stripe_dashboard_url} target="_blank" rel="noreferrer">View in Stripe ↗</a></div>}
+                    </>
+                  )}
                 </div>
-                <div className="admin-form-actions">
-                  <button className="act" type="button" disabled={busyId === thread.id || (thread.order.total_cents - (thread.order.refunded_amount_cents ?? 0)) <= 0} onClick={issueRefund}>Issue refund</button>
-                  {thread.order.stripe_dashboard_url && <a className="act ghost" href={thread.order.stripe_dashboard_url} target="_blank" rel="noreferrer">View in Stripe ↗</a>}
-                </div>
-              </div>
-            )}
+              )
+            })()}
           </aside>
         </div>
       )}

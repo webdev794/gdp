@@ -79,6 +79,65 @@ class PageTest extends TestCase
             ->assertJsonValidationErrors(['slug']);
     }
 
+    public function test_admin_saves_structured_sections_and_the_public_page_returns_them(): void
+    {
+        $admin = User::factory()->create();
+        $admin->forceFill(['is_admin' => true])->save();
+        Sanctum::actingAs($admin);
+
+        $sections = [
+            ['type' => 'hero', 'image_url' => '/img/about.png', 'heading' => 'Our story', 'text' => 'Since 2020.', 'button_label' => 'Shop', 'button_url' => '/'],
+            ['type' => 'media_text', 'image_side' => 'right', 'heading' => 'Fresh daily', 'markdown' => 'We **restock** every morning.'],
+            ['type' => 'feature_grid', 'heading' => 'Why us', 'items' => [
+                ['title' => 'Fast', 'text' => '10 minutes'],
+                ['title' => 'Fair', 'text' => 'Honest prices'],
+            ]],
+            ['type' => 'stats', 'heading' => 'Numbers', 'items' => [['title' => '~10 min', 'text' => 'Average delivery']]],
+            ['type' => 'steps', 'heading' => 'How it works', 'items' => [['title' => 'Order', 'text' => 'Fill your basket']]],
+            ['type' => 'faq', 'heading' => 'Common questions', 'items' => [['title' => 'How fast?', 'text' => 'About **10 minutes**.']]],
+            ['type' => 'quote', 'text' => 'Faster than walking to the shop.', 'author' => 'Priya M.'],
+        ];
+
+        $page = $this->postJson('/api/admin/pages', ['title' => 'About us', 'banner_image' => '/img/pages/about-hero.jpg', 'sections' => $sections])
+            ->assertCreated()
+            ->assertJsonPath('data.banner_image', '/img/pages/about-hero.jpg')
+            ->assertJsonPath('data.sections.0.type', 'hero')
+            ->assertJsonPath('data.sections.2.items.1.title', 'Fair')
+            ->assertJsonPath('data.sections.3.type', 'stats')
+            ->assertJsonPath('data.sections.5.type', 'faq')
+            ->assertJsonPath('data.sections.6.author', 'Priya M.')
+            ->json('data');
+
+        $this->getJson("/api/pages/{$page['slug']}")
+            ->assertOk()
+            ->assertJsonPath('data.banner_image', '/img/pages/about-hero.jpg')
+            ->assertJsonPath('data.sections.1.image_side', 'right')
+            ->assertJsonPath('data.sections.1.heading', 'Fresh daily')
+            ->assertJsonPath('data.sections.4.items.0.title', 'Order')
+            ->assertJsonPath('data.sections.5.items.0.title', 'How fast?')
+            ->assertJsonCount(7, 'data.sections');
+    }
+
+    public function test_a_section_with_an_unknown_type_is_rejected(): void
+    {
+        $admin = User::factory()->create();
+        $admin->forceFill(['is_admin' => true])->save();
+        Sanctum::actingAs($admin);
+
+        $this->postJson('/api/admin/pages', ['title' => 'X', 'sections' => [['type' => 'raw_html', 'markdown' => '<script>alert(1)</script>']]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['sections.0.type']);
+    }
+
+    public function test_a_page_without_sections_still_returns_an_empty_array(): void
+    {
+        Page::create(['slug' => 'plain', 'title' => 'Plain', 'content' => 'body']);
+
+        $this->getJson('/api/pages/plain')
+            ->assertOk()
+            ->assertJsonPath('data.sections', []);
+    }
+
     public function test_non_admin_cannot_manage_pages(): void
     {
         $this->getJson('/api/admin/pages')->assertUnauthorized();
