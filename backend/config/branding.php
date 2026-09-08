@@ -13,6 +13,7 @@ return [
     'logo_url' => env('STORE_LOGO_URL', ''),
     'favicon_url' => env('STORE_FAVICON_URL', ''),
     'theme' => env('STORE_THEME', 'light'), // light | dark
+    'layout_width' => env('STORE_LAYOUT_WIDTH', 'boxed'), // boxed | full
 
     // Hex colours applied to storefront CSS custom properties.
     'color_brand' => env('STORE_COLOR_BRAND', '#1f7a3d'),   // --green

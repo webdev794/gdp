@@ -11,7 +11,7 @@ class ProductVariant extends Model
     use HasFactory;
 
     protected $fillable = [
-        'product_id', 'label', 'sku', 'price_cents',
+        'product_id', 'label', 'sku', 'price_cents', 'compare_at_price_cents',
         'inventory_quantity', 'image_url', 'sort_order', 'is_active',
     ];
 
@@ -19,6 +19,7 @@ class ProductVariant extends Model
     {
         return [
             'price_cents' => 'integer',
+            'compare_at_price_cents' => 'integer',
             'inventory_quantity' => 'integer',
             'sort_order' => 'integer',
             'is_active' => 'boolean',

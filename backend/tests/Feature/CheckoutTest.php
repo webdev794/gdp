@@ -132,6 +132,24 @@ class CheckoutTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_compare_at_price_is_shown_but_checkout_bills_the_selling_price(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->product(['price_cents' => 800, 'compare_at_price_cents' => 1000, 'inventory_quantity' => 5]);
+
+        $this->getJson('/api/products')
+            ->assertOk()
+            ->assertJsonPath('data.0.price_cents', 800)
+            ->assertJsonPath('data.0.compare_at_price_cents', 1000);
+
+        Sanctum::actingAs($user);
+        $this->postJson('/api/cart/items', ['product_id' => $product->id, 'quantity' => 2]);
+        $this->postJson('/api/checkout', ['address' => $this->address()])
+            ->assertCreated()
+            ->assertJsonPath('data.subtotal_cents', 1600) // 2 x 800, not the compare-at
+            ->assertJsonPath('data.items.0.unit_price_cents', 800);
+    }
+
     private function product(array $attributes = []): Product
     {
         $category = Category::factory()->create();

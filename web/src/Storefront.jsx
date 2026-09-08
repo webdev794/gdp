@@ -30,8 +30,9 @@ function price(cents) { return `$${(cents / 100).toFixed(2)}` }
 // product identity ("Large Spinach") show it alone; if it's just an attribute
 // ("Green", "1 kg") keep the product name for context ("Baby Spinach · Green").
 function variantTitle(productName, variantLabel) {
-  if (!variantLabel) return productName
-  const words = productName.toLowerCase().split(/\s+/).filter((w) => w.length > 2)
+  const name = productName ?? ''
+  if (!variantLabel) return name
+  const words = name.toLowerCase().split(/\s+/).filter((w) => w.length > 2)
   const label = variantLabel.toLowerCase()
   return words.some((w) => label.includes(w)) ? variantLabel : `${productName} · ${variantLabel}`
 }
@@ -46,11 +47,27 @@ const FOOTER_SOCIALS = [
 ]
 
 const CATEGORY_EMOJI = [
-  [/produce|fruit|veg|green/i, '\u{1F955}'], [/dairy|egg|milk|cheese/i, '\u{1F9C0}'],
-  [/bak|bread/i, '\u{1F35E}'], [/pantry|staple|grain|rice/i, '\u{1F33E}'],
-  [/snack/i, '\u{1F37F}'], [/drink|beverage|juice|water/i, '\u{1F9C3}'],
-  [/meat|poultry|chicken|fish|seafood/i, '\u{1F357}'], [/frozen/i, '\u{1F9CA}'],
-  [/clean|house|home/i, '\u{1F9FD}'], [/care|health|beauty|personal/i, '\u{1F9F4}'],
+  [/paan/i, '\u{1F343}'],
+  [/dairy|milk|cheese|bread.*egg|egg.*bread/i, '\u{1F95B}'],
+  [/fruit|vegetable|veg\b|produce/i, '\u{1F966}'],
+  [/cold ?drink|soft ?drink|juice|beverage|soda|water/i, '\u{1F964}'],
+  [/snack|munch|namkeen|chips|wafer/i, '\u{1F37F}'],
+  [/breakfast|instant|cereal|noodle|oats/i, '\u{1F963}'],
+  [/sweet|chocolate|candy|dessert|mithai/i, '\u{1F36B}'],
+  [/bak|biscuit|bread|cookie|rusk/i, '\u{1F35E}'],
+  [/tea|coffee|health ?drink/i, '\u{2615}'],
+  [/atta|rice|dal|pulse|flour|grain|pantry|staple/i, '\u{1F35A}'],
+  [/masala|spice|\boil\b|ghee|condiment/i, '\u{1F9C2}'],
+  [/sauce|spread|ketchup|\bjam\b|pickle|dip/i, '\u{1F96B}'],
+  [/chicken|meat|fish|seafood|poultry|mutton|egg/i, '\u{1F357}'],
+  [/organic|premium|healthy living/i, '\u{1F331}'],
+  [/baby/i, '\u{1F37C}'],
+  [/pharma|wellness|medicine|first aid/i, '\u{1F48A}'],
+  [/clean|detergent|repellent|disinfect/i, '\u{1F9FD}'],
+  [/pet\b|pet ?care/i, '\u{1F43E}'],
+  [/personal ?care|beauty|cosmetic|hygiene|skin|hair/i, '\u{1F9F4}'],
+  [/home|office|kitchen|household|lifestyle|stationery/i, '\u{1F3E0}'],
+  [/frozen/i, '\u{1F9CA}'],
 ]
 function categoryEmoji(name = '') { return (CATEGORY_EMOJI.find(([re]) => re.test(name)) ?? [null, '\u{1F6D2}'])[1] }
 
@@ -133,7 +150,9 @@ export default function Storefront() {
   const [cart, setCart] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('gdp_cart') ?? '[]')
-      return saved.map((item) => ({ variantId: null, ...item, key: item.key ?? `${item.id}:${item.variantId ?? ''}` }))
+      return (Array.isArray(saved) ? saved : [])
+        .filter((item) => item && item.id != null)
+        .map((item) => ({ variantId: null, name: '', price_cents: 0, compare_at_price_cents: null, quantity: 1, ...item, key: item.key ?? `${item.id}:${item.variantId ?? ''}` }))
     } catch { return [] }
   })
   const [pickedVariant, setPickedVariant] = useState({})
@@ -181,8 +200,11 @@ export default function Storefront() {
   const [serviceable, setServiceable] = useState(null)
   const [order, setOrder] = useState(null)
   const [currentUser, setCurrentUser] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('gdp_user') ?? 'null') }
-    catch { return null }
+    try {
+      const saved = JSON.parse(localStorage.getItem('gdp_user') ?? 'null')
+      // Ignore stale / malformed data left by an earlier version of the site.
+      return saved && typeof saved === 'object' && (saved.email || saved.id) ? saved : null
+    } catch { return null }
   })
   const [addresses, setAddresses] = useState([])
   const [selectedAddressId, setSelectedAddressId] = useState('')
@@ -256,6 +278,7 @@ export default function Storefront() {
     if (branding.color_accent) s.setProperty('--yellow', branding.color_accent)
     // The heading colour only overrides the theme default when it was actually customised.
     if (branding.color_heading && branding.color_heading.toLowerCase() !== '#18211c') s.setProperty('--ink', branding.color_heading)
+    s.setProperty('--shell-max', branding.layout_width === 'full' ? 'none' : '1280px')
     root.style.colorScheme = dark ? 'dark' : 'light'
 
     const name = branding.store_name || 'Grocerly'
@@ -405,6 +428,17 @@ export default function Storefront() {
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
   const cartTotal = cart.reduce((sum, item) => sum + item.price_cents * item.quantity, 0)
+  // Enrich each line with the current catalog price / discount, so the cart
+  // shows sale pricing even for items added before this data existed.
+  const cartView = useMemo(() => cart.map((item) => {
+    const p = products.find((x) => x.id === item.id)
+    const v = p && item.variantId ? (p.variants ?? []).find((x) => x.id === item.variantId) : null
+    const unit = v ? v.price_cents : (p ? p.price_cents : item.price_cents)
+    const regRaw = v ? v.compare_at_price_cents : (p ? p.compare_at_price_cents : item.compare_at_price_cents)
+    const reg = (regRaw != null && regRaw > unit) ? regRaw : null
+    return { ...item, unit, reg, onSale: reg != null, lineReg: (reg ?? unit) * item.quantity }
+  }), [cart, products])
+  const cartRegularTotal = cartView.reduce((sum, line) => sum + line.lineReg, 0)
   const cartQty = useMemo(() => Object.fromEntries(cart.map((item) => [item.key, item.quantity])), [cart])
 
   // Client-side estimate of the fee breakdown; the server total is authoritative.
@@ -443,6 +477,7 @@ export default function Storefront() {
         variantLabel: variant?.label ?? null,
         name: product.name,
         price_cents: variant?.price_cents ?? product.price_cents,
+        compare_at_price_cents: (variant ? variant.compare_at_price_cents : product.compare_at_price_cents) ?? null,
         image_url: variant?.image_url || product.image_url,
         quantity: 1,
       }]
@@ -894,7 +929,7 @@ export default function Storefront() {
             <button className="link-btn" type="button" onClick={() => { setOrdersOpen(true); setOrdersLoading(true); setOrders([]); setOrdersMessage('') }}>Orders</button>
             <button className="link-btn" type="button" onClick={() => openSupport()}>Help</button>
             {currentUser.is_admin && <button className="link-btn" type="button" onClick={() => setAdminOpen(true)}>Admin</button>}
-            <button className="link-btn" type="button" onClick={logout}>{currentUser.name.split(' ')[0]} &middot; Log out</button>
+            <button className="link-btn" type="button" onClick={logout}>{(currentUser.name || currentUser.email || 'Account').split(' ')[0]} &middot; Log out</button>
           </> : <button className="link-btn" type="button" onClick={() => { setAuthMode('login'); setAuthMessage('') }}>Sign in</button>}
           <button className="cart-pill" type="button" onClick={() => setCartOpen(true)} aria-label={`Cart with ${cartCount} items`}><span aria-hidden>&#128722;</span> <b>{cartCount}</b></button>
         </div>
@@ -915,40 +950,27 @@ export default function Storefront() {
 
       {loading ? <div className="empty-state">Loading…</div> : (!searching && !activeCategory) ? (
         <>
-          {banners.length > 0 && <section className="home-banners" aria-label="Offers">
-            <button className="home-hero" type="button" onClick={() => openHomeTarget(banners[0])}>
-              <img src={banners[0].image_url} alt={banners[0].headline || 'Featured offer'} loading="eager" />
-              {banners[0].headline && <span className="home-hero-cap">{banners[0].headline}</span>}
-            </button>
-            {banners.length > 1 && <div className="home-strip">
-              {banners.slice(1).map((banner) => <button className="home-strip-card" type="button" key={banner.id} onClick={() => openHomeTarget(banner)}>
-                <img src={banner.image_url} alt={banner.headline || 'Offer'} loading="lazy" />
-                {banner.headline && <span>{banner.headline}</span>}
+          {banners.length > 0 && (() => {
+            const heroBanners = banners.filter((b) => b.placement !== 'strip')
+            const stripBanners = banners.filter((b) => b.placement === 'strip')
+            return (heroBanners.length > 0 || stripBanners.length > 0) && <section className="home-banners" aria-label="Offers">
+              {heroBanners.map((banner) => <button className="home-hero" type="button" key={banner.id} onClick={() => openHomeTarget(banner)}>
+                <img src={banner.image_url} alt={banner.headline || 'Featured offer'} loading="eager" />
               </button>)}
-            </div>}
-          </section>}
+              {stripBanners.length > 0 && <div className="home-strip">
+                {stripBanners.map((banner) => <button className="home-strip-card" type="button" key={banner.id} onClick={() => openHomeTarget(banner)}>
+                  <img src={banner.image_url} alt={banner.headline || 'Offer'} loading="lazy" />
+                </button>)}
+              </div>}
+            </section>
+          })()}
 
-          {homeTileList.length > 0 && <section className="home-featured" aria-label="Featured categories">
-            {homeTileList.slice(0, 3).map((tile) => { const meta = tileMeta(tile); return <button className="feature-card" type="button" key={tile.id} onClick={() => openHomeTarget(tile)}>
-              <span className="feature-card-img" aria-hidden>{categoryEmoji(meta.label)}{tile.image_url && <img src={tile.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
-              <span className="feature-card-body">
-                <strong>{meta.label}</strong>
-                {meta.count != null && <span className="feature-card-count">{meta.count} items</span>}
-                {meta.samples.length > 0 && <span className="feature-card-list">{meta.samples.slice(0, 3).join(' · ')}</span>}
-              </span>
+          {homeTileList.length > 0 && <section className="home-cats" aria-label="Shop by category">
+            {homeTileList.map((tile) => { const meta = tileMeta(tile); return <button className="home-cat" type="button" key={tile.id} onClick={() => openHomeTarget(tile)}>
+              <span className="home-cat-img" aria-hidden>{categoryEmoji(meta.label)}{tile.image_url && <img src={tile.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
+              {!tile.image_url && <span className="home-cat-label">{meta.label}</span>}
             </button> })}
           </section>}
-
-          {homeTileList.length > 3 && <>
-            <div className="catalog-head"><h2>Shop by category</h2><span>{homeTileList.length} shortcuts</span></div>
-            <div className="cat-grid">
-              {homeTileList.slice(3).map((tile) => { const meta = tileMeta(tile); return <button className="cat-card" type="button" key={tile.id} onClick={() => openHomeTarget(tile)}>
-                <span className="cat-card-img" aria-hidden>{categoryEmoji(meta.label)}{tile.image_url && <img src={tile.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
-                <strong>{meta.label}</strong>
-                {meta.count != null && <span className="cat-card-count">{meta.count} items</span>}
-              </button> })}
-            </div>
-          </>}
         </>
       ) : (
         <>
@@ -962,23 +984,26 @@ export default function Storefront() {
             const hasVariants = variants.length > 0
             // The plain product is always the first ("base") option.
             const options = hasVariants
-              ? [{ id: '', label: product.name, price_cents: product.price_cents, inventory_quantity: product.inventory_quantity, image_url: product.image_url }, ...variants]
+              ? [{ id: '', label: product.name, price_cents: product.price_cents, compare_at_price_cents: product.compare_at_price_cents, inventory_quantity: product.inventory_quantity, image_url: product.image_url }, ...variants]
               : []
             const chosen = hasVariants
               ? (options.find((o) => String(o.id) === String(pickedVariant[product.id] ?? '')) ?? options[0])
               : null
             const variant = chosen && chosen.id !== '' ? chosen : null
             const unitPrice = chosen ? chosen.price_cents : product.price_cents
+            const compareAt = chosen ? chosen.compare_at_price_cents : product.compare_at_price_cents
+            const onSale = compareAt != null && compareAt > unitPrice
+            const pctOff = onSale ? Math.round((1 - unitPrice / compareAt) * 100) : 0
             const stock = chosen ? chosen.inventory_quantity : product.inventory_quantity
             const key = lineKey(product.id, variant?.id)
             const qty = cartQty[key] ?? 0
             const img = (chosen?.image_url) || product.image_url
             return <article className="pcard" key={product.id}>
-              <div className="pcard-img" aria-hidden>{productEmoji(product.name)}{img && <img src={img} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
+              <div className="pcard-img" aria-hidden>{onSale && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(product.name)}{img && <img src={img} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
               <p className="pcard-cat">{product.category?.name ?? 'Grocery'}</p>
               <h3>{variantTitle(product.name, variant?.label)}</h3>
               {hasVariants && <select className="pcard-variant" aria-label={`${product.name} option`} value={String(chosen?.id ?? '')} onChange={(event) => setPickedVariant((current) => ({ ...current, [product.id]: event.target.value }))}>{options.map((o) => <option key={o.id === '' ? 'base' : o.id} value={String(o.id)}>{o.label} — {price(o.price_cents)}</option>)}</select>}
-              <div className="pcard-foot"><strong>{price(unitPrice)}</strong>{qty === 0
+              <div className="pcard-foot"><span className="pcard-price">{onSale ? <><strong className="on-sale">{price(unitPrice)}</strong><s>{price(compareAt)}</s></> : <strong>{price(unitPrice)}</strong>}</span>{qty === 0
                 ? <button className="add-btn" type="button" disabled={stock === 0} onClick={() => add(product, variant)}>{stock === 0 ? 'OUT' : 'ADD'}</button>
                 : <span className="stepper"><button type="button" aria-label="Remove one" onClick={() => updateQuantity(key, -1)}>&minus;</button><b>{qty}</b><button type="button" aria-label="Add one" disabled={stock != null && qty >= stock} onClick={() => updateQuantity(key, 1)}>+</button></span>}</div>
             </article>
@@ -1020,7 +1045,7 @@ export default function Storefront() {
       </footer>
     </main>
     <aside className="cart-tray" aria-live="polite"><div><strong>{cartCount ? `${cartCount} ${cartCount === 1 ? 'item' : 'items'} in your cart` : 'Your cart is ready'}</strong><span>{cartCount ? `${price(cartTotal)} subtotal` : 'Add something delicious'}</span></div><button type="button" onClick={() => setCartOpen(true)}>View cart <span>-&gt;</span></button></aside>
-    {cartOpen && <div className="overlay" role="presentation" onClick={() => setCartOpen(false)}><aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" onClick={(event) => event.stopPropagation()}><div className="drawer-header"><div><p className="eyebrow">Ready when you are</p><h2 id="cart-title">Your cart</h2></div><button className="close-button" type="button" onClick={() => setCartOpen(false)} aria-label="Close cart">x</button></div>{cart.length ? <><div className="drawer-items">{cart.map((item) => <div className="drawer-item" key={item.key}><div className="mini-visual" aria-hidden>{productEmoji(item.name)}</div><div className="drawer-item-copy"><strong>{variantTitle(item.name, item.variantLabel)}</strong><span>{price(item.price_cents)}</span></div><div className="quantity"><button type="button" onClick={() => updateQuantity(item.key, -1)}>-</button><span>{item.quantity}</span><button type="button" onClick={() => updateQuantity(item.key, 1)}>+</button></div></div>)}</div><div className="drawer-summary"><div><span>Subtotal</span><span>{price(est.sub)}</span></div><div><span>Delivery</span><span>{est.delivery === 0 ? 'FREE' : price(est.delivery)}</span></div><div><span>Handling</span><span>{price(est.handling)}</span></div>{est.smallCart > 0 && <div><span>Small cart fee</span><span>{price(est.smallCart)}</span></div>}<div><span>Tax</span><span>{price(est.tax)}</span></div><div className="drawer-summary-total"><strong>Estimated total</strong><strong>{price(est.total)}</strong></div></div>{fees.delivery_mode === 'distance' && serviceable?.delivery_fee_cents == null && <p className="drawer-nudge">Delivery fee is based on distance — set your location for the exact amount.</p>}{est.toFreeDelivery > 0 && <p className="drawer-nudge">Add {price(est.toFreeDelivery)} more for free delivery.</p>}{est.toNoSmallCart > 0 && <p className="drawer-nudge">Add {price(est.toNoSmallCart)} more to drop the {price(est.smallCart)} small-cart fee.</p>}<button className="checkout-button" type="button" onClick={() => { setCartOpen(false); setCheckoutOpen(true); setCheckoutMessage('') }}>Continue to checkout <span>-&gt;</span></button></> : <div className="empty-cart"><div className="empty-cart-mark">+</div><h3>Your cart is empty</h3><p>Find something good in the essentials below.</p><button type="button" onClick={() => setCartOpen(false)}>Keep shopping</button></div>}</aside></div>}
+    {cartOpen && <div className="overlay" role="presentation" onClick={() => setCartOpen(false)}><aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" onClick={(event) => event.stopPropagation()}><div className="drawer-header"><div><p className="eyebrow">Ready when you are</p><h2 id="cart-title">Your cart</h2></div><button className="close-button" type="button" onClick={() => setCartOpen(false)} aria-label="Close cart">x</button></div>{cart.length ? <><div className="drawer-items">{cartView.map((item) => <div className="drawer-item" key={item.key}><div className="mini-visual" aria-hidden>{productEmoji(item.name)}{item.image_url && <img src={item.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div><div className="drawer-item-copy"><strong>{variantTitle(item.name, item.variantLabel)}</strong><span>{item.onSale ? <><strong className="on-sale">{price(item.unit)}</strong> <s>{price(item.reg)}</s></> : price(item.unit)}{item.quantity > 1 && <> &middot; {item.quantity} pcs = {item.onSale ? <><strong className="on-sale">{price(item.unit * item.quantity)}</strong> <s>{price(item.lineReg)}</s></> : price(item.unit * item.quantity)}</>}</span></div><div className="quantity"><button type="button" onClick={() => updateQuantity(item.key, -1)}>-</button><span>{item.quantity}</span><button type="button" onClick={() => updateQuantity(item.key, 1)}>+</button></div></div>)}</div><div className="drawer-summary"><div><span>Subtotal</span><span>{cartRegularTotal > est.sub ? <><s className="on-sale">{price(cartRegularTotal)}</s> {price(est.sub)}</> : price(est.sub)}</span></div><div><span>Delivery</span><span>{est.delivery === 0 ? 'FREE' : price(est.delivery)}</span></div><div><span>Handling</span><span>{price(est.handling)}</span></div>{est.smallCart > 0 && <div><span>Small cart fee</span><span>{price(est.smallCart)}</span></div>}<div><span>Tax</span><span>{price(est.tax)}</span></div><div className="drawer-summary-total"><strong>Estimated total</strong><strong>{price(est.total)}</strong></div></div>{fees.delivery_mode === 'distance' && serviceable?.delivery_fee_cents == null && <p className="drawer-nudge">Delivery fee is based on distance — set your location for the exact amount.</p>}{est.toFreeDelivery > 0 && <p className="drawer-nudge">Add {price(est.toFreeDelivery)} more for free delivery.</p>}{est.toNoSmallCart > 0 && <p className="drawer-nudge">Add {price(est.toNoSmallCart)} more to drop the {price(est.smallCart)} small-cart fee.</p>}<button className="checkout-button" type="button" onClick={() => { setCartOpen(false); setCheckoutOpen(true); setCheckoutMessage('') }}>Continue to checkout <span>-&gt;</span></button></> : <div className="empty-cart"><div className="empty-cart-mark">+</div><h3>Your cart is empty</h3><p>Find something good in the essentials below.</p><button type="button" onClick={() => setCartOpen(false)}>Keep shopping</button></div>}</aside></div>}
     {authMode && <div className="overlay" role="presentation" onClick={() => { setAuthMode(null); setOtpStage(null) }}><div className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => { setAuthMode(null); setOtpStage(null) }} aria-label="Close authentication">x</button><p className="eyebrow">A better grocery run</p>{otpStage ? <><h2 id="auth-title">Enter your code</h2><p className="auth-intro">We emailed a 6-digit code to {otpStage.email}. It expires in 10 minutes.</p><form onSubmit={submitOtp}><input required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength="8" placeholder="6-digit code" value={otpCode} onChange={(event) => setOtpCode(event.target.value.replace(/[^0-9]/g, ''))} /><button className="checkout-button" type="submit">Verify <span>-&gt;</span></button></form>{authMessage && <p className="auth-message">{authMessage}</p>}<button className="switch-auth" type="button" onClick={resendOtp}>Resend code</button><button className="switch-auth" type="button" onClick={() => { setOtpStage(null); setAuthMessage('') }}>Use a different email</button></> : <><h2 id="auth-title">Sign in or sign up</h2><p className="auth-intro">Enter your email and we&rsquo;ll send a 6-digit code. No password needed &mdash; if you&rsquo;re new, your account is created automatically.</p><form onSubmit={submitAuth}><input required type="email" autoComplete="email" placeholder="Email address" value={authForm.email} onChange={(event) => setAuthForm({ ...authForm, email: event.target.value })} /><button className="checkout-button" type="submit">Continue <span>-&gt;</span></button></form>{authMessage && <p className="auth-message">{authMessage}</p>}</>}</div></div>}
     {checkoutOpen && <div className="overlay" role="presentation" onClick={() => setCheckoutOpen(false)}><div className="auth-modal checkout-modal" role="dialog" aria-modal="true" aria-labelledby="checkout-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setCheckoutOpen(false)} aria-label="Close checkout">x</button><p className="eyebrow">Almost there</p><h2 id="checkout-title">{deliveryMode === 'form' ? 'Where should we deliver?' : 'Confirm delivery address'}</h2><p className="auth-intro">Your total will be calculated and confirmed securely by the server.</p>{deliveryMode === 'location' ? <><div className="loc-current"><strong>Deliver to</strong> {location.full || location.label}</div><input placeholder="Flat / house / building &amp; street" value={checkoutForm.line1} onChange={(event) => setCheckoutForm({ ...checkoutForm, line1: event.target.value })} /><div className="checkout-links"><button type="button" className="switch-auth" onClick={() => { setCheckoutOpen(false); setLocationOpen(true) }}>Change location</button><button type="button" className="switch-auth" onClick={() => setEditAddress(true)}>Edit full address</button></div></> : deliveryMode === 'saved' ? <><div className="loc-current"><strong>Deliver to</strong> {defaultAddress.line1}, {defaultAddress.city} {defaultAddress.state} {defaultAddress.postal_code}</div>{addresses.length > 1 && <label className="address-picker">Choose address<select value={selectedAddressId || String(defaultAddress.id)} onChange={(event) => setSelectedAddressId(event.target.value)}>{addresses.map((address) => <option key={address.id} value={address.id}>{address.label} - {address.line1}, {address.city}</option>)}</select></label>}<div className="checkout-links"><button type="button" className="switch-auth" onClick={() => { setCheckoutOpen(false); setLocationOpen(true) }}>Change location</button><button type="button" className="switch-auth" onClick={() => { setSelectedAddressId(''); setEditAddress(true) }}>Enter a new address</button></div></> : <>{addresses.length > 0 && <label className="address-picker">Saved address<select value={selectedAddressId} onChange={(event) => setSelectedAddressId(event.target.value)}>{addresses.map((address) => <option key={address.id} value={address.id}>{address.label} - {address.line1}, {address.city}</option>)}<option value="">Use a new address</option></select></label>}<form onSubmit={submitCheckout}>{!selectedAddressId && <><input required placeholder="Full name" value={checkoutForm.name} onChange={(event) => setCheckoutForm({ ...checkoutForm, name: event.target.value })} /><input required placeholder="Street address" value={checkoutForm.line1} onChange={(event) => setCheckoutForm({ ...checkoutForm, line1: event.target.value })} /><div className="form-row"><input required placeholder="City" value={checkoutForm.city} onChange={(event) => setCheckoutForm({ ...checkoutForm, city: event.target.value })} /><input required maxLength="60" placeholder="State / region" value={checkoutForm.state} onChange={(event) => setCheckoutForm({ ...checkoutForm, state: event.target.value })} /></div><input required maxLength="12" placeholder="Postal / ZIP code" value={checkoutForm.postal_code} onChange={(event) => setCheckoutForm({ ...checkoutForm, postal_code: event.target.value })} /></>}</form></>}<label className="checkout-phone"><span>Phone number{currentUser?.phone ? '' : ' — the delivery rider may call you'}</span><input type="tel" required maxLength="32" placeholder="e.g. +1 555 987 6543" value={phone} onChange={(event) => setPhone(event.target.value)} /></label><textarea className="delivery-note" rows="2" maxLength="500" placeholder="Delivery instructions (optional) — e.g. leave at the gate, call on arrival" value={deliveryNote} onChange={(event) => setDeliveryNote(event.target.value)} />{codEnabled && <><p className="pay-methods-label">How would you like to pay?</p><div className="pay-methods" role="radiogroup" aria-label="Payment method"><button type="button" role="radio" aria-checked={paymentMethod === 'card'} className={paymentMethod === 'card' ? 'pay-method active' : 'pay-method'} onClick={() => setPaymentMethod('card')}><strong>Pay online</strong><span>Card via Stripe</span></button><button type="button" role="radio" aria-checked={paymentMethod === 'cod'} className={paymentMethod === 'cod' ? 'pay-method active' : 'pay-method'} onClick={() => setPaymentMethod('cod')}><strong>Cash on delivery</strong><span>Pay when it arrives</span></button></div></>}<button className="checkout-button" type="button" onClick={submitCheckout} disabled={blockCheckout}>{codEnabled && paymentMethod === 'cod' ? 'Place order' : 'Review order'} <span>-&gt;</span></button>{blockCheckout && <p className="auth-message">{outOfArea && deliveryMode === 'location' ? UNSERVICEABLE_MSG : 'Add a phone number so your delivery rider can reach you.'}</p>}{checkoutMessage && <p className="auth-message">{checkoutMessage}</p>}</div></div>}
     {order?.clientSecret && <div className="overlay" role="presentation" onClick={() => setOrder(null)}><div className="auth-modal checkout-modal payment-modal" role="dialog" aria-modal="true" aria-labelledby="payment-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setOrder(null)} aria-label="Close payment">x</button><p className="eyebrow">Secure payment</p><h2 id="payment-title">Finish your order.</h2><p className="auth-intro">Order #{order.id} · {price(order.total_cents)} USD</p><Elements stripe={stripePromise}><PaymentForm clientSecret={order.clientSecret} onComplete={finalizePayment} /></Elements>{codEnabled && <button className="switch-auth" type="button" onClick={switchToCashOnDelivery}>Pay with cash on delivery instead</button>}<button className="switch-auth" type="button" onClick={() => setOrder(null)}>Pay later from Order history</button>{order.switchError && <p className="auth-message">{order.switchError}</p>}</div></div>}

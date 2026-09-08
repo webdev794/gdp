@@ -36,102 +36,108 @@ class DatabaseSeeder extends Seeder
         $img = fn (?string $ingredient) => $ingredient === null ? null
             : 'https://www.themealdb.com/images/ingredients/' . rawurlencode($ingredient) . '-Medium.png';
 
-        // [category name, category image, [ [product, sku, price_cents, image], ... ] ]
-        // The first entries are the "featured" categories on the homepage; the
-        // rest fill the category grid. SKUs 001-015 keep their original values.
+        // [display name, stable slug, category image (null = emoji tile), [ [product, sku, price_cents, image], ... ] ]
+        // Names mirror Blinkit; the slug never changes so re-seeding just refreshes
+        // the name on the existing row. Tiles fall back to a per-category emoji;
+        // upload real artwork per tile in Admin -> Homepage -> Category tiles.
+        // SKUs 001-015 unchanged.
         $catalog = [
-            ['Fresh Produce', 'Tomato', [
+            ['Fruits & Vegetables', 'fresh-produce', null, [
                 ['Organic Bananas', 'GDP-PROD-001', 299, 'Banana'],
                 ['Gala Apples', 'GDP-PROD-002', 449, 'Apples'],
                 ['Baby Spinach', 'GDP-PROD-007', 349, 'Spinach'],
                 ['Roma Tomatoes', 'GDP-PROD-008', 279, 'Tomato'],
                 ['Hass Avocados', 'GDP-PROD-009', 599, 'Avocado'],
             ]],
-            ['Dairy and Eggs', 'Milk', [
+            ['Dairy, Bread & Eggs', 'dairy-and-eggs', null, [
                 ['Large Brown Eggs', 'GDP-PROD-003', 599, 'Egg'],
                 ['Whole Milk', 'GDP-PROD-004', 429, 'Milk'],
                 ['Greek Yogurt', 'GDP-PROD-010', 519, 'Yogurt'],
                 ['Sharp Cheddar', 'GDP-PROD-011', 649, 'Cheddar Cheese'],
                 ['Unsalted Butter', 'GDP-PROD-012', 399, 'Butter'],
             ]],
-            ['Pantry Staples', 'Rice', [
+            ['Atta, Rice & Dal', 'pantry-staples', null, [
                 ['Long Grain Rice', 'GDP-PROD-005', 699, 'Rice'],
                 ['Pasta', 'GDP-PROD-006', 249, 'Spaghetti'],
                 ['Extra Virgin Olive Oil', 'GDP-PROD-013', 899, 'Olive Oil'],
                 ['Rolled Oats', 'GDP-PROD-014', 459, 'Oats'],
                 ['Peanut Butter', 'GDP-PROD-015', 549, 'Peanut Butter'],
             ]],
-            ['Snacks and Munchies', null, [
+            ['Snacks & Munchies', 'snacks-and-munchies', null, [
                 ['Salted Potato Chips', 'GDP-PROD-016', 199, null],
                 ['Butter Popcorn', 'GDP-PROD-017', 249, null],
                 ['Roasted Trail Mix', 'GDP-PROD-018', 549, null],
             ]],
-            ['Beverages', null, [
+            ['Cold Drinks & Juices', 'beverages', null, [
                 ['Orange Juice', 'GDP-PROD-019', 399, 'Orange'],
                 ['Sparkling Water', 'GDP-PROD-020', 149, 'Water'],
                 ['Cola 6-Pack', 'GDP-PROD-021', 499, null],
             ]],
-            ['Bakery and Breads', null, [
+            ['Bakery & Biscuits', 'bakery-and-breads', null, [
                 ['Sourdough Loaf', 'GDP-PROD-022', 449, 'Bread'],
                 ['Burger Buns', 'GDP-PROD-023', 279, null],
                 ['Butter Croissants', 'GDP-PROD-024', 399, null],
             ]],
-            ['Breakfast and Cereal', 'Oats', [
+            ['Breakfast & Instant Food', 'breakfast-and-cereal', null, [
                 ['Corn Flakes', 'GDP-PROD-025', 429, null],
                 ['Honey Granola', 'GDP-PROD-026', 549, null],
                 ['Pancake Mix', 'GDP-PROD-027', 389, 'Flour'],
             ]],
-            ['Sweets and Chocolate', null, [
+            ['Sweet Tooth', 'sweets-and-chocolate', null, [
                 ['Dark Chocolate Bar', 'GDP-PROD-028', 299, null],
                 ['Choc Chip Cookies', 'GDP-PROD-029', 349, null],
                 ['Gummy Bears', 'GDP-PROD-030', 199, null],
             ]],
-            ['Meat and Seafood', null, [
+            ['Chicken, Meat & Fish', 'meat-and-seafood', null, [
                 ['Chicken Breast', 'GDP-PROD-031', 899, 'Chicken'],
                 ['Salmon Fillet', 'GDP-PROD-032', 1299, 'Salmon'],
                 ['Pork Sausages', 'GDP-PROD-033', 649, null],
             ]],
-            ['Frozen Foods', null, [
+            ['Frozen Foods', 'frozen-foods', null, [
                 ['Frozen Peas', 'GDP-PROD-034', 249, null],
                 ['Vanilla Ice Cream', 'GDP-PROD-035', 549, null],
                 ['Crispy Fries', 'GDP-PROD-036', 399, null],
             ]],
-            ['Tea and Coffee', null, [
+            ['Tea, Coffee & Health Drink', 'tea-and-coffee', null, [
                 ['Ground Coffee', 'GDP-PROD-037', 899, 'Coffee'],
                 ['Green Tea Bags', 'GDP-PROD-038', 449, null],
                 ['Masala Chai', 'GDP-PROD-039', 399, null],
             ]],
-            ['Sauces and Spreads', null, [
+            ['Sauces & Spreads', 'sauces-and-spreads', null, [
                 ['Tomato Ketchup', 'GDP-PROD-040', 249, null],
                 ['Mayonnaise', 'GDP-PROD-041', 329, null],
                 ['Strawberry Jam', 'GDP-PROD-042', 299, null],
             ]],
-            ['Cleaning Essentials', null, [
+            ['Cleaning Essentials', 'cleaning-essentials', null, [
                 ['Dish Soap', 'GDP-PROD-043', 279, null],
                 ['Laundry Detergent', 'GDP-PROD-044', 899, null],
                 ['Surface Cleaner', 'GDP-PROD-045', 349, null],
             ]],
-            ['Personal Care', null, [
+            ['Personal Care', 'personal-care', null, [
                 ['Shampoo', 'GDP-PROD-046', 549, null],
                 ['Toothpaste', 'GDP-PROD-047', 199, null],
                 ['Hand Soap', 'GDP-PROD-048', 249, null],
             ]],
-            ['Baby Care', null, [
+            ['Baby Care', 'baby-care', null, [
                 ['Diapers Value Pack', 'GDP-PROD-049', 1499, null],
                 ['Baby Wipes', 'GDP-PROD-050', 299, null],
                 ['Baby Lotion', 'GDP-PROD-051', 449, null],
             ]],
-            ['Home and Kitchen', null, [
+            ['Home & Office', 'home-and-kitchen', null, [
                 ['Paper Towels', 'GDP-PROD-052', 399, null],
                 ['Trash Bags', 'GDP-PROD-053', 349, null],
                 ['Aluminium Foil', 'GDP-PROD-054', 299, null],
             ]],
+            ['Paan Corner', 'paan-corner', null, []],
+            ['Pharma & Wellness', 'pharma-wellness', null, []],
+            ['Organic & Premium', 'organic-premium', null, []],
+            ['Pet Care', 'pet-care', null, []],
         ];
 
-        foreach ($catalog as $index => [$name, $categoryImage, $products]) {
+        foreach ($catalog as $index => [$name, $slug, $categoryImage, $products]) {
             $category = Category::updateOrCreate(
-                ['slug' => \Illuminate\Support\Str::slug($name)],
-                ['name' => $name, 'sort_order' => $index + 1, 'image_url' => $img($categoryImage)]
+                ['slug' => $slug],
+                ['name' => $name, 'sort_order' => $index + 1, 'image_url' => "/img/cat/{$slug}.png"]
             );
 
             foreach ($products as [$productName, $sku, $priceCents, $productImage]) {
@@ -148,6 +154,10 @@ class DatabaseSeeder extends Seeder
                 );
             }
         }
+
+        // A few demo items go "on sale" so the strike-through pricing is visible.
+        Product::whereIn('sku', ['GDP-PROD-002', 'GDP-PROD-010', 'GDP-PROD-028', 'GDP-PROD-044'])->get()
+            ->each(fn (Product $p) => $p->update(['compare_at_price_cents' => (int) round($p->price_cents / 0.8)]));
 
         $this->seedVariants();
         $this->seedBanners();
@@ -211,21 +221,31 @@ class DatabaseSeeder extends Seeder
         $banners = [
             [
                 'image_url' => 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=2700/layout-engine/2026-01/Frame-1437256605-2-2.jpg',
-                'headline' => 'Fresh fruits & vegetables, in minutes',
+                'headline' => null,
                 'category_slug' => 'fresh-produce',
+                'placement' => 'hero',
                 'sort_order' => 1,
             ],
             [
                 'image_url' => 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=720/layout-engine/2023-07/pharmacy-WEB.jpg',
-                'headline' => 'Everyday essentials',
+                'headline' => null,
                 'category_slug' => 'personal-care',
+                'placement' => 'strip',
                 'sort_order' => 2,
             ],
             [
-                'image_url' => 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=720/layout-engine/2026-01/baby_crystal_WEB-1.png',
-                'headline' => 'Baby care picks',
-                'category_slug' => 'baby-care',
+                'image_url' => 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=720/layout-engine/2026-01/pet_crystal_WEB-1.png',
+                'headline' => null,
+                'category_slug' => 'home-and-kitchen',
+                'placement' => 'strip',
                 'sort_order' => 3,
+            ],
+            [
+                'image_url' => 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=720/layout-engine/2026-01/baby_crystal_WEB-1.png',
+                'headline' => null,
+                'category_slug' => 'baby-care',
+                'placement' => 'strip',
+                'sort_order' => 4,
             ],
         ];
 

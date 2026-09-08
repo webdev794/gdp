@@ -18,6 +18,7 @@ class Product extends Model
         'description',
         'sku',
         'price_cents',
+        'compare_at_price_cents',
         'inventory_quantity',
         'image_url',
         'is_active',
@@ -27,6 +28,7 @@ class Product extends Model
     {
         return [
             'price_cents' => 'integer',
+            'compare_at_price_cents' => 'integer',
             'inventory_quantity' => 'integer',
             'is_active' => 'boolean',
         ];

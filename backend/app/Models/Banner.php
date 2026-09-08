@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Banner extends Model
 {
     protected $fillable = [
-        'image_url', 'headline', 'category_slug', 'link_url', 'sort_order', 'is_active',
+        'image_url', 'headline', 'category_slug', 'link_url', 'placement', 'sort_order', 'is_active',
     ];
 
     protected function casts(): array

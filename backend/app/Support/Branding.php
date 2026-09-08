@@ -30,6 +30,10 @@ class Branding
             ? $branding['theme']
             : 'light';
 
+        $branding['layout_width'] = in_array($branding['layout_width'] ?? null, ['boxed', 'full'], true)
+            ? $branding['layout_width']
+            : 'boxed';
+
         foreach (self::COLORS as $key) {
             if (! preg_match('/^#[0-9a-fA-F]{6}$/', (string) ($branding[$key] ?? ''))) {
                 $branding[$key] = $defaults[$key];

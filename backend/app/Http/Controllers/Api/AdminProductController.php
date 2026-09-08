@@ -93,6 +93,7 @@ class AdminProductController extends Controller
             'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
             'sku' => [$product ? 'sometimes' : 'required', 'string', 'max:60', $unique],
             'price_cents' => [$product ? 'sometimes' : 'required', 'integer', 'min:0'],
+            'compare_at_price_cents' => ['sometimes', 'nullable', 'integer', 'min:0'],
             'inventory_quantity' => ['sometimes', 'integer', 'min:0'],
             'image_url' => ['sometimes', 'nullable', 'url', 'max:500'],
             'is_active' => ['sometimes', 'boolean'],
@@ -103,6 +104,7 @@ class AdminProductController extends Controller
             'variants.*.label' => ['required_with:variants', 'string', 'max:80'],
             'variants.*.sku' => ['required_with:variants', 'string', 'max:60'],
             'variants.*.price_cents' => ['required_with:variants', 'integer', 'min:0'],
+            'variants.*.compare_at_price_cents' => ['sometimes', 'nullable', 'integer', 'min:0'],
             'variants.*.inventory_quantity' => ['sometimes', 'integer', 'min:0'],
             'variants.*.image_url' => ['sometimes', 'nullable', 'url', 'max:500'],
             'variants.*.sort_order' => ['sometimes', 'integer', 'min:0'],
@@ -157,10 +159,13 @@ class AdminProductController extends Controller
                 abort(422, "The variant SKU \"{$row['sku']}\" is already in use.");
             }
 
+            $compareAt = $row['compare_at_price_cents'] ?? null;
+
             $attributes = [
                 'label' => $row['label'],
                 'sku' => $row['sku'],
                 'price_cents' => (int) $row['price_cents'],
+                'compare_at_price_cents' => ($compareAt === null || $compareAt === '') ? null : (int) $compareAt,
                 'inventory_quantity' => (int) ($row['inventory_quantity'] ?? 0),
                 'image_url' => $row['image_url'] ?? null,
                 'sort_order' => (int) ($row['sort_order'] ?? $index),

@@ -47,6 +47,7 @@ class AdminBannerController extends Controller
             'headline' => ['sometimes', 'nullable', 'string', 'max:120'],
             'category_slug' => ['sometimes', 'nullable', 'string', 'max:255', 'exists:categories,slug'],
             'link_url' => ['sometimes', 'nullable', 'string', 'max:2048'],
+            'placement' => ['sometimes', 'in:hero,strip'],
             'sort_order' => ['sometimes', 'integer', 'min:0', 'max:9999'],
             'is_active' => ['sometimes', 'boolean'],
         ]);

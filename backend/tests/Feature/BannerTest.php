@@ -39,12 +39,19 @@ class BannerTest extends TestCase
             'image_url' => 'https://x/promo.jpg',
             'headline' => 'Big weekend sale',
             'category_slug' => 'snacks',
+            'placement' => 'strip',
             'sort_order' => 2,
-        ])->assertCreated()->json('data.id');
+        ])->assertCreated()
+            ->assertJsonPath('data.placement', 'strip')
+            ->json('data.id');
 
-        $this->patchJson("/api/admin/banners/{$id}", ['is_active' => false])
+        $this->postJson('/api/admin/banners', ['image_url' => 'https://x/b.jpg', 'placement' => 'sidebar'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['placement']);
+
+        $this->patchJson("/api/admin/banners/{$id}", ['is_active' => false, 'placement' => 'hero'])
             ->assertOk()
-            ->assertJsonPath('data.is_active', false);
+            ->assertJsonPath('data.is_active', false)
+            ->assertJsonPath('data.placement', 'hero');
 
         $this->deleteJson("/api/admin/banners/{$id}")->assertNoContent();
         $this->assertDatabaseCount('banners', 0);

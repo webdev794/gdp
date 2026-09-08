@@ -36,6 +36,7 @@ class StoreSettingsTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.branding.store_name', 'Grocerly')
             ->assertJsonPath('data.branding.theme', 'light')
+            ->assertJsonPath('data.branding.layout_width', 'boxed')
             ->assertJsonPath('data.branding.color_brand', '#1f7a3d');
 
         Sanctum::actingAs($this->admin());
@@ -43,11 +44,13 @@ class StoreSettingsTest extends TestCase
         $this->patchJson('/api/admin/settings', [
             'store_name' => 'FreshCart',
             'theme' => 'dark',
+            'layout_width' => 'full',
             'color_brand' => '#0055ff',
             'logo_url' => 'https://cdn.example/logo.png',
         ])->assertOk()
             ->assertJsonPath('data.branding.store_name', 'FreshCart')
             ->assertJsonPath('data.branding.theme', 'dark')
+            ->assertJsonPath('data.branding.layout_width', 'full')
             ->assertJsonPath('data.branding.color_brand', '#0055ff');
 
         $this->getJson('/api/config')

@@ -48,6 +48,7 @@ class AdminSettingController extends Controller
         'logo_url' => ['sometimes', 'nullable', 'string', 'max:2048'],
         'favicon_url' => ['sometimes', 'nullable', 'string', 'max:2048'],
         'theme' => ['sometimes', 'in:light,dark'],
+        'layout_width' => ['sometimes', 'in:boxed,full'],
         'color_brand' => ['sometimes', 'regex:/^#[0-9a-fA-F]{6}$/'],
         'color_accent' => ['sometimes', 'regex:/^#[0-9a-fA-F]{6}$/'],
         'color_heading' => ['sometimes', 'regex:/^#[0-9a-fA-F]{6}$/'],

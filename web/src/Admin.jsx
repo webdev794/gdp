@@ -42,7 +42,7 @@ const TAB_ICONS = {
   customers: '\u{1F465}', stores: '\u{1F3EC}', branding: '\u{1F3A8}', secure: '\u{1F510}',
   homepage: '\u{1F5BC}️',
 }
-const EMPTY_BRANDING = { store_name: '', tagline: '', logo_url: '', favicon_url: '', theme: 'light', color_brand: '#1f7a3d', color_accent: '#ffd23f', color_heading: '#18211c' }
+const EMPTY_BRANDING = { store_name: '', tagline: '', logo_url: '', favicon_url: '', theme: 'light', layout_width: 'boxed', color_brand: '#1f7a3d', color_accent: '#ffd23f', color_heading: '#18211c' }
 const SOCIAL_PLATFORMS = [['facebook', 'Facebook'], ['x', 'X / Twitter'], ['instagram', 'Instagram'], ['linkedin', 'LinkedIn'], ['youtube', 'YouTube']]
 const EMPTY_FOOTER = { copyright: '© {year} Grocerly', note: '', app_store_url: '', play_store_url: '', socials: { facebook: '', x: '', instagram: '', linkedin: '', youtube: '' }, links: [] }
 
@@ -51,16 +51,17 @@ const ISSUE_LABELS = {
   not_delivered: 'Not delivered', payment_issue: 'Payment issue', other: 'Other',
 }
 
-const EMPTY_PRODUCT = { category_id: '', name: '', sku: '', price: '', inventory_quantity: 0, description: '', image_url: '', is_active: true, variants: [] }
-const EMPTY_VARIANT = { label: '', sku: '', price: '', stock: 0, image_url: '', is_active: true }
+const EMPTY_PRODUCT = { category_id: '', name: '', sku: '', price: '', compare_at: '', inventory_quantity: 0, description: '', image_url: '', is_active: true, variants: [] }
+const EMPTY_VARIANT = { label: '', sku: '', price: '', compare_at: '', stock: 0, image_url: '', is_active: true }
+const dollarsOrBlank = (cents) => (cents != null ? (cents / 100).toFixed(2) : '')
 
 const variantRowsFrom = (product) => (product.variants ?? []).map((v) => ({
-  id: v.id, label: v.label, sku: v.sku, price: (v.price_cents / 100).toFixed(2),
+  id: v.id, label: v.label, sku: v.sku, price: (v.price_cents / 100).toFixed(2), compare_at: dollarsOrBlank(v.compare_at_price_cents),
   stock: v.inventory_quantity, image_url: v.image_url ?? '', is_active: v.is_active,
 }))
 const EMPTY_CATEGORY = { name: '', slug: '', sort_order: 0, is_active: true }
 const EMPTY_STORE = { name: '', line1: '', line2: '', city: '', state: '', postal_code: '', latitude: '', longitude: '', delivery_radius_km: 5, is_active: true }
-const EMPTY_BANNER = { image_url: '', headline: '', category_slug: '', link_url: '', sort_order: 0, is_active: true }
+const EMPTY_BANNER = { image_url: '', headline: '', category_slug: '', link_url: '', placement: 'strip', sort_order: 0, is_active: true }
 const EMPTY_TILE = { title: '', image_url: '', category_slug: '', link_url: '', sort_order: 0, is_active: true }
 const EMPTY_PAGE = { title: '', slug: '', content: '', footer_group: 'useful_links', show_in_footer: true, is_published: true, sort_order: 0 }
 
@@ -470,6 +471,7 @@ export default function Admin({ token, onClose }) {
       logo_url: brandingForm.logo_url.trim(),
       favicon_url: brandingForm.favicon_url.trim(),
       theme: brandingForm.theme,
+      layout_width: brandingForm.layout_width,
       color_brand: brandingForm.color_brand,
       color_accent: brandingForm.color_accent,
       color_heading: brandingForm.color_heading,
@@ -637,8 +639,8 @@ export default function Admin({ token, onClose }) {
   async function saveProduct(event) {
     event.preventDefault()
     setMessage('')
-    const { id, price, variants, ...rest } = productForm
-    const payload = { ...rest, category_id: Number(rest.category_id), inventory_quantity: Number(rest.inventory_quantity), price_cents: Math.round(Number(price) * 100), image_url: rest.image_url?.trim() || null }
+    const { id, price, compare_at: compareAt, variants, ...rest } = productForm
+    const payload = { ...rest, category_id: Number(rest.category_id), inventory_quantity: Number(rest.inventory_quantity), price_cents: Math.round(Number(price) * 100), compare_at_price_cents: String(compareAt).trim() ? Math.round(Number(compareAt) * 100) : null, image_url: rest.image_url?.trim() || null }
     const rows = (variants ?? []).filter((row) => row.id || !row._delete)
     if (id || rows.length) {
       payload.variants = rows.map((row) => ({
@@ -647,6 +649,7 @@ export default function Admin({ token, onClose }) {
         label: (row.label || '').trim(),
         sku: (row.sku || '').trim(),
         price_cents: Math.round(Number(row.price || 0) * 100),
+        compare_at_price_cents: String(row.compare_at ?? '').trim() ? Math.round(Number(row.compare_at) * 100) : null,
         inventory_quantity: Number(row.stock) || 0,
         image_url: row.image_url?.trim() || null,
         is_active: !!row.is_active,
@@ -996,6 +999,7 @@ export default function Admin({ token, onClose }) {
                 <label>Name<input required value={productForm.name} onChange={(event) => setProductForm({ ...productForm, name: event.target.value })} /></label>
                 <label>SKU<input required value={productForm.sku} onChange={(event) => setProductForm({ ...productForm, sku: event.target.value })} /></label>
                 <label>Price (USD)<input required type="number" min="0" step="0.01" value={productForm.price} onChange={(event) => setProductForm({ ...productForm, price: event.target.value })} /></label>
+                <label>Regular price ($)<input type="number" min="0" step="0.01" placeholder="pre-sale price; blank = not on sale" value={productForm.compare_at} onChange={(event) => setProductForm({ ...productForm, compare_at: event.target.value })} /></label>
                 <label>Inventory<input type="number" min="0" value={productForm.inventory_quantity} onChange={(event) => setProductForm({ ...productForm, inventory_quantity: event.target.value })} /></label>
                 <label className="admin-check"><input type="checkbox" checked={productForm.is_active} onChange={(event) => setProductForm({ ...productForm, is_active: event.target.checked })} /> Active</label>
               </div>
@@ -1011,12 +1015,13 @@ export default function Admin({ token, onClose }) {
 
               <fieldset className="admin-fieldset">
                 <legend>Options / variants</legend>
-                <p className="muted">Leave empty for a single-price product. Add a row per variant &mdash; pack size, weight, colour, flavour, or a mix (e.g. &ldquo;1 kg&rdquo;, &ldquo;Red / Large&rdquo;). Each has its own price, stock, SKU and image.</p>
+                <p className="muted">Leave empty for a single-price product. Add a row per variant &mdash; pack size, weight, colour, flavour, or a mix (e.g. &ldquo;1 kg&rdquo;, &ldquo;Red / Large&rdquo;). Each has its own price, compare-at price, stock, SKU and image.</p>
                 {(productForm.variants ?? []).map((row, index) => row._delete ? null : (
                   <div className="admin-variant-row" key={row.id ?? `new-${index}`}>
                     <input placeholder="Label (1 kg, Red / Large…)" value={row.label} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, label: event.target.value } : r) })} />
                     <input placeholder="SKU" value={row.sku} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, sku: event.target.value } : r) })} />
                     <input type="number" min="0" step="0.01" placeholder="Price $" value={row.price} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, price: event.target.value } : r) })} />
+                    <input type="number" min="0" step="0.01" placeholder="Reg. $" value={row.compare_at ?? ''} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, compare_at: event.target.value } : r) })} />
                     <input type="number" min="0" placeholder="Stock" value={row.stock} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, stock: event.target.value } : r) })} />
                     <span className="admin-variant-img">
                       <input placeholder="Image URL" value={row.image_url} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, image_url: event.target.value } : r) })} />
@@ -1049,12 +1054,12 @@ export default function Admin({ token, onClose }) {
                     <td>{product.name}</td>
                     <td>{product.sku}</td>
                     <td>{product.category?.name ?? '—'}</td>
-                    <td>{packs ? `${money(Math.min(...product.variants.filter((v) => v.is_active).map((v) => v.price_cents)))}+` : money(product.price_cents)}</td>
+                    <td>{packs ? `${money(Math.min(...product.variants.filter((v) => v.is_active).map((v) => v.price_cents)))}+` : <>{money(product.price_cents)}{product.compare_at_price_cents > product.price_cents && <s className="muted" style={{ marginLeft: 5 }}>{money(product.compare_at_price_cents)}</s>}</>}</td>
                     <td className={product.inventory_quantity <= 5 ? 'low' : ''}>{packs ? '—' : product.inventory_quantity}</td>
                     <td>{packs || '—'}</td>
                     <td>{product.is_active ? 'Yes' : 'No'}</td>
                     <td className="admin-actions">
-                      <button className="act" type="button" onClick={() => setProductForm({ id: product.id, category_id: product.category_id, name: product.name, sku: product.sku, price: (product.price_cents / 100).toFixed(2), inventory_quantity: product.inventory_quantity, description: product.description ?? '', image_url: product.image_url ?? '', is_active: product.is_active, variants: variantRowsFrom(product) })}>Edit</button>
+                      <button className="act" type="button" onClick={() => setProductForm({ id: product.id, category_id: product.category_id, name: product.name, sku: product.sku, price: (product.price_cents / 100).toFixed(2), compare_at: dollarsOrBlank(product.compare_at_price_cents), inventory_quantity: product.inventory_quantity, description: product.description ?? '', image_url: product.image_url ?? '', is_active: product.is_active, variants: variantRowsFrom(product) })}>Edit</button>
                       <button className="act danger" type="button" onClick={() => removeProduct(product)}>Delete</button>
                     </td>
                   </tr>
@@ -1198,7 +1203,7 @@ export default function Admin({ token, onClose }) {
           <h3 className="admin-subhead">Promo banners</h3>
           <div className="admin-toolbar">
             <button className="act" type="button" onClick={() => setBannerForm({ ...EMPTY_BANNER })}>New banner</button>
-            <span className="muted">The first (lowest order) is the full-width hero; the rest form the strip below it.</span>
+            <span className="muted">Set each banner&rsquo;s <strong>Placement</strong>: <strong>Hero</strong> = full-width image at the top, <strong>Strip</strong> = the 3-up row below. Add as many as you like with &ldquo;New banner&rdquo;; &ldquo;Order&rdquo; sorts them within each row.</span>
           </div>
 
           {bannerForm && (
@@ -1218,6 +1223,7 @@ export default function Admin({ token, onClose }) {
                 <label>Headline (optional)<input maxLength="120" value={bannerForm.headline} onChange={(event) => setBannerForm({ ...bannerForm, headline: event.target.value })} placeholder="Fresh fruits & veg, in minutes" /></label>
                 <label>Links to category<select value={bannerForm.category_slug} onChange={(event) => setBannerForm({ ...bannerForm, category_slug: event.target.value })}><option value="">— none —</option>{categories.map((c) => <option key={c.id} value={c.slug}>{c.name}</option>)}</select></label>
                 <label>Or link URL<input value={bannerForm.link_url} onChange={(event) => setBannerForm({ ...bannerForm, link_url: event.target.value })} placeholder="https://… (used only if no category)" /></label>
+                <label>Placement<select value={bannerForm.placement} onChange={(event) => setBannerForm({ ...bannerForm, placement: event.target.value })}><option value="hero">Hero — full-width top</option><option value="strip">Strip — 3-up row</option></select></label>
                 <label>Sort order<input type="number" min="0" max="9999" value={bannerForm.sort_order} onChange={(event) => setBannerForm({ ...bannerForm, sort_order: event.target.value })} /></label>
                 <label className="admin-check"><input type="checkbox" checked={bannerForm.is_active} onChange={(event) => setBannerForm({ ...bannerForm, is_active: event.target.checked })} /> Active</label>
               </div>
@@ -1230,17 +1236,18 @@ export default function Admin({ token, onClose }) {
 
           {banners.length === 0 ? <p className="admin-empty">No banners yet. Add one to fill the homepage promo area.</p> : (
             <table className="admin-table">
-              <thead><tr><th>Preview</th><th>Headline</th><th>Target</th><th>Order</th><th>Active</th><th></th></tr></thead>
+              <thead><tr><th>Preview</th><th>Headline</th><th>Placement</th><th>Target</th><th>Order</th><th>Active</th><th></th></tr></thead>
               <tbody>
                 {banners.map((banner) => (
                   <tr key={banner.id}>
                     <td><img className="admin-banner-thumb" src={banner.image_url} alt="" /></td>
                     <td>{banner.headline || <span className="muted">—</span>}</td>
+                    <td>{banner.placement === 'strip' ? 'Strip' : 'Hero'}</td>
                     <td>{banner.category_slug ? `#${banner.category_slug}` : (banner.link_url || <span className="muted">—</span>)}</td>
                     <td>{banner.sort_order}</td>
                     <td>{banner.is_active ? 'Yes' : 'No'}</td>
                     <td className="admin-actions">
-                      <button className="act" type="button" onClick={() => setBannerForm({ id: banner.id, image_url: banner.image_url ?? '', headline: banner.headline ?? '', category_slug: banner.category_slug ?? '', link_url: banner.link_url ?? '', sort_order: banner.sort_order ?? 0, is_active: banner.is_active })}>Edit</button>
+                      <button className="act" type="button" onClick={() => setBannerForm({ id: banner.id, image_url: banner.image_url ?? '', headline: banner.headline ?? '', category_slug: banner.category_slug ?? '', link_url: banner.link_url ?? '', placement: banner.placement ?? 'strip', sort_order: banner.sort_order ?? 0, is_active: banner.is_active })}>Edit</button>
                       <button className="act danger" type="button" onClick={() => removeBanner(banner)}>Delete</button>
                     </td>
                   </tr>
@@ -1450,6 +1457,12 @@ export default function Admin({ token, onClose }) {
                   <select value={brandingForm.theme} onChange={(event) => setBrandingForm({ ...brandingForm, theme: event.target.value })}>
                     <option value="light">Light</option>
                     <option value="dark">Dark</option>
+                  </select>
+                </label>
+                <label>Layout width
+                  <select value={brandingForm.layout_width} onChange={(event) => setBrandingForm({ ...brandingForm, layout_width: event.target.value })}>
+                    <option value="boxed">Boxed &mdash; 1280px, centred (Blinkit-style)</option>
+                    <option value="full">Full width</option>
                   </select>
                 </label>
               </div>

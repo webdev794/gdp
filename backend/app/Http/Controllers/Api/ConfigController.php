@@ -36,7 +36,7 @@ class ConfigController extends Controller
                     ->whereNotNull('latitude')->whereNotNull('longitude')
                     ->get(['id', 'name', 'latitude', 'longitude', 'delivery_radius_km']),
                 'banners' => Banner::query()->active()->ordered()
-                    ->get(['id', 'image_url', 'headline', 'category_slug', 'link_url']),
+                    ->get(['id', 'image_url', 'headline', 'category_slug', 'link_url', 'placement']),
                 'home_tiles' => $this->homeTiles(),
             ],
         ]);
