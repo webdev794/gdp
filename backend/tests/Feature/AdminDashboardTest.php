@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
 use App\Models\Order;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -14,8 +17,9 @@ class AdminDashboardTest extends TestCase
 
     public function test_metrics_summarise_orders_and_paid_revenue(): void
     {
-        $this->order('confirmed', 'paid', 2000);
-        $this->order('packing', 'paid', 3000);
+        $discounted = $this->order('confirmed', 'paid', 2000);
+        $this->line($discounted, quantity: 2, unit: 800, regular: 1000); // $4.00 discount
+        $this->order('packing', 'paid', 3000, attributes: ['payment_method' => 'cod']);
         $this->order('pending_payment', 'pending', 1500);
 
         Sanctum::actingAs($this->admin());
@@ -25,7 +29,37 @@ class AdminDashboardTest extends TestCase
             ->assertJsonPath('data.orders_total', 3)
             ->assertJsonPath('data.awaiting_fulfilment', 2)
             ->assertJsonPath('data.revenue_cents', 5000)
+            ->assertJsonPath('data.avg_order_cents', 2500) // 5000 paid / 2 paid orders
+            ->assertJsonPath('data.discount_cents', 400)
+            ->assertJsonPath('data.cod_orders', 1)
+            ->assertJsonPath('data.refunded_cents', 0)
             ->assertJsonPath('data.orders_by_status.confirmed', 1);
+    }
+
+    public function test_insights_return_a_weekday_hour_activity_grid(): void
+    {
+        Carbon::setTestNow('2026-09-15 14:00:00');
+
+        $this->order('confirmed', 'paid', 2000);
+        $this->order('packing', 'paid', 3000);
+
+        Sanctum::actingAs($this->admin());
+
+        $this->getJson('/api/admin/metrics/insights')
+            ->assertOk()
+            ->assertJsonCount(7, 'data.activity.matrix')
+            ->assertJsonCount(24, 'data.activity.matrix.0')
+            ->assertJsonPath('data.activity.rows.0', 'Mon')
+            ->assertJsonPath('data.activity.peak', 2); // both orders land on Mon 14:00
+
+        Carbon::setTestNow();
+    }
+
+    public function test_non_admin_cannot_view_insights(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->getJson('/api/admin/metrics/insights')->assertForbidden();
     }
 
     public function test_customer_list_excludes_admins_and_totals_paid_spend(): void
@@ -79,7 +113,7 @@ class AdminDashboardTest extends TestCase
         return User::factory()->create(['is_admin' => true]);
     }
 
-    private function order(string $status, string $paymentStatus, int $total, ?User $user = null): Order
+    private function order(string $status, string $paymentStatus, int $total, ?User $user = null, array $attributes = []): Order
     {
         return Order::create([
             'user_id' => ($user ?? User::factory()->create())->id,
@@ -93,6 +127,20 @@ class AdminDashboardTest extends TestCase
                 'name' => 'Test Customer', 'line1' => '10 Main Street',
                 'city' => 'Brooklyn', 'state' => 'NY', 'postal_code' => '11201',
             ],
+            ...$attributes,
+        ]);
+    }
+
+    private function line(Order $order, int $quantity, int $unit, ?int $regular = null): void
+    {
+        $order->items()->create([
+            'product_id' => Product::factory()->create(['category_id' => Category::factory()->create()->id])->id,
+            'product_name' => 'Line item',
+            'sku' => 'GDP-TEST-'.$order->items()->count(),
+            'quantity' => $quantity,
+            'unit_price_cents' => $unit,
+            'compare_at_price_cents' => $regular,
+            'line_total_cents' => $unit * $quantity,
         ]);
     }
 }

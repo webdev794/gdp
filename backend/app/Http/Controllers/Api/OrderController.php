@@ -5,9 +5,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Setting;
+use App\Models\Store;
+use App\Support\Branding;
+use App\Support\Geo;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\Response;
 
 class OrderController extends Controller
 {
@@ -33,6 +38,53 @@ class OrderController extends Controller
         abort_unless($order->user_id === $request->user()->id, 404);
 
         return response()->json(['data' => $order->load('items')]);
+    }
+
+    /**
+     * A printable bill (PDF) for the customer's own order: the shop address, every
+     * line with its regular and paid price, the fee breakdown and the total paid.
+     */
+    public function receipt(Request $request, Order $order): Response
+    {
+        abort_unless($order->user_id === $request->user()->id, 404);
+
+        // Orders placed before line-level price snapshots fall back to the
+        // product's / variant's current regular price, the same way the cart does.
+        $order->load('items.product', 'items.productVariant');
+
+        $pdf = Pdf::setOption(['isFontSubsettingEnabled' => true])
+            ->loadView('receipts.order', [
+                'order' => $order,
+                'store' => $this->fulfillingStore($order),
+                'branding' => Branding::current(),
+            ]);
+
+        return $pdf->download("bill-order-{$order->id}.pdf");
+    }
+
+    /**
+     * The shop the bill is issued from: the active store nearest the delivery
+     * address when we have coordinates, otherwise the first active store.
+     */
+    private function fulfillingStore(Order $order): ?Store
+    {
+        $stores = Store::query()->where('is_active', true)->orderBy('id')->get();
+
+        if ($stores->isEmpty()) {
+            return null;
+        }
+
+        $lat = $order->delivery_address['latitude'] ?? null;
+        $lng = $order->delivery_address['longitude'] ?? null;
+
+        if ($lat !== null && $lng !== null) {
+            $nearest = Geo::nearestStore($stores, (float) $lat, (float) $lng);
+            if ($nearest) {
+                return $nearest['store'];
+            }
+        }
+
+        return $stores->first();
     }
 
     /**

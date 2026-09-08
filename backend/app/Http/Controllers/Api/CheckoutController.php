@@ -119,6 +119,9 @@ class CheckoutController extends Controller
                     'variant_label' => $state['label'],
                     'quantity' => $cartItem->quantity,
                     'unit_price_cents' => $state['price_cents'],
+                    // Freeze the "regular" price onto the line so the receipt can
+                    // show the discount even if the product is repriced later.
+                    'compare_at_price_cents' => $state['compare_at_price_cents'],
                     'line_total_cents' => $lineTotal,
                 ];
 

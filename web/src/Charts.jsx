@@ -9,8 +9,8 @@ const color = (index) => PALETTE[index % PALETTE.length]
 const TAU = Math.PI * 2
 const START = -Math.PI / 2
 
-// data: [{ label, value }]
-export function PieChart({ data, size = 168 }) {
+// data: [{ label, value }]; format: fn(value) -> string for the legend figure
+export function PieChart({ data, size = 168, format = (v) => v }) {
   const slices = (data ?? []).filter((d) => d.value > 0)
   const total = slices.reduce((sum, d) => sum + d.value, 0)
   const r = size / 2
@@ -46,7 +46,7 @@ export function PieChart({ data, size = 168 }) {
         {slices.map((slice, index) => (
           <li key={slice.label}>
             <i style={{ background: color(index) }} />
-            {slice.label} <b>{slice.value}</b>
+            {slice.label} <b>{format(slice.value)}</b>
             <span>{Math.round((slice.value / total) * 100)}%</span>
           </li>
         ))}
@@ -67,36 +67,73 @@ export function Delta({ current, previous }) {
   return <span className={`delta ${dir}`}>{pct > 0 ? '▲' : '▼'} {Math.abs(pct)}%</span>
 }
 
-// Paired bars per bucket: previous vs current. data: [{ label, a, b }]
-export function GroupedBars({ data, format = (v) => v, height = 220, legend }) {
-  const rows = data ?? []
-  const max = Math.max(1, ...rows.flatMap((row) => [row.a, row.b]))
-  const showEvery = rows.length > 14 ? Math.ceil(rows.length / 9) : 1
+// Line graph over evenly-spaced buckets. series: [{ label, value }]
+export function LineChart({ series, format = (v) => v }) {
+  const rows = series ?? []
+  if (rows.length < 2) return <p className="chart-empty">Not enough data yet.</p>
 
-  if (!rows.length) return <p className="chart-empty">No data.</p>
+  const max = Math.max(1, ...rows.map((r) => r.value))
+  const W = 300
+  const H = 120
+  const padY = 8
+  const stepX = W / (rows.length - 1)
+  const points = rows.map((r, i) => [i * stepX, padY + (H - padY * 2) * (1 - r.value / max)])
+  const line = points.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ')
+  const showEvery = rows.length > 12 ? Math.ceil(rows.length / 8) : 1
 
   return (
-    <div className="chart-bars" style={{ height }}>
-      <div className="chart-bars-head">
-        <span className="chart-bars-max">{format(max)}</span>
-        {legend && (
-          <span className="chart-inline-legend">
-            <i className="sw prev" />{legend.a}<i className="sw now" />{legend.b}
-          </span>
-        )}
-      </div>
-      <div className="chart-bars-plot">
-        {rows.map((row, index) => (
-          <div className="chart-bar-col" key={row.label + index}
-            title={`${row.label}\n${legend?.a ?? 'previous'}: ${format(row.a)}\n${legend?.b ?? 'current'}: ${format(row.b)}`}>
-            <div className="grouped-pair">
-              <div className="chart-bar prev" style={{ height: `${(row.a / max) * 100}%` }} />
-              <div className="chart-bar now" style={{ height: `${(row.b / max) * 100}%` }} />
-            </div>
-            <span className="chart-bar-label">{index % showEvery === 0 ? row.label : ''}</span>
-          </div>
+    <div className="chart-line">
+      <div className="chart-bars-max">{format(max)}</div>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Trend">
+        <path className="line-area" d={`${line} L${W} ${H} L0 ${H} Z`} />
+        <path className="line-stroke" d={line} />
+        {points.map(([x, y], i) => (
+          <circle key={i} cx={x} cy={y} r="2" className="line-dot">
+            <title>{`${rows[i].label}: ${format(rows[i].value)}`}</title>
+          </circle>
         ))}
+      </svg>
+      <div className="chart-line-x">
+        {rows.map((r, i) => <span key={r.label + i}>{i % showEvery === 0 ? r.label : ''}</span>)}
       </div>
+    </div>
+  )
+}
+
+// Grid of cells shaded by value. rows: string[]; matrix: number[rows][cols];
+// peak: optional pre-computed max; cols: optional [firstLabel, lastLabel] axis.
+export function Heatmap({ rows, matrix, peak, cols, format = (v) => v, cellTitle }) {
+  const grid = matrix ?? []
+  const width = grid[0]?.length ?? 0
+  const max = Math.max(1, peak || 0, ...grid.flat())
+
+  if (!grid.length || !width) return <p className="chart-empty">No activity yet.</p>
+
+  const shade = (v) => (v <= 0 ? '#f1f3ef' : `rgba(63,125,67,${(0.15 + (v / max) * 0.85).toFixed(3)})`)
+
+  return (
+    <div className="chart-heatmap" style={{ '--hm-cols': width }}>
+      {grid.map((row, r) => (
+        <div className="hm-row" key={(rows?.[r] ?? r) + '-' + r}>
+          <span className="hm-rlabel">{rows?.[r] ?? ''}</span>
+          <div className="hm-cells">
+            {row.map((value, c) => (
+              <i
+                key={c}
+                className="hm-cell"
+                style={{ background: shade(value) }}
+                title={cellTitle ? cellTitle(r, c, value) : `${rows?.[r] ?? ''} ${c}: ${format(value)}`}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+      {cols && (
+        <div className="hm-xaxis">
+          <span>{cols[0]}</span>
+          <span>{cols[cols.length - 1]}</span>
+        </div>
+      )}
     </div>
   )
 }

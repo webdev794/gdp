@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import MapPicker from './MapPicker'
-import { BarChart, Delta, GroupedBars, PieChart } from './Charts'
+import { Delta, Heatmap, LineChart, PieChart } from './Charts'
 import { renderMarkdown } from './markdown'
 import './Admin.css'
 
@@ -145,6 +145,7 @@ export default function Admin({ token, onClose }) {
   const [compareDays, setCompareDays] = useState(7)
   const [compareDaysDraft, setCompareDaysDraft] = useState('7')
   const [compareMetric, setCompareMetric] = useState('orders') // 'orders' | 'revenue_cents'
+  const [insights, setInsights] = useState(null)
   const [orders, setOrders] = useState([])
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
@@ -209,6 +210,11 @@ export default function Admin({ token, onClose }) {
     fetch(`${API_URL}/admin/metrics/compare?${query}`, { headers: authHeaders() }).then(readJson)
       .then((data) => setCompare(data.data)).catch(() => setMessage('Could not load period comparisons.'))
   }, [authHeaders, comparePreset, compareDays])
+
+  const loadInsights = useCallback(() => {
+    fetch(`${API_URL}/admin/metrics/insights`, { headers: authHeaders() }).then(readJson)
+      .then((data) => setInsights(data.data)).catch(() => setMessage('Could not load dashboard insights.'))
+  }, [authHeaders])
 
   const loadOrders = useCallback(() => {
     const query = statusFilter === 'all' ? '' : `?status=${statusFilter}`
@@ -276,6 +282,7 @@ export default function Admin({ token, onClose }) {
   useEffect(() => { loadPages() }, [loadPages])
   useEffect(() => { if (tab === 'dashboard') loadChart() }, [tab, loadChart])
   useEffect(() => { if (tab === 'dashboard') loadCompare() }, [tab, loadCompare])
+  useEffect(() => { if (tab === 'dashboard') loadInsights() }, [tab, loadInsights])
   useEffect(() => { if (tab === 'orders') loadOrders() }, [tab, loadOrders])
   useEffect(() => { if (tab === 'products') { loadProducts(); loadCategories() } }, [tab, loadProducts, loadCategories])
   useEffect(() => { if (tab === 'categories') loadCategories() }, [tab, loadCategories])
@@ -824,9 +831,13 @@ export default function Admin({ token, onClose }) {
           <section className="admin-grid">
             {!metrics ? <p className="admin-empty">Loading metrics...</p> : (
               <>
-                <article className="metric"><span>Paid revenue</span><strong>{money(metrics.revenue_cents)}</strong></article>
+                <article className="metric accent"><span>Paid revenue</span><strong>{money(metrics.revenue_cents)}</strong></article>
                 <article className="metric"><span>Orders</span><strong>{metrics.orders_total}</strong></article>
+                <article className="metric"><span>Avg order value</span><strong>{money(metrics.avg_order_cents ?? 0)}</strong></article>
                 <article className="metric"><span>Awaiting fulfilment</span><strong>{metrics.awaiting_fulfilment}</strong></article>
+                <article className="metric"><span>COD orders</span><strong>{metrics.cod_orders ?? 0}</strong></article>
+                <article className="metric"><span>Discounts given</span><strong>{money(metrics.discount_cents ?? 0)}</strong></article>
+                <article className="metric"><span>Refunded</span><strong>{money(metrics.refunded_cents ?? 0)}</strong></article>
                 <article className="metric"><span>Customers</span><strong>{metrics.customers}</strong></article>
                 <article className="metric"><span>Products</span><strong>{metrics.products}</strong></article>
                 <article className="metric"><span>Low stock (&le;5)</span><strong>{metrics.low_stock}</strong></article>
@@ -867,14 +878,16 @@ export default function Admin({ token, onClose }) {
               return (
                 <>
                   <div className="compare-head">
-                    <div><span className="compare-measure">{compare.current.label}</span><strong>{fmt(cur)}</strong></div>
+                    <div><span className="compare-measure">{compare.current.label}{compare.partial ? ' (so far)' : ''}</span><strong>{fmt(cur)}</strong></div>
                     <Delta current={cur} previous={prev} />
-                    <div className="compare-vs"><span className="compare-measure">{compare.previous.label}</span><strong>{fmt(prev)}</strong></div>
+                    <div className="compare-vs"><span className="compare-measure">{compare.previous.label} (full)</span><strong>{fmt(prev)}</strong></div>
                   </div>
-                  <GroupedBars
-                    data={compare.series.map((point) => ({ label: point.label, a: point.previous?.[compareMetric] ?? 0, b: point.current?.[compareMetric] ?? 0 }))}
+                  <PieChart
                     format={fmt}
-                    legend={{ a: compare.previous.label, b: compare.current.label }}
+                    data={[
+                      { label: `${compare.current.label}${compare.partial ? ' (so far)' : ''}`, value: cur },
+                      { label: `${compare.previous.label} (full)`, value: prev },
+                    ]}
                   />
                 </>
               )
@@ -899,7 +912,7 @@ export default function Admin({ token, onClose }) {
 
             {!chart ? <p className="admin-empty">Loading chart…</p> : (
               <>
-                <BarChart
+                <LineChart
                   series={chart.series.map((row) => ({ label: row.label, value: chartMetric === 'orders' ? row.orders : row.revenue_cents }))}
                   format={chartMetric === 'orders' ? ((v) => v) : money}
                 />
@@ -913,6 +926,35 @@ export default function Admin({ token, onClose }) {
                     <PieChart data={Object.entries(chart.by_payment_method).map(([method, count]) => ({ label: method === 'cod' ? 'Cash on delivery' : 'Card', value: count }))} />
                   </div>
                 </div>
+              </>
+            )}
+          </section>
+
+          <section className="admin-panel">
+            <h3 className="admin-subhead">Payments vs refunds</h3>
+            {!metrics ? <p className="admin-empty">Loading…</p> : (
+              <PieChart
+                format={money}
+                data={[
+                  { label: 'Payments', value: metrics.revenue_cents },
+                  { label: 'Refunds', value: metrics.refunded_cents ?? 0 },
+                ]}
+              />
+            )}
+          </section>
+
+          <section className="admin-panel">
+            <h3 className="admin-subhead">When orders come in</h3>
+            {!insights ? <p className="admin-empty">Loading…</p> : (
+              <>
+                <Heatmap
+                  rows={insights.activity?.rows ?? []}
+                  matrix={insights.activity?.matrix ?? []}
+                  peak={insights.activity?.peak ?? 0}
+                  cols={['00:00', '23:00']}
+                  cellTitle={(r, c, v) => `${(insights.activity?.rows ?? [])[r]} ${String(c).padStart(2, '0')}:00 — ${v} order${v === 1 ? '' : 's'}`}
+                />
+                <p className="muted chart-range">Orders by weekday and hour &middot; since {insights.activity?.since ?? ''}</p>
               </>
             )}
           </section>

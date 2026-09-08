@@ -12,7 +12,7 @@ class OrderItem extends Model
 
     protected $fillable = [
         'order_id', 'product_id', 'product_variant_id', 'product_name', 'sku',
-        'variant_label', 'quantity', 'unit_price_cents', 'line_total_cents',
+        'variant_label', 'quantity', 'unit_price_cents', 'compare_at_price_cents', 'line_total_cents',
     ];
 
     protected function casts(): array
@@ -20,6 +20,7 @@ class OrderItem extends Model
         return [
             'quantity' => 'integer',
             'unit_price_cents' => 'integer',
+            'compare_at_price_cents' => 'integer',
             'line_total_cents' => 'integer',
         ];
     }

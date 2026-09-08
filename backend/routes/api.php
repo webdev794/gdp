@@ -63,6 +63,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/checkout', [CheckoutController::class, 'store']);
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{order}', [OrderController::class, 'show']);
+    Route::get('/orders/{order}/receipt', [OrderController::class, 'receipt']);
     Route::patch('/orders/{order}/payment-method', [OrderController::class, 'setPaymentMethod']);
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);
     Route::post('/orders/{order}/payment-intent', [PaymentController::class, 'intent']);
@@ -77,6 +78,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/metrics', [AdminController::class, 'metrics']);
     Route::get('/metrics/timeseries', [AdminController::class, 'ordersTimeseries']);
     Route::get('/metrics/compare', [AdminController::class, 'ordersCompare']);
+    Route::get('/metrics/insights', [AdminController::class, 'ordersInsights']);
     Route::get('/settings', [AdminSettingController::class, 'index']);
     Route::patch('/settings', [AdminSettingController::class, 'update']);
     Route::post('/secure-access/challenge', [AdminSettingController::class, 'secureAccessChallenge'])->middleware('throttle:6,1');

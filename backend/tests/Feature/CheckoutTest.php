@@ -147,7 +147,9 @@ class CheckoutTest extends TestCase
         $this->postJson('/api/checkout', ['address' => $this->address()])
             ->assertCreated()
             ->assertJsonPath('data.subtotal_cents', 1600) // 2 x 800, not the compare-at
-            ->assertJsonPath('data.items.0.unit_price_cents', 800);
+            ->assertJsonPath('data.items.0.unit_price_cents', 800)
+            // The regular price is frozen onto the line for the bill/receipt.
+            ->assertJsonPath('data.items.0.compare_at_price_cents', 1000);
     }
 
     private function product(array $attributes = []): Product

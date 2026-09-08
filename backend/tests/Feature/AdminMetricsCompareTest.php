@@ -32,7 +32,7 @@ class AdminMetricsCompareTest extends TestCase
         return $order;
     }
 
-    public function test_month_preset_compares_period_to_date_with_an_aligned_series(): void
+    public function test_month_preset_compares_this_month_to_date_against_the_whole_previous_month(): void
     {
         Carbon::setTestNow('2026-09-15 12:00:00');
         $admin = User::factory()->create();
@@ -42,30 +42,22 @@ class AdminMetricsCompareTest extends TestCase
         // This month (to Sep 15): 2 orders, one unpaid.
         $this->order('2026-09-03 09:00:00', ['total_cents' => 1500]);
         $this->order('2026-09-10 09:00:00', ['payment_status' => 'pending', 'total_cents' => 900]);
-        // Last month up to the same point (Aug 1 - Aug 15): 1 order.
+        // All of last month counts now, not just its first 15 days.
         $this->order('2026-08-05 09:00:00', ['total_cents' => 4000]);
-        // Last month AFTER the cutoff (Aug 20) - excluded.
         $this->order('2026-08-20 09:00:00', ['total_cents' => 9999]);
 
-        $data = $this->getJson('/api/admin/metrics/compare?preset=month')
+        $this->getJson('/api/admin/metrics/compare?preset=month')
             ->assertOk()
             ->assertJsonPath('data.preset', 'month')
             ->assertJsonPath('data.bucket', 'day')
+            ->assertJsonPath('data.partial', true)
             ->assertJsonPath('data.current.label', 'This month')
             ->assertJsonPath('data.current.orders', 2)
             ->assertJsonPath('data.current.paid_orders', 1)
             ->assertJsonPath('data.current.revenue_cents', 1500)
             ->assertJsonPath('data.previous.label', 'Last month')
-            ->assertJsonPath('data.previous.orders', 1)
-            ->assertJsonPath('data.previous.revenue_cents', 4000)
-            ->json('data.series');
-
-        // 15 day-buckets (Sep 1..Sep 15). Day index 2 = Sep 3 / Aug 3.
-        $this->assertCount(15, $data);
-        $this->assertSame(1, $data[2]['current']['orders']);      // Sep 3
-        $this->assertSame(1500, $data[2]['current']['revenue_cents']);
-        $this->assertSame(1, $data[4]['previous']['orders']);     // Aug 5
-        $this->assertSame(0, $data[0]['current']['orders']);      // Sep 1, empty
+            ->assertJsonPath('data.previous.orders', 2)         // all of August, incl. Aug 20
+            ->assertJsonPath('data.previous.revenue_cents', 13999);
 
         Carbon::setTestNow();
     }

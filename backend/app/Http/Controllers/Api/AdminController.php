@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -21,12 +22,26 @@ class AdminController extends Controller
             ->groupBy('status')
             ->pluck('total', 'status');
 
+        $revenue = (int) Order::where('payment_status', 'paid')->sum('total_cents');
+        $paidOrders = (int) Order::where('payment_status', 'paid')->count();
+
+        // Total discount handed out: the frozen regular price minus the price
+        // actually billed, across every order line that carries a snapshot.
+        $discount = (int) OrderItem::query()
+            ->whereNotNull('compare_at_price_cents')
+            ->whereColumn('compare_at_price_cents', '>', 'unit_price_cents')
+            ->sum(DB::raw('(compare_at_price_cents - unit_price_cents) * quantity'));
+
         return response()->json([
             'data' => [
                 'orders_by_status' => $ordersByStatus,
                 'orders_total' => (int) $ordersByStatus->sum(),
                 'awaiting_fulfilment' => (int) $ordersByStatus->only(['confirmed', 'packing', 'ready_for_delivery', 'out_for_delivery'])->sum(),
-                'revenue_cents' => (int) Order::where('payment_status', 'paid')->sum('total_cents'),
+                'revenue_cents' => $revenue,
+                'avg_order_cents' => $paidOrders ? intdiv($revenue, $paidOrders) : 0,
+                'discount_cents' => $discount,
+                'cod_orders' => (int) Order::where('payment_method', 'cod')->count(),
+                'refunded_cents' => (int) Order::sum('refunded_amount_cents'),
                 'customers' => User::where('is_admin', false)->count(),
                 'products' => Product::count(),
                 'low_stock' => Product::where('inventory_quantity', '<=', 5)->count(),
@@ -131,11 +146,12 @@ class AdminController extends Controller
     }
 
     /**
-     * One period-over-period comparison for the dashboard: the current
-     * period-to-date against the equivalent earlier period. `preset` picks the
+     * One period-over-period comparison for the dashboard. `preset` picks the
      * span (day / two_day / week / month / six_month / year) or `custom` with a
-     * rolling `days` window. Returns window totals plus an aligned per-bucket
-     * series so the client can draw current vs previous in a single chart.
+     * rolling `days` window. The current window runs to "now"; the previous
+     * window is the FULL prior period (all of last month, not just its first N
+     * days) so two whole months can be read side by side. Returns the two
+     * window totals and a `partial` flag for the still-running current period.
      */
     public function ordersCompare(Request $request): JsonResponse
     {
@@ -148,35 +164,8 @@ class AdminController extends Controller
         $days = isset($validated['days']) ? (int) $validated['days'] : null;
         $now = now();
 
-        [$curStart, $prevStart, $unit, $curLabel, $prevLabel] = $this->comparePreset($preset, $days, $now);
+        [$curStart, $curFullEnd, $prevStart, $prevEnd, $unit, $curLabel, $prevLabel] = $this->comparePreset($preset, $days, $now);
 
-        $prevEnd = $prevStart->copy()->addSeconds($curStart->diffInSeconds($now));
-
-        // Bucket labels come from walking the current window.
-        $labels = [];
-        $cursor = $curStart->copy();
-        while ($cursor < $now && count($labels) < 400) {
-            $labels[] = match ($unit) {
-                'hour' => $cursor->format('M j ga'),
-                'day' => $cursor->format('M j'),
-                'month' => $cursor->format('M Y'),
-            };
-            match ($unit) {
-                'hour' => $cursor->addHour(),
-                'day' => $cursor->addDay(),
-                'month' => $cursor->addMonthNoOverflow(),
-            };
-        }
-        $count = max(1, count($labels));
-
-        $bucketIndex = fn (Carbon $start, Carbon $moment): int => match ($unit) {
-            'hour' => intdiv($moment->getTimestamp() - $start->getTimestamp(), 3600),
-            'day' => (int) $start->copy()->startOfDay()->diffInDays($moment),
-            'month' => (int) $start->diffInMonths($moment),
-        };
-
-        $cur = array_fill(0, $count, ['orders' => 0, 'revenue_cents' => 0]);
-        $prev = $cur;
         $curTotals = ['orders' => 0, 'paid_orders' => 0, 'revenue_cents' => 0];
         $prevTotals = $curTotals;
 
@@ -185,9 +174,8 @@ class AdminController extends Controller
             ->where('created_at', '<', $now)
             ->get(['created_at', 'payment_status', 'total_cents'])
             ->each(function (Order $order) use (
-                &$cur, &$prev, &$curTotals, &$prevTotals,
-                $curStart, $now, $prevStart, $prevEnd, $bucketIndex, $count
-            ) {
+                &$curTotals, &$prevTotals, $curStart, $now, $prevStart, $prevEnd
+            ): void {
                 $moment = $order->created_at;
                 $paid = $order->payment_status === 'paid';
                 $revenue = $paid ? (int) $order->total_cents : 0;
@@ -196,54 +184,93 @@ class AdminController extends Controller
                     $curTotals['orders']++;
                     $curTotals['paid_orders'] += $paid ? 1 : 0;
                     $curTotals['revenue_cents'] += $revenue;
-                    $index = $bucketIndex($curStart, $moment);
-                    if ($index >= 0 && $index < $count) {
-                        $cur[$index]['orders']++;
-                        $cur[$index]['revenue_cents'] += $revenue;
-                    }
                 } elseif ($moment >= $prevStart && $moment < $prevEnd) {
                     $prevTotals['orders']++;
                     $prevTotals['paid_orders'] += $paid ? 1 : 0;
                     $prevTotals['revenue_cents'] += $revenue;
-                    $index = $bucketIndex($prevStart, $moment);
-                    if ($index >= 0 && $index < $count) {
-                        $prev[$index]['orders']++;
-                        $prev[$index]['revenue_cents'] += $revenue;
-                    }
                 }
             });
-
-        $series = [];
-        foreach ($labels as $index => $label) {
-            $series[] = ['label' => $label, 'current' => $cur[$index], 'previous' => $prev[$index]];
-        }
 
         return response()->json(['data' => [
             'preset' => $preset,
             'days' => $preset === 'custom' ? $days : null,
             'bucket' => $unit,
+            'partial' => $now->lt($curFullEnd),
             'current' => ['label' => $curLabel, 'from' => $curStart->toIso8601String(), 'to' => $now->toIso8601String(), ...$curTotals],
             'previous' => ['label' => $prevLabel, 'from' => $prevStart->toIso8601String(), 'to' => $prevEnd->toIso8601String(), ...$prevTotals],
-            'series' => $series,
         ]]);
     }
 
     /**
-     * @return array{0: Carbon, 1: Carbon, 2: string, 3: string, 4: string}
-     *         [currentStart, previousStart, bucketUnit, currentLabel, previousLabel]
+     * An orders-by-weekday-and-hour grid for the last 90 days, for the
+     * dashboard activity heatmap.
+     */
+    public function ordersInsights(): JsonResponse
+    {
+        $since = now()->subDays(90)->startOfDay();
+        $matrix = array_fill(0, 7, array_fill(0, 24, 0));
+        $peak = 0;
+
+        Order::query()
+            ->where('created_at', '>=', $since)
+            ->get(['created_at'])
+            ->each(function (Order $order) use (&$matrix, &$peak): void {
+                $row = (int) $order->created_at->dayOfWeekIso - 1; // Mon=0 .. Sun=6
+                $col = (int) $order->created_at->format('G');       // 0..23
+                $matrix[$row][$col]++;
+                $peak = max($peak, $matrix[$row][$col]);
+            });
+
+        return response()->json(['data' => [
+            'activity' => [
+                'rows' => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                'matrix' => $matrix,
+                'peak' => $peak,
+                'since' => $since->toDateString(),
+            ],
+        ]]);
+    }
+
+    /**
+     * @return array{0: Carbon, 1: Carbon, 2: Carbon, 3: Carbon, 4: string, 5: string, 6: string}
+     *         [currentStart, currentFullEnd, previousStart, previousEnd, bucketUnit, currentLabel, previousLabel]
      */
     private function comparePreset(string $preset, ?int $days, Carbon $now): array
     {
         return match ($preset) {
-            'day' => [$now->copy()->startOfDay(), $now->copy()->startOfDay()->subDay(), 'hour', 'Today', 'Yesterday'],
-            'two_day' => [$now->copy()->subDays(2), $now->copy()->subDays(4), 'hour', 'Last 2 days', 'Previous 2 days'],
-            'week' => [$now->copy()->startOfWeek(Carbon::MONDAY), $now->copy()->startOfWeek(Carbon::MONDAY)->subWeek(), 'day', 'This week', 'Last week'],
-            'month' => [$now->copy()->startOfMonth(), $now->copy()->startOfMonth()->subMonthNoOverflow(), 'day', 'This month', 'Last month'],
-            'six_month' => [$now->copy()->subMonthsNoOverflow(6), $now->copy()->subMonthsNoOverflow(12), 'month', 'Last 6 months', 'Previous 6 months'],
-            'year' => [$now->copy()->startOfYear(), $now->copy()->startOfYear()->subYear(), 'month', 'This year', 'Last year'],
+            'day' => [
+                $now->copy()->startOfDay(), $now->copy()->startOfDay()->addDay(),
+                $now->copy()->startOfDay()->subDay(), $now->copy()->startOfDay(),
+                'hour', 'Today', 'Yesterday',
+            ],
+            'two_day' => [
+                $now->copy()->subDays(2), $now->copy(),
+                $now->copy()->subDays(4), $now->copy()->subDays(2),
+                'hour', 'Last 2 days', 'Previous 2 days',
+            ],
+            'week' => [
+                $now->copy()->startOfWeek(Carbon::MONDAY), $now->copy()->startOfWeek(Carbon::MONDAY)->addWeek(),
+                $now->copy()->startOfWeek(Carbon::MONDAY)->subWeek(), $now->copy()->startOfWeek(Carbon::MONDAY),
+                'day', 'This week', 'Last week',
+            ],
+            'month' => [
+                $now->copy()->startOfMonth(), $now->copy()->startOfMonth()->addMonthNoOverflow(),
+                $now->copy()->startOfMonth()->subMonthNoOverflow(), $now->copy()->startOfMonth(),
+                'day', 'This month', 'Last month',
+            ],
+            'six_month' => [
+                $now->copy()->startOfMonth()->subMonthsNoOverflow(5), $now->copy()->startOfMonth()->addMonthNoOverflow(),
+                $now->copy()->startOfMonth()->subMonthsNoOverflow(11), $now->copy()->startOfMonth()->subMonthsNoOverflow(5),
+                'month', 'Last 6 months', 'Previous 6 months',
+            ],
+            'year' => [
+                $now->copy()->startOfYear(), $now->copy()->startOfYear()->addYear(),
+                $now->copy()->startOfYear()->subYear(), $now->copy()->startOfYear(),
+                'month', 'This year', 'Last year',
+            ],
             'custom' => [
-                $now->copy()->subDays($days),
-                $now->copy()->subDays($days * 2),
+                $now->copy()->subDays($days), $now->copy(),
+                $now->copy()->subDays($days * 2), $now->copy()->subDays($days),
                 $days <= 2 ? 'hour' : ($days <= 92 ? 'day' : 'month'),
                 "Last {$days} days",
                 "Previous {$days} days",
