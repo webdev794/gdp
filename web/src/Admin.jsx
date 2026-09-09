@@ -75,6 +75,7 @@ const EMPTY_FOOTER = { copyright: '© {year} Grocerly', note: '', app_store_url:
 const ISSUE_LABELS = {
   item_missing: 'Item missing', item_damaged: 'Item damaged', wrong_item: 'Wrong item',
   not_delivered: 'Not delivered', payment_issue: 'Payment issue', other: 'Other',
+  delivery: 'Delivery message',
 }
 
 const EMPTY_PRODUCT = { category_id: '', name: '', sku: '', price: '', compare_at: '', inventory_quantity: 0, description: '', image_url: '', is_active: true, per_store_stock: false, store_stock: {}, variants: [] }

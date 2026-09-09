@@ -6,7 +6,8 @@ import {
 import { api, ISSUE_TYPES } from '../api';
 import { colors } from '../theme';
 
-const issueLabel = (t) => (ISSUE_TYPES.find(([x]) => x === t) || [null, t])[1];
+const ISSUE_LABEL_EXTRA = { delivery: 'Delivery message' };
+const issueLabel = (t) => ISSUE_LABEL_EXTRA[t] || (ISSUE_TYPES.find(([x]) => x === t) || [null, t])[1];
 
 export default function SupportScreen({ navigation, route }) {
   const presetOrderId = route.params?.orderId ?? null;

@@ -251,10 +251,10 @@ class RiderController extends Controller
             $thread = SupportThread::create([
                 'user_id' => $order->user_id,
                 'order_id' => $order->id,
-                'issue_type' => 'other',
+                'issue_type' => 'delivery',
                 'status' => 'open',
             ]);
-            $thread->post(null, "Your delivery rider started a chat about order #{$order->id}.", system: true);
+            $thread->post(null, "Delivery chat for order #{$order->id} — your rider will message you here.", system: true);
         }
 
         return $thread;

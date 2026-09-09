@@ -99,7 +99,9 @@ const ISSUE_TYPES = [
   ['payment_issue', 'Payment issue'],
   ['other', 'Something else'],
 ]
-const issueLabel = (type) => (ISSUE_TYPES.find(([t]) => t === type) ?? [null, type])[1]
+// Not offered in the "new request" picker — only the delivery rider opens these.
+const ISSUE_LABEL_EXTRA = { delivery: 'Delivery message' }
+const issueLabel = (type) => ISSUE_LABEL_EXTRA[type] ?? (ISSUE_TYPES.find(([t]) => t === type) ?? [null, type])[1]
 
 function orderLabel(order) {
   if (order.payment_status === 'refund_pending') return 'Refund pending'

@@ -10,6 +10,8 @@ class SupportThread extends Model
 {
     public const ISSUE_TYPES = [
         'item_missing', 'item_damaged', 'wrong_item', 'not_delivered', 'payment_issue', 'other',
+        // Opened by the delivery rider, not chosen by the customer.
+        'delivery',
     ];
 
     protected $fillable = [
