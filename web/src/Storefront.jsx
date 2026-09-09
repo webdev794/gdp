@@ -1441,9 +1441,19 @@ export default function Storefront() {
     <div className="site-footer-bottom">
       <span className="site-footer-copy">{(footer?.copyright || '© {year} Grocerly').replace('{year}', String(new Date().getFullYear()))}</span>
       {(footer?.app_store_url || footer?.play_store_url) && <span className="site-footer-app">
-        <b>Download App</b>
-        {footer?.app_store_url && <a className="store-badge" href={footer.app_store_url} target="_blank" rel="noopener noreferrer">App Store</a>}
-        {footer?.play_store_url && <a className="store-badge" href={footer.play_store_url} target="_blank" rel="noopener noreferrer">Google Play</a>}
+        {footer?.app_store_url && <a className="app-badge" href={footer.app_store_url} target="_blank" rel="noopener noreferrer" aria-label="Download on the App Store">
+          <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path fill="currentColor" d="M17.05 12.53c-.03-2.79 2.28-4.13 2.38-4.19-1.3-1.9-3.32-2.16-4.04-2.19-1.72-.17-3.35 1.01-4.22 1.01-.87 0-2.21-.99-3.63-.96-1.87.03-3.59 1.09-4.55 2.76-1.94 3.37-.5 8.36 1.39 11.09.92 1.34 2.02 2.84 3.46 2.79 1.39-.06 1.91-.9 3.59-.9 1.67 0 2.15.9 3.62.87 1.49-.03 2.44-1.37 3.36-2.71 1.06-1.56 1.5-3.07 1.52-3.15-.03-.02-2.92-1.12-2.95-4.46zM14.28 4.38c.77-.93 1.29-2.23 1.15-3.52-1.11.04-2.45.74-3.24 1.67-.71.82-1.33 2.13-1.16 3.39 1.24.1 2.5-.63 3.25-1.54z"/></svg>
+          <span><small>Download on the</small><b>App Store</b></span>
+        </a>}
+        {footer?.play_store_url && <a className="app-badge" href={footer.play_store_url} target="_blank" rel="noopener noreferrer" aria-label="Get it on Google Play">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path fill="#00E0FF" d="M3.3 2.06a1 1 0 0 0-.4.82v18.24a1 1 0 0 0 .4.82l10.2-9.94z"/>
+            <path fill="#00E676" d="m17.53 8.53-3.42 3.33 3.42 3.33 4.06-2.35a1.02 1.02 0 0 0 0-1.96z"/>
+            <path fill="#FFC107" d="M17.53 8.53 5.4 1.56a1.06 1.06 0 0 0-1.13.02l9.84 9.6z"/>
+            <path fill="#FF3D47" d="M14.11 11.86 4.27 21.44a1.06 1.06 0 0 0 1.13.02l12.13-6.99z"/>
+          </svg>
+          <span><small>GET IT ON</small><b>Google Play</b></span>
+        </a>}
       </span>}
       {FOOTER_SOCIALS.some(([key]) => footer?.socials?.[key]) && <span className="site-footer-socials">
         {FOOTER_SOCIALS.filter(([key]) => footer?.socials?.[key]).map(([key, label, path]) => (

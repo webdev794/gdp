@@ -201,10 +201,14 @@ a.psec-feature.is-link img{width:100%;height:150px;object-fit:cover;border-radiu
 .site-footer-cats{columns:3;column-gap:20px}
 .site-footer-bottom{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;margin-top:24px;padding-top:16px;border-top:1px solid var(--line);font:11px 'DM Mono',monospace;color:var(--muted)}
 .site-footer-copy{color:var(--ink)}
-.site-footer-app{display:flex;align-items:center;gap:8px}
-.site-footer-app b{font-weight:700;color:var(--muted)}
-.store-badge{padding:5px 11px;border:1px solid var(--line);border-radius:7px;color:var(--ink);font-weight:600;text-decoration:none;background:var(--paper)}
-.store-badge:hover{border-color:var(--green);color:var(--green)}
+.site-footer-app{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* Official-style dark app-store badges (kept dark in both themes, like the real ones). */
+.app-badge{display:inline-flex;align-items:center;gap:9px;background:#000;color:#fff;border:1px solid #3a3a3a;border-radius:9px;padding:7px 13px;text-decoration:none;line-height:1}
+.app-badge:hover{border-color:#6a6a6a}
+.app-badge svg{flex:none}
+.app-badge span{display:flex;flex-direction:column;gap:2px}
+.app-badge small{font-size:8px;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
+.app-badge b{font-size:15px;font-weight:600;letter-spacing:.01em}
 .site-footer-socials{display:flex;align-items:center;gap:10px}
 .site-footer-socials a{display:grid;place-items:center;width:32px;height:32px;border:1px solid var(--line);border-radius:50%;color:var(--ink)}
 .site-footer-socials a:hover{border-color:var(--green);color:var(--green)}
