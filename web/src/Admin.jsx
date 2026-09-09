@@ -1296,7 +1296,9 @@ export default function Admin({ token, onClose }) {
                   Track stock per store
                 </label>
                 {!productForm.per_store_stock
-                  ? <p className="muted">Off — the single <strong>Inventory</strong> / variant <strong>Stock</strong> above applies at every store. Turn on for a multi-store shop so each store has its own count and out-of-stock state.</p>
+                  ? (stores.length >= 2
+                    ? <p className="muted">You have <strong>{stores.length} stores</strong> — they can&rsquo;t share one inventory number. <button type="button" className="act" onClick={() => setProductForm({ ...productForm, per_store_stock: true })}>Give each store its own count</button></p>
+                    : <p className="muted">Off — the single <strong>Inventory</strong> / variant <strong>Stock</strong> above applies at every store. Turn on for a multi-store shop so each store has its own count and out-of-stock state.</p>)
                   : stores.length === 0
                     ? <p className="muted">No stores yet — add them under <strong>Stores</strong> first.</p>
                     : <>
@@ -1308,7 +1310,9 @@ export default function Admin({ token, onClose }) {
                             </tr></thead>
                             <tbody>
                               {stores.map((store) => {
-                                const row = productForm.store_stock?.[store.id] ?? { is_stocked: true, base: '', variants: {} }
+                                // Pre-fill a store's count from the product's single Inventory
+                                // value until it's edited, so the grid isn't all blanks.
+                                const row = productForm.store_stock?.[store.id] ?? { is_stocked: true, base: String(productForm.inventory_quantity ?? ''), variants: {} }
                                 const setRow = (patch) => setProductForm((form) => ({ ...form, store_stock: { ...form.store_stock, [store.id]: { ...row, ...patch } } }))
                                 return (
                                   <tr key={store.id}>
