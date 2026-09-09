@@ -71,6 +71,30 @@ class SupportThreadController extends Controller
         return response()->json(['data' => $this->withMessages($thread)]);
     }
 
+    /**
+     * The customer's 1–5 rating (and optional note) for how the conversation
+     * went. One rating per thread — a repeat call edits it. Only once staff
+     * have replied, so there's something to rate.
+     */
+    public function rate(Request $request, SupportThread $thread): JsonResponse
+    {
+        abort_unless($thread->user_id === $request->user()->id, 404);
+        abort_unless($thread->hasStaffReply(), 422, 'There is nothing to rate yet — no reply on this conversation.');
+
+        $validated = $request->validate([
+            'rating' => ['required', 'integer', 'between:1,5'],
+            'comment' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $thread->forceFill([
+            'rating' => $validated['rating'],
+            'rating_comment' => $validated['comment'] ?? null,
+            'rated_at' => now(),
+        ])->save();
+
+        return response()->json(['data' => $this->withMessages($thread)]);
+    }
+
     private function withMessages(SupportThread $thread): SupportThread
     {
         return $thread->fresh(['messages', 'order:id,status,total_cents']);

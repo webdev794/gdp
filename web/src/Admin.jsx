@@ -1894,7 +1894,7 @@ export default function Admin({ token, onClose }) {
           </div>
           {threads.length === 0 ? <p className="admin-empty">No conversations.</p> : (
             <table className="admin-table">
-              <thead><tr><th>Customer</th><th>Order</th><th>Issue</th><th>Status</th><th>Last activity</th><th></th></tr></thead>
+              <thead><tr><th>Customer</th><th>Order</th><th>Issue</th><th>Status</th><th>Rating</th><th>Last activity</th><th></th></tr></thead>
               <tbody>
                 {threads.map((t) => (
                   <tr key={t.id}>
@@ -1902,6 +1902,7 @@ export default function Admin({ token, onClose }) {
                     <td>{t.order_id ? `#${t.order_id}` : '—'}</td>
                     <td>{ISSUE_LABELS[t.issue_type] ?? t.issue_type}</td>
                     <td><span className={`pill pill-${t.status === 'open' ? 'failed' : 'paid'}`}>{t.status}</span></td>
+                    <td>{t.rating != null ? <span className="admin-review-stars" title={t.rating_comment || ''}>{'★'.repeat(t.rating)}<span className="dim">{'★'.repeat(5 - t.rating)}</span></span> : <span className="muted">—</span>}</td>
                     <td>{t.last_message_at ? new Date(t.last_message_at).toLocaleString() : '—'}</td>
                     <td className="admin-actions"><button className="act" type="button" onClick={() => openThread(t.id)}>Open</button></td>
                   </tr>
@@ -2166,6 +2167,13 @@ export default function Admin({ token, onClose }) {
                 ? <button className="act" type="button" style={{ marginLeft: 8 }} onClick={() => setThreadResolved('resolved')}>Mark resolved</button>
                 : <button className="act ghost" type="button" style={{ marginLeft: 8 }} onClick={() => setThreadResolved('open')}>Re-open</button>}
             </p>
+            {thread.rating != null && (
+              <p className="admin-chat-rating">
+                <span className="admin-review-stars">{'★'.repeat(thread.rating)}<span className="dim">{'★'.repeat(5 - thread.rating)}</span></span>
+                <span className="muted"> customer rated this chat{thread.rated_at ? ` · ${new Date(thread.rated_at).toLocaleDateString()}` : ''}</span>
+                {thread.rating_comment && <span className="admin-chat-rating-c">“{thread.rating_comment}”</span>}
+              </p>
+            )}
             <div className="chat-log">{(thread.messages ?? []).map((m) => (
               <div key={m.id} className={`chat-msg ${m.is_staff && m.user_id ? 'staff' : m.user_id ? 'customer' : 'system'}`}><span>{m.body}</span><em>{new Date(m.created_at).toLocaleString()}</em></div>
             ))}</div>

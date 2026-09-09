@@ -25,7 +25,7 @@
 | **Pages → Footer** | Edit the footer copyright, disclaimer, App Store / Play Store links, social-media links and custom links. |
 | **Pages → All pages** | Create and edit content pages (About, Contact, Privacy, etc.) using text or drag-and-drop section blocks and a header banner image. |
 | **Pages → Blogs** | Create and edit blog posts as their own pages, kept in a separate group. |
-| **Support** | Read customer support chats, reply, mark them resolved/reopened, and issue a refund from within a conversation. |
+| **Support** | Read customer support chats, reply, mark them resolved/reopened, and issue a refund from within a conversation. Each thread shows the customer's ★ chat rating (with their comment) in the list and on the thread drawer. |
 | **Settings** | Configure checkout charges — tax rate, delivery fee, handling fee, small-cart surcharge — turn cash-on-delivery on/off, and turn rider auto-assignment on/off. |
 
 ---
@@ -51,7 +51,7 @@
 | **Account → Profile** | Update name and phone, and change password. |
 | **Account → Addresses** | Add, edit, delete and set a default delivery address. |
 | **Account → Payment methods** | Add a card, set a default, and remove saved cards. |
-| **Help** | Start a support chat (optionally linked to an order) and message the store. |
+| **Help** | Start a support chat (optionally linked to an order) and message the store. Once the store has replied, rate the conversation 1–5 stars with an optional comment at the end of the chat. |
 | **Footer pages** | Read About Us, Blog, Contact, FAQs, Privacy Policy, Terms of Service and Security. |
 | **Sign in / Sign up** | Email-code, or email + password (Create an account / Forgot password on the Password tab). |
 

@@ -284,3 +284,6 @@
 .admin-review-stars{color:#f5a623;font-size:13px;letter-spacing:1px}
 .admin-review-stars .dim{color:#d3d8cd}
 .admin-review-comment{margin:6px 0 0;font-size:13px;line-height:1.45;color:var(--ink)}
+
+.admin-chat-rating{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;margin:10px 0 0;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fafbf8;font-size:12px}
+.admin-chat-rating-c{flex-basis:100%;color:var(--ink);font-size:13px;line-height:1.4}

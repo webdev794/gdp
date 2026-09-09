@@ -27,6 +27,8 @@ class SupportThread extends Model
             'last_message_at' => 'datetime',
             'last_staff_message_at' => 'datetime',
             'resolved_at' => 'datetime',
+            'rating' => 'integer',
+            'rated_at' => 'datetime',
         ];
     }
 
@@ -35,6 +37,13 @@ class SupportThread extends Model
     {
         return $this->last_message_at !== null
             && ($this->last_staff_message_at === null || $this->last_message_at->gt($this->last_staff_message_at));
+    }
+
+    /** A conversation is rateable once staff have actually taken part. */
+    public function hasStaffReply(): bool
+    {
+        return $this->last_staff_message_at !== null
+            || $this->messages()->where('is_staff', true)->exists();
     }
 
     public function user(): BelongsTo { return $this->belongsTo(User::class); }

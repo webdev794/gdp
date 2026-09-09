@@ -107,6 +107,8 @@ export const api = {
     request('/support/threads', { method: 'POST', body: payload, auth: true }),
   supportReply: (id, body) =>
     request(`/support/threads/${id}/messages`, { method: 'POST', body: { body }, auth: true }),
+  rateSupportThread: (id, body) =>
+    request(`/support/threads/${id}/rating`, { method: 'POST', body, auth: true }),
 
   riderOrders: () => request('/rider/orders', { auth: true }),
   riderStats: () => request('/rider/stats', { auth: true }),

@@ -76,3 +76,4 @@
 .star-picker .star{border:0;background:transparent;cursor:pointer;font-size:20px;line-height:1;color:#d3d8cd;padding:0}
 .star-picker .star.on{color:#f5a623}
 .star-picker .star:disabled{cursor:default}
+.chat-rating{margin:12px 0}

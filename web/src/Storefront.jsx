@@ -189,6 +189,59 @@ function RiderRating({ orderId, existing, source, onSaved }) {
   )
 }
 
+/**
+ * Customer's 1–5 rating of a support conversation, shown at the end of the chat
+ * once staff have replied. One rating per thread; a repeat submission edits it.
+ */
+function ChatRating({ thread, onSaved }) {
+  const rated = thread.rating != null
+  const [rating, setRating] = useState(thread.rating ?? 0)
+  const [comment, setComment] = useState(thread.rating_comment ?? '')
+  const [editing, setEditing] = useState(!rated)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  async function submit() {
+    if (!rating) { setMsg('Tap a star to rate.'); return }
+    setBusy(true); setMsg('')
+    try {
+      const res = await fetch(`${API_URL}/support/threads/${thread.id}/rating`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${localStorage.getItem('gdp_token')}` },
+        body: JSON.stringify({ rating, comment: comment.trim() || null }),
+      })
+      const data = await responseJson(res)
+      if (!res.ok) throw new Error(data.message ?? 'Could not save your rating.')
+      onSaved?.(data.data)
+      setEditing(false)
+      setMsg('Thanks for the feedback!')
+    } catch (error) { setMsg(error.message) } finally { setBusy(false) }
+  }
+
+  if (!editing) {
+    return (
+      <div className="rider-rating done chat-rating">
+        <span>You rated this chat</span>
+        <StarPicker value={rating} readOnly />
+        <button type="button" className="text-button" onClick={() => setEditing(true)}>Edit</button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rider-rating chat-rating">
+      <span className="rider-rating-h">How was this conversation?</span>
+      <StarPicker value={rating} onChange={setRating} />
+      <textarea rows="2" maxLength="1000" placeholder="Anything we could do better? (optional)" value={comment} onChange={(event) => setComment(event.target.value)} />
+      <div className="rider-rating-actions">
+        <button type="button" className="text-button" disabled={busy} onClick={submit}>{rated ? 'Update rating' : 'Submit rating'}</button>
+        {rated && <button type="button" className="text-button" onClick={() => { setEditing(false); setRating(thread.rating); setComment(thread.rating_comment ?? '') }}>Cancel</button>}
+      </div>
+      {msg && <p className="rider-rating-msg">{msg}</p>}
+    </div>
+  )
+}
+
 function PaymentForm({ clientSecret, onComplete, savedCards = [] }) {
   const stripe = useStripe()
   const elements = useElements()
@@ -1601,6 +1654,9 @@ export default function Storefront() {
             : null
         })()}
         <div className="chat-log">{(supportView.messages ?? []).map((m) => <div key={m.id} className={`chat-msg ${m.is_staff ? 'staff' : m.user_id ? 'me' : 'system'}`}><span>{m.body}</span><em>{new Date(m.created_at).toLocaleString()}</em></div>)}</div>
+        {supportView.issue_type !== 'delivery' && (supportView.rating != null || (supportView.messages ?? []).some((m) => m.is_staff)) && (
+          <ChatRating key={supportView.id} thread={supportView} onSaved={(t) => { setSupportView(t); loadThreads() }} />
+        )}
         <div className="chat-send"><input placeholder="Type a message" value={supportReply} onChange={(event) => setSupportReply(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') sendSupportReply() }} /><button type="button" disabled={supportBusy || !supportReply.trim()} onClick={sendSupportReply}>Send</button></div>
         <button className="switch-auth" type="button" onClick={() => { setSupportView('list'); loadThreads() }}>All conversations</button>
       </>}

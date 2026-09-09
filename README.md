@@ -195,6 +195,7 @@ Administrators must be able to manage:
 - [x] Delivery rider role + Expo rider mode: admin-assign, auto-assign (nearest on-shift rider linked to the store), or pool claim; rider status + COD collection
 - [x] Rider dashboard (web + Expo): lifetime/weekly deliveries with change-vs-last-week, ★ rating, code-verified share
 - [x] Customer rates the rider 1–5 with an admin-only comment (from the delivered order or the delivery chat); feeds the rider's overall rating
+- [x] Customer rates a support conversation 1–5 with a comment, at the end of the chat once staff have replied; shown to the admin
 - [x] Server reconciles an order from Stripe when the webhook is missed or delayed
 - [x] Checkout address modal dismissed when payment begins
 - [x] Admin role flag on users, denied by default and never mass-assignable
@@ -471,13 +472,20 @@ reply re-opens a resolved thread. The client polls the thread every ~4 s while
 it's open — no websocket server.
 
 - Customer API (`auth:sanctum`): `GET/POST /api/support/threads`,
-  `GET /api/support/threads/{thread}`, `POST …/{thread}/messages`.
+  `GET /api/support/threads/{thread}`, `POST …/{thread}/messages`,
+  `POST …/{thread}/rating`.
 - Admin API (`+admin`): `GET /api/admin/support/threads` (`?status=`,
   `?issue_type=`), `GET …/{thread}` (includes the linked order's items + refunds),
   `POST …/{thread}/messages` (staff reply), `PATCH …/{thread}` (`status`).
 - Admin **Support** tab: an inbox (open-first) → thread drawer with the chat, a
   reply box, resolve/re-open, and — when the thread is linked to an order — a
   **Refund** panel.
+- **Rate the conversation.** `POST /api/support/threads/{thread}/rating`
+  `{rating: 1..5, comment?}` — the customer's CSAT for the chat, shown at the end
+  of the thread once staff have replied. One rating per thread (`support_threads.
+  rating` / `rating_comment` / `rated_at`); a repeat call edits it. Not shown on
+  rider-opened `delivery` threads (those carry the rider rating instead). The
+  admin sees it on the thread drawer and as a ★ column in the inbox.
 - **Admin notifications**: the console polls open threads every 10 s on *any*
   tab. A new customer message (`needs_reply` — a customer message newer than the
   last staff reply) plays a two-tone Web-Audio chime, drops a clickable toast,
