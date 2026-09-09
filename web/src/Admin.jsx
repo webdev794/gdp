@@ -1306,7 +1306,7 @@ export default function Admin({ token, onClose }) {
                     : <>
                         <p className="muted">Untick <em>Carried</em> for a store that doesn&rsquo;t sell this at all (it disappears there). Quantity 0 keeps it listed as &ldquo;out of stock&rdquo;.</p>
                         <div className="admin-scroll-x">
-                          <table className="admin-grid">
+                          <table className="admin-stock-grid">
                             <thead><tr><th>Store</th><th>Carried</th><th>Qty</th>
                               {(productForm.variants ?? []).filter((v) => !v._delete).map((v, i) => <th key={i}>{v.label || v.sku || `Variant ${i + 1}`}</th>)}
                             </tr></thead>
