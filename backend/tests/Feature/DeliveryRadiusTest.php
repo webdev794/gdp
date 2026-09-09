@@ -57,6 +57,19 @@ class DeliveryRadiusTest extends TestCase
             ->assertCreated();
     }
 
+    public function test_a_closer_store_that_cannot_reach_does_not_shadow_one_that_can(): void
+    {
+        // Nearest store has a tiny radius and can't reach the customer; a store
+        // slightly farther away has a wide radius that does.
+        $this->store(40.7484, -73.9857, 1, 'Corner shop');
+        $this->store(40.7000, -73.9857, 20, 'Regional hub');
+        $this->shopAsCustomer();
+
+        // ~1.6 km from the corner shop (radius 1), ~5.4 km from the hub (radius 20).
+        $this->postJson('/api/checkout', ['address' => $this->address(40.7630, -73.9857)])
+            ->assertCreated();
+    }
+
     public function test_enforcement_can_be_turned_off(): void
     {
         config(['checkout.enforce_radius' => false]);

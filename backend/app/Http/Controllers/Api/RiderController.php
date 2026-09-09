@@ -12,7 +12,8 @@ class RiderController extends Controller
 {
     public function orders(Request $request): JsonResponse
     {
-        $me = $request->user()->id;
+        $rider = $request->user();
+        $me = $rider->id;
 
         $assigned = Order::query()
             ->where('delivery_partner_id', $me)
@@ -21,9 +22,17 @@ class RiderController extends Controller
             ->latest()
             ->get();
 
+        // Once a rider is linked to stores, their pool is scoped to those stores
+        // (plus any order with no store recorded — older data visible to all). A
+        // rider with no store links yet sees the whole pool, as before.
+        $storeIds = $rider->stores()->pluck('stores.id');
+
         $pool = Order::query()
             ->whereNull('delivery_partner_id')
             ->where('status', 'ready_for_delivery')
+            ->when($storeIds->isNotEmpty(), fn ($query) => $query->where(fn ($q) => $q
+                ->whereNull('store_id')
+                ->orWhereIn('store_id', $storeIds)))
             ->with(['items', 'user:id,name,phone'])
             ->latest()
             ->get();
@@ -67,6 +76,26 @@ class RiderController extends Controller
         $order->update(['status' => $validated['status']]);
 
         return response()->json(['data' => $this->row($order->fresh(['items', 'user:id,name,phone']))]);
+    }
+
+    /**
+     * The rider app pings its live position here; auto-assignment prefers it
+     * over the base while it's fresh (< 15 min old).
+     */
+    public function location(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'lat' => ['required', 'numeric', 'between:-90,90'],
+            'lng' => ['required', 'numeric', 'between:-180,180'],
+        ]);
+
+        $request->user()->forceFill([
+            'rider_last_lat' => $data['lat'],
+            'rider_last_lng' => $data['lng'],
+            'rider_last_located_at' => now(),
+        ])->save();
+
+        return response()->json(['data' => ['ok' => true]]);
     }
 
     public function cashCollected(Request $request, Order $order): JsonResponse

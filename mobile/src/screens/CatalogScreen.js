@@ -9,19 +9,25 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import * as Location from 'expo-location';
 import { api } from '../api';
 import { useApp } from '../state';
 import { colors, money } from '../theme';
 
 export default function CatalogScreen({ navigation }) {
-  const { addToCart, cartCount, signOut } = useApp();
+  const { addToCart, cartCount, signOut, deliveryLocation, setDeliveryLocation } = useApp();
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [activeCategory, setActiveCategory] = useState(null);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [error, setError] = useState('');
+
+  const coords = deliveryLocation
+    ? { lat: deliveryLocation.lat, lng: deliveryLocation.lng }
+    : {};
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -49,34 +55,64 @@ export default function CatalogScreen({ navigation }) {
       const { data } = await api.products({
         search: (opts.search ?? search).trim() || undefined,
         category: (opts.category ?? activeCategory) || undefined,
+        ...coords,
       });
       setProducts(data ?? []);
     } catch (e) {
       setError(e.message);
     }
-  }, [search, activeCategory]);
+  }, [search, activeCategory, deliveryLocation]);
+
+  const loadCategories = useCallback(async () => {
+    try {
+      const cats = await api.categories(coords);
+      setCategories(cats.data ?? []);
+    } catch (e) {
+      setError(e.message);
+    }
+  }, [deliveryLocation]);
 
   useEffect(() => {
     (async () => {
-      try {
-        const [cats] = await Promise.all([api.categories()]);
-        setCategories(cats.data ?? []);
-      } catch (e) {
-        setError(e.message);
-      }
+      await loadCategories();
       await loadProducts();
       setLoading(false);
     })();
   }, []);
 
-  // Re-query when the filter changes.
+  // Re-query when the filter changes, or when the customer's location does — the
+  // catalog is scoped to the store that serves that point.
   useEffect(() => {
     if (!loading) loadProducts();
   }, [activeCategory]);
 
+  useEffect(() => {
+    if (loading) return;
+    loadCategories();
+    loadProducts();
+  }, [deliveryLocation]);
+
+  async function detectLocation() {
+    setError('');
+    setLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setError('Location permission denied — you can still browse everything.');
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setDeliveryLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+    } catch {
+      setError('Could not read your location.');
+    } finally {
+      setLocating(false);
+    }
+  }
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadProducts();
+    await Promise.all([loadCategories(), loadProducts()]);
     setRefreshing(false);
   };
 
@@ -99,6 +135,23 @@ export default function CatalogScreen({ navigation }) {
           onChangeText={setSearch}
           onSubmitEditing={() => loadProducts()}
         />
+      </View>
+
+      <View style={styles.locRow}>
+        <Pressable onPress={detectLocation} disabled={locating} hitSlop={6}>
+          <Text style={styles.locText}>
+            {locating
+              ? 'Finding you…'
+              : deliveryLocation
+                ? '📍 Showing items from your nearest store · tap to update'
+                : '📍 Use my location to see what your nearest store stocks'}
+          </Text>
+        </Pressable>
+        {deliveryLocation && !locating && (
+          <Pressable onPress={() => setDeliveryLocation(null)} hitSlop={6}>
+            <Text style={styles.locClear}>  Clear</Text>
+          </Pressable>
+        )}
       </View>
 
       <FlatList
@@ -142,9 +195,13 @@ export default function CatalogScreen({ navigation }) {
             <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
             <View style={styles.cardBottom}>
               <Text style={styles.price}>{money(item.price_cents)}</Text>
-              <Pressable style={styles.add} onPress={() => addToCart(item)}>
-                <Text style={styles.addText}>Add</Text>
-              </Pressable>
+              {item.out_of_stock ? (
+                <View style={[styles.add, styles.addOff]}><Text style={styles.addOffText}>Out of stock</Text></View>
+              ) : (
+                <Pressable style={styles.add} onPress={() => addToCart(item)}>
+                  <Text style={styles.addText}>Add</Text>
+                </Pressable>
+              )}
             </View>
           </Pressable>
         )}
@@ -168,6 +225,15 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     fontSize: 14,
   },
+  locRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  locText: { fontSize: 12, color: colors.muted },
+  locClear: { fontSize: 12, color: colors.brand, fontWeight: '700' },
   chipRow: { marginTop: 12, flexGrow: 0 },
   chip: {
     borderWidth: 1,
@@ -205,4 +271,6 @@ const styles = StyleSheet.create({
   price: { fontSize: 15, fontWeight: '800', color: colors.ink },
   add: { backgroundColor: colors.brand, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
   addText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  addOff: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.line },
+  addOffText: { color: colors.muted, fontSize: 11, fontWeight: '700' },
 });

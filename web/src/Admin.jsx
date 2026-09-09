@@ -30,18 +30,42 @@ const NEXT_ACTIONS = {
 }
 
 const STATUS_FILTERS = ['all', 'confirmed', 'packing', 'ready_for_delivery', 'out_for_delivery', 'completed', 'cancelled']
+const PAGE_SIZES = [10, 20, 50, 100, 500, 1000]
+
+// Rows-per-page + page nav shown under a list. `total`/`pageCount` come from the
+// server for big lists, or from the array length for small ones paged client-side.
+function Pager({ page, pageCount, total, onPage, pageSize, onPageSize }) {
+  return (
+    <div className="admin-pager">
+      <label>Show
+        <select value={pageSize} onChange={(event) => onPageSize(Number(event.target.value))}>
+          {PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+        </select>
+        per page
+      </label>
+      {pageCount > 1 && (
+        <span className="admin-pager-nav">
+          <button type="button" className="act ghost" disabled={page <= 1} onClick={() => onPage(page - 1)}>‹ Prev</button>
+          <span>Page {page} of {pageCount}</span>
+          <button type="button" className="act ghost" disabled={page >= pageCount} onClick={() => onPage(page + 1)}>Next ›</button>
+        </span>
+      )}
+      <span className="muted">{total} total</span>
+    </div>
+  )
+}
 // Left sidebar vs top-right. Support/Settings stay top-right (used less often,
 // and Support carries the live badge next to the notification bell).
-const PRIMARY_TABS = ['dashboard', 'orders', 'products', 'categories', 'customers', 'stores', 'branding', 'secure']
+const PRIMARY_TABS = ['dashboard', 'orders', 'products', 'categories', 'customers', 'riders', 'stores', 'branding', 'secure']
 const TOP_TABS = ['support', 'settings']
 const TAB_LABELS = {
   dashboard: 'Dashboard', orders: 'Orders', products: 'Products', categories: 'Categories',
-  customers: 'Customers', stores: 'Stores', branding: 'Store settings', secure: 'Secure access',
+  customers: 'Customers', riders: 'Riders', stores: 'Stores', branding: 'Store settings', secure: 'Secure access',
   homepage: 'Homepage', support: 'Support', settings: 'Settings',
 }
 const TAB_ICONS = {
   dashboard: '\u{1F4CA}', orders: '\u{1F9FE}', products: '\u{1F4E6}', categories: '\u{1F5C2}️',
-  customers: '\u{1F465}', stores: '\u{1F3EC}', branding: '\u{1F3A8}', secure: '\u{1F510}',
+  customers: '\u{1F465}', riders: '\u{1F6F5}', stores: '\u{1F3EC}', branding: '\u{1F3A8}', secure: '\u{1F510}',
   homepage: '\u{1F5BC}️',
 }
 const EMPTY_BRANDING = { store_name: '', tagline: '', logo_url: '', favicon_url: '', theme: 'light', layout_width: 'boxed', color_brand: '#1f7a3d', color_accent: '#ffd23f', color_heading: '#18211c' }
@@ -53,7 +77,24 @@ const ISSUE_LABELS = {
   not_delivered: 'Not delivered', payment_issue: 'Payment issue', other: 'Other',
 }
 
-const EMPTY_PRODUCT = { category_id: '', name: '', sku: '', price: '', compare_at: '', inventory_quantity: 0, description: '', image_url: '', is_active: true, variants: [] }
+const EMPTY_PRODUCT = { category_id: '', name: '', sku: '', price: '', compare_at: '', inventory_quantity: 0, description: '', image_url: '', is_active: true, per_store_stock: false, store_stock: {}, variants: [] }
+
+// Build the per-store stock grid ({ [storeId]: { is_stocked, base, variants: { [variantIndex]: qty } } })
+// from a product's store_inventory rows.
+const storeStockFrom = (product) => {
+  const idxById = new Map((product.variants ?? []).map((v, i) => [v.id, i]))
+  const map = {}
+  for (const row of (product.store_inventory ?? [])) {
+    const s = (map[row.store_id] = map[row.store_id] ?? { is_stocked: true, base: '', variants: {} })
+    if (row.product_variant_id == null) {
+      s.base = String(row.quantity)
+      s.is_stocked = !!row.is_stocked
+    } else if (idxById.has(row.product_variant_id)) {
+      s.variants[idxById.get(row.product_variant_id)] = String(row.quantity)
+    }
+  }
+  return map
+}
 const EMPTY_VARIANT = { label: '', sku: '', price: '', compare_at: '', stock: 0, image_url: '', is_active: true }
 const dollarsOrBlank = (cents) => (cents != null ? (cents / 100).toFixed(2) : '')
 
@@ -63,6 +104,16 @@ const variantRowsFrom = (product) => (product.variants ?? []).map((v) => ({
 }))
 const EMPTY_CATEGORY = { name: '', slug: '', sort_order: 0, is_active: true }
 const EMPTY_STORE = { name: '', line1: '', line2: '', city: '', state: '', postal_code: '', latitude: '', longitude: '', delivery_radius_km: 5, is_active: true }
+const riderFormFrom = (rider) => ({
+  id: rider.id,
+  name: rider.name,
+  phone: rider.phone ?? '',
+  rider_is_active: !!rider.rider_is_active,
+  rider_base_address: rider.rider_base_address ?? '',
+  rider_base_lat: rider.rider_base_lat ?? '',
+  rider_base_lng: rider.rider_base_lng ?? '',
+  store_ids: (rider.stores ?? []).map((s) => s.id),
+})
 const EMPTY_BANNER = { image_url: '', headline: '', category_slug: '', link_url: '', placement: 'strip', sort_order: 0, is_active: true }
 const EMPTY_TILE = { title: '', image_url: '', category_slug: '', link_url: '', sort_order: 0, is_active: true }
 const EMPTY_PAGE = { title: '', slug: '', banner_image: '', content: '', sections: [], footer_group: 'useful_links', show_in_footer: true, is_published: true, sort_order: 0 }
@@ -156,6 +207,31 @@ export default function Admin({ token, onClose }) {
   const [customerDetail, setCustomerDetail] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
   const [productSearch, setProductSearch] = useState('')
+  const [productSort, setProductSort] = useState('newest')
+  const [productStore, setProductStore] = useState('')
+  // Rows per page — shared across every list, remembered per browser.
+  const [pageSize, setPageSizeRaw] = useState(() => {
+    const n = Number(localStorage.getItem('gdp_admin_page_size'))
+    return PAGE_SIZES.includes(n) ? n : 10
+  })
+  // Server-paginated lists: current page + the server's meta.
+  const [ordersPage, setOrdersPage] = useState(1)
+  const [ordersMeta, setOrdersMeta] = useState(null)
+  const [productsPage, setProductsPage] = useState(1)
+  const [productsMeta, setProductsMeta] = useState(null)
+  const [customersPage, setCustomersPage] = useState(1)
+  const [customersMeta, setCustomersMeta] = useState(null)
+  // Small lists paged client-side.
+  const [categoriesPage, setCategoriesPage] = useState(1)
+  const [ridersPage, setRidersPage] = useState(1)
+  const [storesPage, setStoresPage] = useState(1)
+  const setPageSize = useCallback((n) => {
+    setPageSizeRaw(n)
+    try { localStorage.setItem('gdp_admin_page_size', String(n)) } catch { /* private mode */ }
+    setOrdersPage(1); setProductsPage(1); setCustomersPage(1)
+    setCategoriesPage(1); setRidersPage(1); setStoresPage(1)
+  }, [])
+  const pageSlice = (list, page) => list.slice((page - 1) * pageSize, page * pageSize)
   const [productForm, setProductForm] = useState(null)
   const [categoryForm, setCategoryForm] = useState(null)
   const [stores, setStores] = useState([])
@@ -171,6 +247,8 @@ export default function Admin({ token, onClose }) {
   const [blogsExpanded, setBlogsExpanded] = useState(false)
   const [courierDraft, setCourierDraft] = useState({})
   const [riders, setRiders] = useState([])
+  const [riderForm, setRiderForm] = useState(null)
+  const [riderEmail, setRiderEmail] = useState('')
   const [settings, setSettings] = useState(null)
   const [feesForm, setFeesForm] = useState(null)
   const [brandingForm, setBrandingForm] = useState(null)
@@ -193,6 +271,15 @@ export default function Admin({ token, onClose }) {
   const seenRef = useRef(null)
   const [busyId, setBusyId] = useState(null)
   const [message, setMessage] = useState('')
+  // Per-list "fetch in flight" flags so a slow API shows "Loading…" instead of
+  // an empty-result message.
+  const [listBusy, setListBusy] = useState({})
+  // Flip the flag on a microtask so this isn't a synchronous setState when a
+  // loader is called straight from an effect; clear it when the fetch settles.
+  const track = useCallback((key, promise) => {
+    Promise.resolve().then(() => setListBusy((b) => ({ ...b, [key]: true })))
+    return promise.finally(() => setListBusy((b) => ({ ...b, [key]: false })))
+  }, [])
 
   const authHeaders = useCallback(() => ({ Accept: 'application/json', Authorization: `Bearer ${token}` }), [token])
   const jsonHeaders = useCallback(() => ({ ...authHeaders(), 'Content-Type': 'application/json' }), [authHeaders])
@@ -221,28 +308,37 @@ export default function Admin({ token, onClose }) {
   }, [authHeaders])
 
   const loadOrders = useCallback(() => {
-    const query = statusFilter === 'all' ? '' : `?status=${statusFilter}`
-    fetch(`${API_URL}/admin/orders${query}`, { headers: authHeaders() }).then(readJson)
-      .then((data) => setOrders(data.data ?? [])).catch(() => setMessage('Could not load orders.'))
+    const qs = new URLSearchParams({ page: ordersPage, per_page: pageSize })
+    if (statusFilter !== 'all') qs.set('status', statusFilter)
+    track('orders', fetch(`${API_URL}/admin/orders?${qs}`, { headers: authHeaders() }).then(readJson)
+      .then((data) => { setOrders(data.data ?? []); setOrdersMeta(data.meta ?? null) }).catch(() => setMessage('Could not load orders.')))
     fetch(`${API_URL}/admin/riders`, { headers: authHeaders() }).then(readJson)
       .then((data) => setRiders(data.data ?? [])).catch(() => {})
-  }, [authHeaders, statusFilter])
+  }, [authHeaders, statusFilter, ordersPage, pageSize, track])
 
   const loadProducts = useCallback(() => {
-    const query = productSearch.trim() ? `?search=${encodeURIComponent(productSearch.trim())}` : ''
-    fetch(`${API_URL}/admin/products${query}`, { headers: authHeaders() }).then(readJson)
-      .then((data) => setProducts(data.data ?? [])).catch(() => setMessage('Could not load products.'))
-  }, [authHeaders, productSearch])
+    const qs = new URLSearchParams({ page: productsPage, per_page: pageSize, sort: productSort })
+    if (productSearch.trim()) qs.set('search', productSearch.trim())
+    if (productStore) qs.set('store_id', productStore)
+    track('products', fetch(`${API_URL}/admin/products?${qs}`, { headers: authHeaders() }).then(readJson)
+      .then((data) => { setProducts(data.data ?? []); setProductsMeta(data.meta ?? null) }).catch(() => setMessage('Could not load products.')))
+  }, [authHeaders, productSearch, productSort, productStore, productsPage, pageSize, track])
 
   const loadCategories = useCallback(() => {
-    fetch(`${API_URL}/admin/categories`, { headers: authHeaders() }).then(readJson)
-      .then((data) => setCategories(data.data ?? [])).catch(() => setMessage('Could not load categories.'))
-  }, [authHeaders])
+    track('categories', fetch(`${API_URL}/admin/categories`, { headers: authHeaders() }).then(readJson)
+      .then((data) => setCategories(data.data ?? [])).catch(() => setMessage('Could not load categories.')))
+  }, [authHeaders, track])
 
   const loadCustomers = useCallback(() => {
-    fetch(`${API_URL}/admin/customers`, { headers: authHeaders() }).then(readJson)
-      .then((data) => setCustomers(data.data ?? [])).catch(() => setMessage('Could not load customers.'))
-  }, [authHeaders])
+    const qs = new URLSearchParams({ page: customersPage, per_page: pageSize })
+    track('customers', fetch(`${API_URL}/admin/customers?${qs}`, { headers: authHeaders() }).then(readJson)
+      .then((data) => { setCustomers(data.data ?? []); setCustomersMeta(data.meta ?? null) }).catch(() => setMessage('Could not load customers.')))
+  }, [authHeaders, customersPage, pageSize, track])
+
+  const loadRiders = useCallback(() => {
+    track('riders', fetch(`${API_URL}/admin/riders`, { headers: authHeaders() }).then(readJson)
+      .then((data) => setRiders(data.data ?? [])).catch(() => setMessage('Could not load riders.')))
+  }, [authHeaders, track])
 
   const loadSettings = useCallback(() => {
     fetch(`${API_URL}/admin/settings`, { headers: authHeaders() }).then(readJson)
@@ -257,9 +353,9 @@ export default function Admin({ token, onClose }) {
   }, [authHeaders])
 
   const loadStores = useCallback(() => {
-    fetch(`${API_URL}/admin/stores`, { headers: authHeaders() }).then(readJson)
-      .then((data) => setStores(data.data ?? [])).catch(() => setMessage('Could not load stores.'))
-  }, [authHeaders])
+    track('stores', fetch(`${API_URL}/admin/stores`, { headers: authHeaders() }).then(readJson)
+      .then((data) => setStores(data.data ?? [])).catch(() => setMessage('Could not load stores.')))
+  }, [authHeaders, track])
 
   const loadBanners = useCallback(() => {
     fetch(`${API_URL}/admin/banners`, { headers: authHeaders() }).then(readJson)
@@ -282,15 +378,16 @@ export default function Admin({ token, onClose }) {
       .then((data) => setThreads(data.data ?? [])).catch(() => setMessage('Could not load support threads.'))
   }, [authHeaders, threadStatus])
 
-  useEffect(() => { loadMetrics() }, [loadMetrics])
+  useEffect(() => { if (tab === 'dashboard') loadMetrics() }, [tab, loadMetrics])
   useEffect(() => { loadPages() }, [loadPages])
   useEffect(() => { if (tab === 'dashboard') loadChart() }, [tab, loadChart])
   useEffect(() => { if (tab === 'dashboard') loadCompare() }, [tab, loadCompare])
   useEffect(() => { if (tab === 'dashboard') loadInsights() }, [tab, loadInsights])
   useEffect(() => { if (tab === 'orders') loadOrders() }, [tab, loadOrders])
-  useEffect(() => { if (tab === 'products') { loadProducts(); loadCategories() } }, [tab, loadProducts, loadCategories])
+  useEffect(() => { if (tab === 'products') { loadProducts(); loadCategories(); loadStores() } }, [tab, loadProducts, loadCategories, loadStores])
   useEffect(() => { if (tab === 'categories') loadCategories() }, [tab, loadCategories])
   useEffect(() => { if (tab === 'customers') loadCustomers() }, [tab, loadCustomers])
+  useEffect(() => { if (tab === 'riders') { loadRiders(); loadStores() } }, [tab, loadRiders, loadStores])
   useEffect(() => { if (tab === 'stores') loadStores() }, [tab, loadStores])
   useEffect(() => { if (tab === 'homepage') { loadBanners(); loadHomeTiles(); loadCategories() } }, [tab, loadBanners, loadHomeTiles, loadCategories])
   useEffect(() => { if (tab === 'support') loadThreads() }, [tab, loadThreads])
@@ -329,9 +426,11 @@ export default function Admin({ token, onClose }) {
         }
       } catch { /* keep last */ }
     }
-    check()
+    // Delay the first poll so it doesn't compete with the tab's own requests
+    // on a single-threaded dev server.
+    const kick = setTimeout(check, 2500)
     const timer = setInterval(check, 10000)
-    return () => { stopped = true; clearInterval(timer) }
+    return () => { stopped = true; clearTimeout(kick); clearInterval(timer) }
   }, [authHeaders, soundMuted])
 
   async function saveStore(event) {
@@ -359,6 +458,53 @@ export default function Admin({ token, onClose }) {
       const response = await fetch(`${API_URL}/admin/stores/${store.id}`, { method: 'DELETE', headers: authHeaders() })
       if (!response.ok && response.status !== 204) throw new Error((await readJson(response)).message ?? 'Could not delete the store.')
       loadStores()
+    } catch (error) { fail(error) }
+  }
+
+  async function addRider(event) {
+    event.preventDefault()
+    setMessage('')
+    const email = riderEmail.trim()
+    if (!email) return
+    try {
+      const response = await fetch(`${API_URL}/admin/riders`, { method: 'POST', headers: jsonHeaders(), body: JSON.stringify({ email }) })
+      const data = await readJson(response)
+      if (!response.ok) throw new Error(data.message ?? Object.values(data.errors ?? {})[0]?.[0] ?? 'Could not add the rider.')
+      setRiderEmail('')
+      loadRiders()
+      setRiderForm(riderFormFrom(data.data))
+    } catch (error) { fail(error) }
+  }
+
+  async function saveRider(event) {
+    event.preventDefault()
+    setMessage('')
+    const f = riderForm
+    const payload = {
+      phone: f.phone.trim() || null,
+      rider_is_active: f.rider_is_active,
+      rider_base_address: f.rider_base_address.trim() || null,
+      rider_base_lat: String(f.rider_base_lat).trim() === '' ? null : Number(f.rider_base_lat),
+      rider_base_lng: String(f.rider_base_lng).trim() === '' ? null : Number(f.rider_base_lng),
+      store_ids: f.store_ids.map(Number),
+    }
+    try {
+      const response = await fetch(`${API_URL}/admin/riders/${f.id}`, { method: 'PATCH', headers: jsonHeaders(), body: JSON.stringify(payload) })
+      const data = await readJson(response)
+      if (!response.ok) throw new Error(data.message ?? Object.values(data.errors ?? {})[0]?.[0] ?? 'Could not save the rider.')
+      setRiderForm(null)
+      loadRiders()
+    } catch (error) { fail(error) }
+  }
+
+  async function removeRider(rider) {
+    if (!window.confirm(`Remove the rider role from ${rider.name}? Their account stays.`)) return
+    setMessage('')
+    try {
+      const response = await fetch(`${API_URL}/admin/riders/${rider.id}`, { method: 'DELETE', headers: authHeaders() })
+      if (!response.ok && response.status !== 204) throw new Error((await readJson(response)).message ?? 'Could not remove the rider.')
+      if (riderForm?.id === rider.id) setRiderForm(null)
+      loadRiders()
     } catch (error) { fail(error) }
   }
 
@@ -666,8 +812,23 @@ export default function Admin({ token, onClose }) {
   async function saveProduct(event) {
     event.preventDefault()
     setMessage('')
-    const { id, price, compare_at: compareAt, variants, ...rest } = productForm
+    const { id, price, compare_at: compareAt, variants, per_store_stock: perStore, store_stock: storeStockMap, ...rest } = productForm
     const payload = { ...rest, category_id: Number(rest.category_id), inventory_quantity: Number(rest.inventory_quantity), price_cents: Math.round(Number(price) * 100), compare_at_price_cents: String(compareAt).trim() ? Math.round(Number(compareAt) * 100) : null, image_url: rest.image_url?.trim() || null }
+
+    // Per-store stock: a full grid of (store, option) rows. Off = single stock,
+    // sent as [] so the backend drops any rows.
+    const liveVariants = (variants ?? []).filter((v) => !v._delete && (v.sku || '').trim())
+    payload.store_stock = perStore
+      ? Object.entries(storeStockMap ?? {}).flatMap(([sid, row]) => {
+          const stocked = row.is_stocked !== false
+          const base = { store_id: Number(sid), variant_sku: null, is_stocked: stocked, quantity: Number(row.base || 0) }
+          const vRows = liveVariants.map((v) => {
+            const idx = variants.indexOf(v)
+            return { store_id: Number(sid), variant_sku: v.sku.trim(), is_stocked: stocked, quantity: Number(row.variants?.[idx] || 0) }
+          })
+          return [base, ...vRows]
+        })
+      : []
     const rows = (variants ?? []).filter((row) => row.id || !row._delete)
     if (id || rows.length) {
       payload.variants = rows.map((row) => ({
@@ -997,12 +1158,12 @@ export default function Admin({ token, onClose }) {
         <section className="admin-panel">
           <div className="admin-filters">
             {STATUS_FILTERS.map((value) => (
-              <button key={value} type="button" className={statusFilter === value ? 'chip active' : 'chip'} onClick={() => setStatusFilter(value)}>
+              <button key={value} type="button" className={statusFilter === value ? 'chip active' : 'chip'} onClick={() => { setStatusFilter(value); setOrdersPage(1) }}>
                 {value === 'all' ? 'All' : STATUS_LABELS[value]}
               </button>
             ))}
           </div>
-          {orders.length === 0 ? <p className="admin-empty">No orders for this filter.</p> : (
+          {listBusy.orders && orders.length === 0 ? <p className="admin-empty">Loading orders…</p> : orders.length === 0 ? <p className="admin-empty">No orders for this filter.</p> : (
             <table className="admin-table">
               <thead><tr><th>#</th><th>Customer</th><th>Placed</th><th>Items</th><th>Total</th><th>Method</th><th>Payment</th><th>Delivery</th><th>Courier</th><th>Actions</th></tr></thead>
               <tbody>
@@ -1015,7 +1176,7 @@ export default function Admin({ token, onClose }) {
                     <td>{money(order.total_cents)}</td>
                     <td>{order.payment_method === 'cod' ? 'Cash on delivery' : 'Card'}</td>
                     <td><span className={`pill pill-${order.payment_status}`}>{order.payment_status}</span></td>
-                    <td>{STATUS_LABELS[order.status] ?? order.status}</td>
+                    <td>{STATUS_LABELS[order.status] ?? order.status}{order.store && <span className="admin-note" title={`Fulfilled by ${order.store.name}${order.store.city ? `, ${order.store.city}` : ''}`}>🏬 {order.store.name}</span>}</td>
                     <td className="admin-courier">
                       {riders.length > 0 && (
                         <select value={order.delivery_partner_id ?? ''} disabled={busyId === order.id}
@@ -1050,14 +1211,32 @@ export default function Admin({ token, onClose }) {
               </tbody>
             </table>
           )}
+          <Pager page={ordersMeta?.current_page ?? ordersPage} pageCount={ordersMeta?.last_page ?? 1} total={ordersMeta?.total ?? orders.length} onPage={setOrdersPage} pageSize={pageSize} onPageSize={setPageSize} />
         </section>
       )}
 
       {tab === 'products' && (
         <section className="admin-panel">
           <div className="admin-toolbar">
-            <input className="admin-search" value={productSearch} placeholder="Search name or SKU" onChange={(event) => setProductSearch(event.target.value)} />
-            <button className="act" type="button" onClick={() => setProductForm({ ...EMPTY_PRODUCT, category_id: categories[0]?.id ?? '' })}>New product</button>
+            <input className="admin-search" value={productSearch} placeholder="Search name or SKU" onChange={(event) => { setProductSearch(event.target.value); setProductsPage(1) }} />
+            <label>Sort
+              <select value={productSort} onChange={(event) => { setProductSort(event.target.value); setProductsPage(1) }}>
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="name">Name (A–Z)</option>
+                <option value="stock_low">Stock: low to high</option>
+                <option value="stock_high">Stock: high to low</option>
+              </select>
+            </label>
+            {stores.length > 0 && (
+              <label>Store
+                <select value={productStore} onChange={(event) => { setProductStore(event.target.value); setProductsPage(1) }}>
+                  <option value="">All stores</option>
+                  {stores.map((s) => <option key={s.id} value={s.id}>{s.name}{s.city ? ` — ${s.city}` : ''}</option>)}
+                </select>
+              </label>
+            )}
+            <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ ...EMPTY_PRODUCT, category_id: categories[0]?.id ?? '' }) }}>New product</button>
           </div>
 
           {productForm && (
@@ -1110,6 +1289,44 @@ export default function Admin({ token, onClose }) {
                 <button type="button" className="act" onClick={() => setProductForm({ ...productForm, variants: [...(productForm.variants ?? []), { ...EMPTY_VARIANT }] })}>Add variant</button>
               </fieldset>
 
+              <fieldset className="admin-fieldset">
+                <legend>Store stock</legend>
+                <label className="admin-check">
+                  <input type="checkbox" checked={!!productForm.per_store_stock} onChange={(event) => setProductForm({ ...productForm, per_store_stock: event.target.checked })} />
+                  Track stock per store
+                </label>
+                {!productForm.per_store_stock
+                  ? <p className="muted">Off — the single <strong>Inventory</strong> / variant <strong>Stock</strong> above applies at every store. Turn on for a multi-store shop so each store has its own count and out-of-stock state.</p>
+                  : stores.length === 0
+                    ? <p className="muted">No stores yet — add them under <strong>Stores</strong> first.</p>
+                    : <>
+                        <p className="muted">Untick <em>Carried</em> for a store that doesn&rsquo;t sell this at all (it disappears there). Quantity 0 keeps it listed as &ldquo;out of stock&rdquo;.</p>
+                        <div className="admin-scroll-x">
+                          <table className="admin-grid">
+                            <thead><tr><th>Store</th><th>Carried</th><th>Qty</th>
+                              {(productForm.variants ?? []).filter((v) => !v._delete).map((v, i) => <th key={i}>{v.label || v.sku || `Variant ${i + 1}`}</th>)}
+                            </tr></thead>
+                            <tbody>
+                              {stores.map((store) => {
+                                const row = productForm.store_stock?.[store.id] ?? { is_stocked: true, base: '', variants: {} }
+                                const setRow = (patch) => setProductForm((form) => ({ ...form, store_stock: { ...form.store_stock, [store.id]: { ...row, ...patch } } }))
+                                return (
+                                  <tr key={store.id}>
+                                    <td>{store.name || `#${store.id}`}{store.city ? ` — ${store.city}` : ''}</td>
+                                    <td><input type="checkbox" checked={row.is_stocked !== false} onChange={(event) => setRow({ is_stocked: event.target.checked })} /></td>
+                                    <td><input type="number" min="0" value={row.base ?? ''} disabled={row.is_stocked === false} onChange={(event) => setRow({ base: event.target.value })} /></td>
+                                    {(productForm.variants ?? []).map((v, i) => v._delete ? null : (
+                                      <td key={i}><input type="number" min="0" value={row.variants?.[i] ?? ''} disabled={row.is_stocked === false} onChange={(event) => setRow({ variants: { ...row.variants, [i]: event.target.value } })} /></td>
+                                    ))}
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </>}
+              </fieldset>
+
               <div className="admin-form-actions">
                 <button className="act" type="submit">Save</button>
                 <button className="act ghost" type="button" onClick={() => setProductForm(null)}>Cancel</button>
@@ -1117,7 +1334,7 @@ export default function Admin({ token, onClose }) {
             </form>
           )}
 
-          {products.length === 0 ? <p className="admin-empty">No products.</p> : (
+          {listBusy.products && products.length === 0 ? <p className="admin-empty">Loading products…</p> : products.length === 0 ? <p className="admin-empty">No products.</p> : (
             <table className="admin-table">
               <thead><tr><th>Name</th><th>SKU</th><th>Category</th><th>Price</th><th>Stock</th><th>Variants</th><th>Active</th><th></th></tr></thead>
               <tbody>
@@ -1129,11 +1346,11 @@ export default function Admin({ token, onClose }) {
                     <td>{product.sku}</td>
                     <td>{product.category?.name ?? '—'}</td>
                     <td>{packs ? `${money(Math.min(...product.variants.filter((v) => v.is_active).map((v) => v.price_cents)))}+` : <>{money(product.price_cents)}{product.compare_at_price_cents > product.price_cents && <s className="muted" style={{ marginLeft: 5 }}>{money(product.compare_at_price_cents)}</s>}</>}</td>
-                    <td className={product.inventory_quantity <= 5 ? 'low' : ''}>{packs ? '—' : product.inventory_quantity}</td>
+                    <td className={(product.effective_stock ?? product.inventory_quantity) <= 5 ? 'low' : ''}>{packs ? '—' : (product.effective_stock ?? product.inventory_quantity)}{productStore && !packs ? <span className="admin-note">at {stores.find((s) => String(s.id) === String(productStore))?.name ?? 'store'}</span> : null}</td>
                     <td>{packs || '—'}</td>
                     <td>{product.is_active ? 'Yes' : 'No'}</td>
                     <td className="admin-actions">
-                      <button className="act" type="button" onClick={() => setProductForm({ id: product.id, category_id: product.category_id, name: product.name, sku: product.sku, price: (product.price_cents / 100).toFixed(2), compare_at: dollarsOrBlank(product.compare_at_price_cents), inventory_quantity: product.inventory_quantity, description: product.description ?? '', image_url: product.image_url ?? '', is_active: product.is_active, variants: variantRowsFrom(product) })}>Edit</button>
+                      <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ id: product.id, category_id: product.category_id, name: product.name, sku: product.sku, price: (product.price_cents / 100).toFixed(2), compare_at: dollarsOrBlank(product.compare_at_price_cents), inventory_quantity: product.inventory_quantity, description: product.description ?? '', image_url: product.image_url ?? '', is_active: product.is_active, per_store_stock: (product.store_inventory ?? []).length > 0, store_stock: storeStockFrom(product), variants: variantRowsFrom(product) }) }}>Edit</button>
                       <button className="act danger" type="button" onClick={() => removeProduct(product)}>Delete</button>
                     </td>
                   </tr>
@@ -1141,6 +1358,7 @@ export default function Admin({ token, onClose }) {
               </tbody>
             </table>
           )}
+          <Pager page={productsMeta?.current_page ?? productsPage} pageCount={productsMeta?.last_page ?? 1} total={productsMeta?.total ?? products.length} onPage={setProductsPage} pageSize={pageSize} onPageSize={setPageSize} />
         </section>
       )}
 
@@ -1166,11 +1384,11 @@ export default function Admin({ token, onClose }) {
             </form>
           )}
 
-          {categories.length === 0 ? <p className="admin-empty">No categories.</p> : (
+          {listBusy.categories && categories.length === 0 ? <p className="admin-empty">Loading categories…</p> : categories.length === 0 ? <p className="admin-empty">No categories.</p> : (
             <table className="admin-table">
               <thead><tr><th>Name</th><th>Slug</th><th>Products</th><th>Sort</th><th>Active</th><th></th></tr></thead>
               <tbody>
-                {categories.map((category) => (
+                {pageSlice(categories, categoriesPage).map((category) => (
                   <tr key={category.id}>
                     <td>{category.name}</td>
                     <td>{category.slug}</td>
@@ -1186,12 +1404,13 @@ export default function Admin({ token, onClose }) {
               </tbody>
             </table>
           )}
+          <Pager page={categoriesPage} pageCount={Math.max(1, Math.ceil(categories.length / pageSize))} total={categories.length} onPage={setCategoriesPage} pageSize={pageSize} onPageSize={setPageSize} />
         </section>
       )}
 
       {tab === 'customers' && (
         <section className="admin-panel">
-          {customers.length === 0 ? <p className="admin-empty">No customers yet.</p> : (
+          {listBusy.customers && customers.length === 0 ? <p className="admin-empty">Loading customers…</p> : customers.length === 0 ? <p className="admin-empty">No customers yet.</p> : (
             <table className="admin-table">
               <thead><tr><th>Name</th><th>Email</th><th>Orders</th><th>Paid spend</th><th>Joined</th><th></th></tr></thead>
               <tbody>
@@ -1208,6 +1427,97 @@ export default function Admin({ token, onClose }) {
               </tbody>
             </table>
           )}
+          <Pager page={customersMeta?.current_page ?? customersPage} pageCount={customersMeta?.last_page ?? 1} total={customersMeta?.total ?? customers.length} onPage={setCustomersPage} pageSize={pageSize} onPageSize={setPageSize} />
+        </section>
+      )}
+
+      {tab === 'riders' && (
+        <section className="admin-panel">
+          <form className="admin-toolbar" onSubmit={addRider}>
+            <input type="email" placeholder="rider@example.com" value={riderEmail} onChange={(event) => setRiderEmail(event.target.value)} />
+            <button className="act" type="submit">Add rider</button>
+            <span className="muted">Turns an existing customer account into a delivery rider. Auto-assign picks the nearest on-shift rider linked to the order&rsquo;s store; unassigned orders fall back to the pickup pool.</span>
+          </form>
+
+          {riderForm && (
+            <form className="admin-form" onSubmit={saveRider}>
+              <h3>{riderForm.name}</h3>
+              <div className="admin-form-grid">
+                <label>Phone<input value={riderForm.phone} placeholder="e.g. +1 555 987 6543" onChange={(event) => setRiderForm({ ...riderForm, phone: event.target.value })} /></label>
+                <label className="admin-check"><input type="checkbox" checked={riderForm.rider_is_active} onChange={(event) => setRiderForm({ ...riderForm, rider_is_active: event.target.checked })} /> On shift (available for auto-assign)</label>
+              </div>
+
+              <fieldset className="admin-fieldset">
+                <legend>Stores served</legend>
+                <p className="muted">A rider only gets orders (auto-assigned or from the pool) for the stores ticked here. Tick more than one for nearby cities.</p>
+                {stores.length === 0
+                  ? <p className="muted">No stores yet — add them under <strong>Stores</strong> first.</p>
+                  : <div className="admin-check-list">
+                      {stores.map((store) => {
+                        const picked = riderForm.store_ids.includes(store.id)
+                        return (
+                          <label className="admin-check" key={store.id}>
+                            <input type="checkbox" checked={picked} onChange={(event) => setRiderForm((form) => ({
+                              ...form,
+                              store_ids: event.target.checked
+                                ? [...form.store_ids, store.id]
+                                : form.store_ids.filter((id) => id !== store.id),
+                            }))} />
+                            {store.name || `Store #${store.id}`}{store.city ? ` — ${store.city}` : ''}
+                          </label>
+                        )
+                      })}
+                    </div>}
+              </fieldset>
+
+              <fieldset className="admin-fieldset">
+                <legend>Home base</legend>
+                <p className="muted">Where auto-assign measures from when the rider app has no recent live location. Type an address (geocoded on save) or drag the pin.</p>
+                <div className="admin-form-grid">
+                  <label>Base address<input value={riderForm.rider_base_address} onChange={(event) => setRiderForm({ ...riderForm, rider_base_address: event.target.value })} /></label>
+                  <label>Latitude<input type="number" step="any" value={riderForm.rider_base_lat} onChange={(event) => setRiderForm({ ...riderForm, rider_base_lat: event.target.value })} /></label>
+                  <label>Longitude<input type="number" step="any" value={riderForm.rider_base_lng} onChange={(event) => setRiderForm({ ...riderForm, rider_base_lng: event.target.value })} /></label>
+                </div>
+                <MapPicker
+                  lat={riderForm.rider_base_lat === '' ? NaN : Number(riderForm.rider_base_lat)}
+                  lng={riderForm.rider_base_lng === '' ? NaN : Number(riderForm.rider_base_lng)}
+                  onPick={(la, ln) => setRiderForm((form) => ({ ...form, rider_base_lat: la.toFixed(6), rider_base_lng: ln.toFixed(6) }))}
+                />
+              </fieldset>
+
+              <div className="admin-form-actions">
+                <button className="act" type="submit">Save</button>
+                <button className="act ghost" type="button" onClick={() => setRiderForm(null)}>Cancel</button>
+              </div>
+            </form>
+          )}
+
+          {listBusy.riders && riders.length === 0 ? <p className="admin-empty">Loading riders…</p> : riders.length === 0 ? <p className="admin-empty">No riders yet. Add one by email above.</p> : (
+            <table className="admin-table">
+              <thead><tr><th>Name</th><th>Phone</th><th>Stores</th><th>Location</th><th>Active jobs</th><th>On shift</th><th></th></tr></thead>
+              <tbody>
+                {pageSlice(riders, ridersPage).map((rider) => (
+                  <tr key={rider.id}>
+                    <td>{rider.name}<span className="admin-note">{rider.email}</span></td>
+                    <td>{rider.phone || <span className="muted">—</span>}</td>
+                    <td>{(rider.stores ?? []).length
+                      ? (rider.stores).map((s) => s.name).join(', ')
+                      : <span className="muted">none — can&rsquo;t be auto-assigned</span>}</td>
+                    <td>{rider.located
+                      ? <span title={rider.located.last_ping_at ? `pinged ${new Date(rider.located.last_ping_at).toLocaleString()}` : ''}>{rider.located.source === 'live' ? '🟢 live' : '📍 base'}</span>
+                      : <span className="muted">no base set</span>}</td>
+                    <td className={rider.active_deliveries > 0 ? 'low' : ''}>{rider.active_deliveries}</td>
+                    <td>{rider.rider_is_active ? 'Yes' : 'No'}</td>
+                    <td className="admin-actions">
+                      <button className="act" type="button" onClick={() => setRiderForm(riderFormFrom(rider))}>Edit</button>
+                      <button className="act danger" type="button" onClick={() => removeRider(rider)}>Remove</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <Pager page={ridersPage} pageCount={Math.max(1, Math.ceil(riders.length / pageSize))} total={riders.length} onPage={setRidersPage} pageSize={pageSize} onPageSize={setPageSize} />
         </section>
       )}
 
@@ -1247,11 +1557,11 @@ export default function Admin({ token, onClose }) {
             </form>
           )}
 
-          {stores.length === 0 ? <p className="admin-empty">No stores yet. Add one to switch on delivery-area checks.</p> : (
+          {listBusy.stores && stores.length === 0 ? <p className="admin-empty">Loading stores…</p> : stores.length === 0 ? <p className="admin-empty">No stores yet. Add one to switch on delivery-area checks.</p> : (
             <table className="admin-table">
               <thead><tr><th>Name</th><th>Address</th><th>Radius</th><th>Location</th><th>Active</th><th></th></tr></thead>
               <tbody>
-                {stores.map((store) => (
+                {pageSlice(stores, storesPage).map((store) => (
                   <tr key={store.id}>
                     <td>{store.name}</td>
                     <td>{[store.line1, store.city, store.state, store.postal_code].filter(Boolean).join(', ')}</td>
@@ -1269,6 +1579,7 @@ export default function Admin({ token, onClose }) {
               </tbody>
             </table>
           )}
+          <Pager page={storesPage} pageCount={Math.max(1, Math.ceil(stores.length / pageSize))} total={stores.length} onPage={setStoresPage} pageSize={pageSize} onPageSize={setPageSize} />
         </section>
       )}
 
@@ -1755,6 +2066,15 @@ export default function Admin({ token, onClose }) {
                   Accept cash on delivery
                 </label>
                 <p className="muted">When on, customers can choose to pay with cash at checkout. Cash-on-delivery orders are confirmed immediately; mark them paid from the Orders tab once the courier collects the cash.</p>
+              </div>
+
+              <div className="admin-form">
+                <h3>Delivery</h3>
+                <label className="admin-check">
+                  <input type="checkbox" checked={settings.rider_auto_assign !== false} onChange={(event) => saveSetting({ rider_auto_assign: event.target.checked })} />
+                  Auto-assign riders to orders
+                </label>
+                <p className="muted">When an order becomes ready for delivery, the nearest on-shift rider linked to its store is assigned automatically (preferring riders with fewer active jobs). If none is eligible the order waits in the pickup pool. Manage riders and their stores under <strong>Riders</strong>.</p>
               </div>
 
               <form className="admin-form" onSubmit={saveFees}>

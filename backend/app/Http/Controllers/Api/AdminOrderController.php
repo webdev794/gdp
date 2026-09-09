@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\User;
+use App\Support\RiderAssignment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -14,19 +16,21 @@ class AdminOrderController extends Controller
     {
         $validated = $request->validate([
             'status' => ['sometimes', 'string'],
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:1000'],
         ]);
 
         $orders = Order::query()
-            ->with(['items', 'user:id,name,email,phone', 'deliveryPartner:id,name'])
+            ->with(['items', 'user:id,name,email,phone', 'deliveryPartner:id,name', 'store:id,name,city'])
             ->when($validated['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->latest()
-            ->paginate(25);
+            ->paginate($validated['per_page'] ?? 10);
 
         return response()->json([
             'data' => $orders->items(),
             'meta' => [
                 'current_page' => $orders->currentPage(),
                 'last_page' => $orders->lastPage(),
+                'per_page' => $orders->perPage(),
                 'total' => $orders->total(),
             ],
         ]);
@@ -34,7 +38,7 @@ class AdminOrderController extends Controller
 
     public function show(Order $order): JsonResponse
     {
-        return response()->json(['data' => $order->load(['items', 'user:id,name,email,phone'])]);
+        return response()->json(['data' => $order->load(['items', 'user:id,name,email,phone', 'store:id,name,city'])]);
     }
 
     public function update(Request $request, Order $order): JsonResponse
@@ -67,7 +71,7 @@ class AdminOrderController extends Controller
         // display courier_name. A null clears both.
         if (array_key_exists('delivery_partner_id', $validated)) {
             $rider = $validated['delivery_partner_id']
-                ? \App\Models\User::find($validated['delivery_partner_id'])
+                ? User::find($validated['delivery_partner_id'])
                 : null;
 
             if ($validated['delivery_partner_id'] && ! $rider?->is_rider) {
@@ -100,6 +104,13 @@ class AdminOrderController extends Controller
 
         $order->update($changes);
 
-        return response()->json(['data' => $order->load(['items', 'user:id,name,email,phone', 'deliveryPartner:id,name'])]);
+        // An order that just became ready for delivery with no rider gets one
+        // auto-assigned (nearest rider linked to its store); if none is eligible
+        // it drops into the first-come pool as before.
+        if (($changes['status'] ?? null) === 'ready_for_delivery' && ! $order->delivery_partner_id) {
+            RiderAssignment::assign($order);
+        }
+
+        return response()->json(['data' => $order->fresh()->load(['items', 'user:id,name,email,phone', 'deliveryPartner:id,name', 'store:id,name,city'])]);
     }
 }

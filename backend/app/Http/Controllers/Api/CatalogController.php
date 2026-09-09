@@ -5,16 +5,45 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Support\StoreLocator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CatalogController extends Controller
 {
-    public function categories(): JsonResponse
+    /**
+     * The store that serves the lat/lng on the request, if any. Its id scopes
+     * per-store stock: a customer outside every store's radius (or one who
+     * hasn't set a location) gets the full catalog and is stopped at checkout.
+     */
+    private function servingStoreId(Request $request): ?int
     {
+        $data = $request->validate([
+            'lat' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
+            'lng' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
+        ]);
+
+        return StoreLocator::servingStore(
+            isset($data['lat']) ? (float) $data['lat'] : null,
+            isset($data['lng']) ? (float) $data['lng'] : null,
+        )?->id;
+    }
+
+    public function categories(Request $request): JsonResponse
+    {
+        $storeId = $this->servingStoreId($request);
+
         return response()->json([
             'data' => Category::query()
                 ->where('is_active', true)
+                // When a store serves this customer, hide a category with nothing
+                // for sale there (an out-of-stock item still counts). With no
+                // store in context, list them all as before.
+                ->when($storeId !== null, fn ($query) => $query->whereHas(
+                    'products',
+                    fn ($inner) => $inner->where('is_active', true)->visibleAtStore($storeId),
+                ))
                 ->orderBy('sort_order')
                 ->orderBy('name')
                 ->get(),
@@ -29,9 +58,16 @@ class CatalogController extends Controller
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
         ]);
 
+        $storeId = $this->servingStoreId($request);
+
         $products = Product::query()
-            ->with(['category', 'variants' => fn ($query) => $query->where('is_active', true)])
+            ->with([
+                'category',
+                'variants' => fn ($query) => $query->where('is_active', true),
+                'storeInventory',
+            ])
             ->where('is_active', true)
+            ->visibleAtStore($storeId)
             ->whereHas('category', fn ($query) => $query->where('is_active', true))
             ->when(isset($validated['search']), function ($query) use ($validated) {
                 $search = $validated['search'];
@@ -52,37 +88,80 @@ class CatalogController extends Controller
             ))
             ->orderBy('name')
             ->paginate($validated['per_page'] ?? 20)
-            ->through(fn (Product $product) => $this->withPricing($product));
+            ->through(fn (Product $product) => $this->present($product, $storeId));
 
         return response()->json($products);
     }
 
-    public function product(Product $product): JsonResponse
+    public function product(Request $request, Product $product): JsonResponse
     {
+        $storeId = $this->servingStoreId($request);
+
+        $product->load([
+            'category',
+            'variants' => fn ($query) => $query->where('is_active', true),
+            'storeInventory',
+        ]);
+
         abort_unless(
-            $product->is_active && $product->category?->is_active,
+            $product->is_active
+                && $product->category?->is_active
+                && ($storeId === null || ! $product->usesStoreInventory()
+                    || $product->availabilityAt($storeId)['sold']
+                    || $product->variants->contains(
+                        fn (ProductVariant $v) => $product->availabilityAt($storeId, $v)['sold']
+                    )),
             404
         );
 
-        $product->load(['category', 'variants' => fn ($query) => $query->where('is_active', true)]);
-
         return response()->json([
-            'data' => $this->withPricing($product),
+            'data' => $this->present($product, $storeId),
         ]);
     }
 
     /**
-     * Attach the price range across active variants (or the product price when
-     * there are none) so the storefront can show "from $x".
+     * Shape a product for the storefront: price range, and — when a store serves
+     * the customer — that store's stock. `inventory_quantity` on the product and
+     * each variant is rewritten to the store figure so existing clients keep
+     * working; `out_of_stock` flags a stocked-but-empty line, and variants the
+     * store doesn't carry are dropped.
      */
-    private function withPricing(Product $product): Product
+    private function present(Product $product, ?int $storeId): Product
     {
-        // The base product is always a selectable option, so its price counts
-        // toward the range too.
-        $prices = $product->variants->pluck('price_cents')->push($product->price_cents);
+        if ($storeId !== null && $product->usesStoreInventory()) {
+            $kept = [];
 
+            foreach ($product->variants as $variant) {
+                $availability = $product->availabilityAt($storeId, $variant);
+                if (! $availability['sold']) {
+                    continue; // store doesn't carry this option
+                }
+                $variant->setAttribute('inventory_quantity', $availability['quantity']);
+                $variant->setAttribute('out_of_stock', $availability['quantity'] <= 0);
+                $kept[] = $variant;
+            }
+
+            $product->setRelation('variants', collect($kept)->values());
+
+            $base = $product->availabilityAt($storeId);
+            $product->setAttribute('inventory_quantity', $base['sold'] ? $base['quantity'] : 0);
+            $product->setAttribute('base_sold', $base['sold']);
+
+            $everyOptionEmpty = ($base['sold'] ? $base['quantity'] <= 0 : true)
+                && $product->variants->every(fn ($v) => $v->inventory_quantity <= 0);
+            $product->setAttribute('out_of_stock', $everyOptionEmpty);
+        } else {
+            $product->setAttribute('base_sold', true);
+            $product->setAttribute('out_of_stock', $product->inventory_quantity <= 0
+                && $product->variants->every(fn ($v) => $v->inventory_quantity <= 0));
+        }
+
+        $prices = $product->variants->pluck('price_cents')->push($product->price_cents);
         $product->setAttribute('price_min_cents', (int) $prices->min());
         $product->setAttribute('price_max_cents', (int) $prices->max());
+
+        // storeInventory was only loaded to compute the above; don't ship it.
+        $product->unsetRelation('storeInventory');
 
         return $product;
     }

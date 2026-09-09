@@ -116,6 +116,34 @@ class GeocodeTest extends TestCase
         $this->getJson('/api/geocode/search?q=ab')->assertStatus(422);
     }
 
+    public function test_search_biases_to_the_store_nearest_the_map_position(): void
+    {
+        // Two stores in different cities.
+        $this->chandigarhStore(); // 30.7333, 76.7794 — created first
+        Store::create([
+            'name' => 'Delhi', 'line1' => '2 Store St', 'city' => 'Delhi', 'state' => 'DL',
+            'postal_code' => '110001', 'latitude' => 28.6139, 'longitude' => 77.2090,
+            'delivery_radius_km' => 8, 'is_active' => true,
+        ]);
+        Http::fake(['nominatim.openstreetmap.org/*' => Http::response([])]);
+
+        // Map is looking at Delhi -> viewbox is built around Delhi's store
+        // (77.2090 - 0.6 = 76.6090), not the first store in Chandigarh.
+        $this->getJson('/api/geocode/search?q=Main Road&lat=28.62&lng=77.21')->assertOk();
+
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'viewbox=76.609'));
+    }
+
+    public function test_search_falls_back_to_the_first_store_without_a_map_position(): void
+    {
+        $this->chandigarhStore(); // 76.7794 - 0.6 = 76.1794
+        Http::fake(['nominatim.openstreetmap.org/*' => Http::response([])]);
+
+        $this->getJson('/api/geocode/search?q=Main Road')->assertOk();
+
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'viewbox=76.179'));
+    }
+
     private function chandigarhStore(): Store
     {
         return Store::create([

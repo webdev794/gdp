@@ -423,22 +423,29 @@ export default function Storefront() {
       .catch(() => { localStorage.removeItem('gdp_token'); localStorage.removeItem('gdp_user'); setCurrentUser(null) })
   }, [])
 
+  // Pass the chosen location so the API can scope the catalog to the store that
+  // serves this customer — a product that the nearest store doesn't stock is
+  // left out. No location (or out of area) returns the full catalog.
+  const catalogQuery = location?.lat != null && location?.lon != null
+    ? `?lat=${location.lat}&lng=${location.lon}`
+    : ''
+
   // Categories are a small payload and feed the homepage tiles, so fetch them
   // on their own — don't make the homepage wait on the full product list.
   useEffect(() => {
-    fetch(`${API_URL}/categories`, { headers: { Accept: 'application/json' } })
+    fetch(`${API_URL}/categories${catalogQuery}`, { headers: { Accept: 'application/json' } })
       .then((response) => { if (!response.ok) throw new Error('offline'); return responseJson(response) })
       .then((data) => setCategories(data.data ?? []))
       .catch(() => { setOffline(true); setCategories(categoriesFallback) })
-  }, [])
+  }, [catalogQuery])
 
   useEffect(() => {
-    fetch(`${API_URL}/products`, { headers: { Accept: 'application/json' } })
+    fetch(`${API_URL}/products${catalogQuery}`, { headers: { Accept: 'application/json' } })
       .then((response) => { if (!response.ok) throw new Error('offline'); return responseJson(response) })
       .then((data) => setProducts(data.data ?? []))
       .catch(() => { setOffline(true); setProducts(fallbackProducts) })
       .finally(() => setLoading(false))
-  }, [])
+  }, [catalogQuery])
 
   // Content pages: load the footer list once, and keep the open page in sync
   // with a #/p/<slug> hash so links are shareable and Back works.
@@ -711,9 +718,11 @@ export default function Storefront() {
       return
     }
 
+    // Pass the location so the cart's stock check reads the serving store's shelf.
+    const here = location?.lat != null && location?.lon != null ? { lat: Number(location.lat), lng: Number(location.lon) } : {}
     try {
       for (const item of cart) {
-        await fetch(`${API_URL}/cart/items`, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ product_id: item.id, product_variant_id: item.variantId ?? null, quantity: item.quantity }) })
+        await fetch(`${API_URL}/cart/items`, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ product_id: item.id, product_variant_id: item.variantId ?? null, quantity: item.quantity, ...here }) })
       }
       let checkoutBody
       if (deliveryMode !== 'location' && selectedAddressId) {
@@ -1059,7 +1068,11 @@ export default function Storefront() {
     setLocationBusy(true)
     setLocationMsg('')
     try {
-      const data = await responseJson(await fetch(`${API_URL}/geocode/search?q=${encodeURIComponent(term)}`, { headers: { Accept: 'application/json' } }))
+      // Bias results to whatever the map is looking at (else the saved location),
+      // so a multi-store shop finds addresses near the right city's store.
+      const c = mapRef.current?.getCenter?.() ?? (locationRef.current?.lat != null ? { lat: locationRef.current.lat, lng: locationRef.current.lon } : null)
+      const near = c ? `&lat=${c.lat}&lng=${c.lng}` : ''
+      const data = await responseJson(await fetch(`${API_URL}/geocode/search?q=${encodeURIComponent(term)}${near}`, { headers: { Accept: 'application/json' } }))
       const results = Array.isArray(data.data) ? data.data : []
       setLocationResults(results.slice(1))
       if (!results.length) {
@@ -1258,8 +1271,8 @@ export default function Storefront() {
             const key = lineKey(product.id, variant?.id)
             const qty = cartQty[key] ?? 0
             const img = (chosen?.image_url) || product.image_url
-            return <article className="pcard" key={product.id}>
-              <div className="pcard-img" aria-hidden>{onSale && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
+            return <article className={stock === 0 ? 'pcard sold-out' : 'pcard'} key={product.id}>
+              <div className="pcard-img" aria-hidden>{stock === 0 && <span className="pcard-oos">Out of stock</span>}{onSale && stock !== 0 && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
               <p className="pcard-cat">{product.category?.name ?? 'Grocery'}</p>
               <h3>{variantTitle(product.name, variant?.label)}</h3>
               {hasVariants && <select className="pcard-variant" aria-label={`${product.name} option`} value={String(chosen?.id ?? '')} onChange={(event) => setPickedVariant((current) => ({ ...current, [product.id]: event.target.value }))}>{options.map((o) => <option key={o.id === '' ? 'base' : o.id} value={String(o.id)}>{o.label} — {price(o.price_cents)}</option>)}</select>}

@@ -6,7 +6,7 @@ import { colors, money } from '../theme';
 
 export default function ProductScreen({ route, navigation }) {
   const { slug } = route.params;
-  const { addToCart } = useApp();
+  const { addToCart, deliveryLocation } = useApp();
   const [product, setProduct] = useState(null);
   const [error, setError] = useState('');
   const [added, setAdded] = useState(false);
@@ -14,7 +14,10 @@ export default function ProductScreen({ route, navigation }) {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await api.product(slug);
+        const { data } = await api.product(
+          slug,
+          deliveryLocation ? { lat: deliveryLocation.lat, lng: deliveryLocation.lng } : {},
+        );
         setProduct(data);
         navigation.setOptions({ title: data.name });
       } catch (e) {
@@ -48,14 +51,17 @@ export default function ProductScreen({ route, navigation }) {
       </Text>
 
       <Pressable
-        style={styles.button}
+        style={[styles.button, product.inventory_quantity <= 0 && styles.buttonOff]}
+        disabled={product.inventory_quantity <= 0}
         onPress={() => {
           addToCart(product);
           setAdded(true);
           setTimeout(() => setAdded(false), 1500);
         }}
       >
-        <Text style={styles.buttonText}>{added ? 'Added to cart' : 'Add to cart'}</Text>
+        <Text style={styles.buttonText}>
+          {product.inventory_quantity <= 0 ? 'Out of stock' : added ? 'Added to cart' : 'Add to cart'}
+        </Text>
       </Pressable>
       <Pressable style={styles.secondary} onPress={() => navigation.navigate('Cart')}>
         <Text style={styles.secondaryText}>Go to cart</Text>
@@ -88,6 +94,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 24,
   },
+  buttonOff: { backgroundColor: colors.muted, opacity: 0.6 },
   buttonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   secondary: { paddingVertical: 14, alignItems: 'center' },
   secondaryText: { color: colors.muted, fontSize: 13 },

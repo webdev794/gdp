@@ -64,18 +64,31 @@ export const api = {
   updateProfile: (payload) => request('/profile', { method: 'PATCH', body: payload, auth: true }),
   logout: () => request('/auth/logout', { method: 'POST', auth: true }),
 
-  categories: () => request('/categories'),
-  products: ({ search, category } = {}) => {
+  categories: ({ lat, lng } = {}) => {
+    const params = new URLSearchParams();
+    if (lat != null && lng != null) { params.set('lat', lat); params.set('lng', lng); }
+    const query = params.toString();
+    return request(`/categories${query ? `?${query}` : ''}`);
+  },
+  products: ({ search, category, lat, lng } = {}) => {
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (category) params.set('category', category);
+    // Location scopes the catalog to the store that serves the customer, so a
+    // product the nearest store doesn't stock is left out (see backend).
+    if (lat != null && lng != null) { params.set('lat', lat); params.set('lng', lng); }
     const query = params.toString();
     return request(`/products${query ? `?${query}` : ''}`);
   },
-  product: (slug) => request(`/products/${slug}`),
+  product: (slug, { lat, lng } = {}) => {
+    const params = new URLSearchParams();
+    if (lat != null && lng != null) { params.set('lat', lat); params.set('lng', lng); }
+    const query = params.toString();
+    return request(`/products/${slug}${query ? `?${query}` : ''}`);
+  },
 
-  addCartItem: (product_id, quantity) =>
-    request('/cart/items', { method: 'POST', body: { product_id, quantity }, auth: true }),
+  addCartItem: (product_id, quantity, coords = {}) =>
+    request('/cart/items', { method: 'POST', body: { product_id, quantity, ...coords }, auth: true }),
   clearCart: () => request('/cart', { method: 'DELETE', auth: true }),
 
   addresses: () => request('/addresses', { auth: true }),
@@ -96,6 +109,8 @@ export const api = {
     request(`/support/threads/${id}/messages`, { method: 'POST', body: { body }, auth: true }),
 
   riderOrders: () => request('/rider/orders', { auth: true }),
+  riderLocation: (lat, lng) =>
+    request('/rider/location', { method: 'POST', body: { lat, lng }, auth: true }),
   claimOrder: (id) => request(`/rider/orders/${id}/claim`, { method: 'POST', auth: true }),
   riderStatus: (id, status) =>
     request(`/rider/orders/${id}/status`, { method: 'POST', body: { status }, auth: true }),

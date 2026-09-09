@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
-import Admin from './Admin'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import './Admin.css'
+
+// The console itself is a big module — load it only once an admin is signed in,
+// so the sign-in gate paints immediately on a cold refresh.
+const Admin = lazy(() => import('./Admin'))
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api'
 const STORE_URL = import.meta.env.BASE_URL || '/'
@@ -80,7 +83,11 @@ export default function AdminEntry() {
   }
 
   if (checking) return <div className="admin-gate"><p>Loading&hellip;</p></div>
-  if (authed) return <Admin token={token} onClose={() => { window.location.href = STORE_URL }} />
+  if (authed) return (
+    <Suspense fallback={<div className="admin-gate"><p>Loading console&hellip;</p></div>}>
+      <Admin token={token} onClose={() => { window.location.href = STORE_URL }} />
+    </Suspense>
+  )
 
   return (
     <div className="admin-gate">

@@ -1,29 +1,30 @@
 <?php
 
-use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AddressController;
-use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\AdminBannerController;
 use App\Http\Controllers\Api\AdminCategoryController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AdminHomeTileController;
 use App\Http\Controllers\Api\AdminOrderController;
+use App\Http\Controllers\Api\AdminPageController;
 use App\Http\Controllers\Api\AdminProductController;
+use App\Http\Controllers\Api\AdminRiderController;
 use App\Http\Controllers\Api\AdminSettingController;
 use App\Http\Controllers\Api\AdminStoreController;
-use App\Http\Controllers\Api\DeliveryController;
+use App\Http\Controllers\Api\AdminSupportController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\CatalogController;
 use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\ConfigController;
+use App\Http\Controllers\Api\DeliveryController;
 use App\Http\Controllers\Api\GeocodeController;
 use App\Http\Controllers\Api\MediaController;
-use App\Http\Controllers\Api\AdminPageController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ProfileController;
-use App\Http\Controllers\Api\AdminSupportController;
 use App\Http\Controllers\Api\RiderController;
 use App\Http\Controllers\Api\SupportThreadController;
 use Illuminate\Http\Request;
@@ -94,7 +95,10 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/customers', [AdminController::class, 'customers']);
     Route::get('/customers/{user}', [AdminController::class, 'customer']);
     Route::patch('/customers/{user}', [AdminController::class, 'updateCustomer']);
-    Route::get('/riders', [AdminController::class, 'riders']);
+    Route::get('/riders', [AdminRiderController::class, 'index']);
+    Route::post('/riders', [AdminRiderController::class, 'store']);
+    Route::patch('/riders/{user}', [AdminRiderController::class, 'update']);
+    Route::delete('/riders/{user}', [AdminRiderController::class, 'destroy']);
     Route::get('/orders', [AdminOrderController::class, 'index']);
     Route::get('/orders/{order}', [AdminOrderController::class, 'show']);
     Route::patch('/orders/{order}', [AdminOrderController::class, 'update']);
@@ -140,6 +144,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 
 Route::middleware(['auth:sanctum', 'rider'])->prefix('rider')->group(function () {
     Route::get('/orders', [RiderController::class, 'orders']);
+    Route::post('/location', [RiderController::class, 'location']);
     Route::post('/orders/{order}/claim', [RiderController::class, 'claim']);
     Route::post('/orders/{order}/status', [RiderController::class, 'status']);
     Route::post('/orders/{order}/cash-collected', [RiderController::class, 'cashCollected']);

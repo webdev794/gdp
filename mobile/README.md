@@ -55,11 +55,16 @@ The `a` / `w` keys are for an emulator or web preview and are not needed for a p
 
 - Email + password auth with the email OTP step (register and login)
 - Catalog: categories, search, product detail
+- **Use my location** (`expo-location`, foreground permission — works in Expo Go): scopes
+  the catalog to the store that serves you, and saves a new checkout address with the
+  coordinates so the server can pick the fulfilling store and check stock
 - Local cart with quantity controls
 - Checkout: saved address picker or a new address; the server calculates totals
 - Stripe card payment in a WebView (Stripe Elements + the `payment-intent` endpoint),
   using the publishable key from `GET /api/config`
 - Order history with the live delivery-status tracker and assigned courier
+- Rider mode (`is_rider` accounts): deliveries queue + pickup pool; the app pings its
+  live location so the backend can auto-assign the nearest rider
 
 ## OTP codes in local development
 

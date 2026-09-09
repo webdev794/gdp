@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Store;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -30,8 +31,8 @@ class Geo
      * The store nearest a point and its great-circle distance in km. Expects
      * stores that already have latitude/longitude.
      *
-     * @param  iterable<\App\Models\Store>  $stores
-     * @return array{store: \App\Models\Store, km: float}|null
+     * @param  iterable<Store>  $stores
+     * @return array{store: Store, km: float}|null
      */
     public static function nearestStore(iterable $stores, float $lat, float $lng): ?array
     {
@@ -47,6 +48,43 @@ class Geo
         }
 
         return $best;
+    }
+
+    /**
+     * Stores whose delivery radius covers a point, nearest first. A customer is
+     * deliverable if this is non-empty; the first entry is the store that serves
+     * them (and whose per-product availability applies).
+     *
+     * @param  iterable<Store>  $stores
+     * @return list<array{store: Store, km: float}>
+     */
+    public static function coveringStores(iterable $stores, float $lat, float $lng): array
+    {
+        $hits = [];
+        foreach ($stores as $store) {
+            if ($store->latitude === null || $store->longitude === null) {
+                continue;
+            }
+            $km = self::haversineKm((float) $store->latitude, (float) $store->longitude, $lat, $lng);
+            if ($km <= (float) $store->delivery_radius_km) {
+                $hits[] = ['store' => $store, 'km' => $km];
+            }
+        }
+
+        usort($hits, fn ($a, $b) => $a['km'] <=> $b['km']);
+
+        return $hits;
+    }
+
+    /**
+     * The nearest store whose radius covers the point, or null when none do.
+     *
+     * @param  iterable<Store>  $stores
+     * @return array{store: Store, km: float}|null
+     */
+    public static function servingStore(iterable $stores, float $lat, float $lng): ?array
+    {
+        return self::coveringStores($stores, $lat, $lng)[0] ?? null;
     }
 
     /**

@@ -121,7 +121,8 @@ Administrators must be able to manage:
 - [x] Customers
 - [x] Orders
 - [x] Payment status
-- [x] Delivery assignment — assign a rider or leave for the pool; free-text courier still allowed
+- [x] Delivery assignment — auto-assign the nearest on-shift rider linked to the store, assign one by hand, or leave for the pool; free-text courier still allowed
+- [x] Rider management — riders linked to one or more stores, home base, on/off shift (see Delivery riders)
 - [x] Delivery and order status
 - [x] Checkout settings (cash on delivery on/off)
 - [x] Stores and delivery-area radius
@@ -191,7 +192,7 @@ Administrators must be able to manage:
 - [x] Resume payment for an unpaid order from order history
 - [x] Customer order cancellation until dispatch; one-click Stripe refund from the admin panel
 - [x] Support chat (web + Expo) with admin inbox; partial/full Stripe refunds issued from a thread
-- [x] Delivery rider role + Expo rider mode: admin-assign or pool claim, rider status + COD collection
+- [x] Delivery rider role + Expo rider mode: admin-assign, auto-assign (nearest on-shift rider linked to the store), or pool claim; rider status + COD collection
 - [x] Server reconciles an order from Stripe when the webhook is missed or delayed
 - [x] Checkout address modal dismissed when payment begins
 - [x] Admin role flag on users, denied by default and never mass-assignable
@@ -241,6 +242,7 @@ Administrators must be able to manage:
 10. [ ] Mobile applications for Android and iOS
     - [x] Android customer app (Expo): auth + OTP, catalog, cart, checkout, Stripe payment, order tracking
     - [x] Rider mode in the Expo app: a user with `is_rider` sees the delivery queue (pool + assigned) instead of the shop
+    - [x] Location capture (`expo-location`): store-scoped catalog + serving-store checkout (see Per-store inventory); rider app pings its live position for auto-assignment
     - [ ] Push notifications
     - [x] In-app customer support (Support + conversation screens, shared API)
     - [ ] iOS pass: same Expo codebase, needs a Mac / EAS build and testing
@@ -252,7 +254,7 @@ Administrators must be able to manage:
 
 - `PaymentController::intent()` reconciliation and `PaymentController::refund()` call the live Stripe API; the guard/validation paths are tested, the SDK call itself is verified manually (needs a Stripe client fake).
 - Support chat is polling-based (~4 s while the thread is open). A customer isn't notified of a staff reply when the app is closed — push/email is priority 10.
-- Rider location / live tracking and auto-dispatch (nearest available rider, batching) are not built — assignment is admin-pick or first-come pool claim.
+- Auto-dispatch picks the nearest on-shift rider linked to the order's store (live GPS if fresh, else base) with a load-balancing penalty; **batching** (grouping several stops onto one rider) and a live rider-position map for the customer are still not built.
 - Phone + OTP login is not wired — the phone field is captured (required at checkout) but a real SMS gateway (Twilio/MSG91/SNS) is still a later config step; see **Authentication → Phone number**.
 - The React app has no router; the admin console is a full-screen overlay shown to `is_admin` users. Revisit if the panel grows.
 - Product and variant images can be uploaded (admin) or pasted as a URL; category and store images are still URL-only.
@@ -357,22 +359,62 @@ on SQLite (tests) and MySQL (runtime).
 ## Delivery riders
 
 A third role, **`is_rider`** (deny-by-default like `is_admin`, never
-mass-assignable — set via `PATCH /api/admin/customers/{user}` `{is_rider}` from
-the admin Customers drawer). The seeder creates `rider@example.com` / `password`.
+mass-assignable). Grant it either from the admin **Customers** drawer
+(`PATCH /api/admin/customers/{user}` `{is_rider}` — a quick toggle) or the
+dedicated **Riders** section. The seeder creates `rider@example.com` / `password`.
 
-- **Assignment**: from the admin Orders tab, either pick a rider from the
-  dropdown (`delivery_partner_id`, which also fills `courier_name`) or leave it —
-  any unassigned order that reaches `ready_for_delivery` sits in a **pool**.
-- **Rider API** (`auth:sanctum` + `rider`): `GET /api/rider/orders` →
-  `{ assigned, pool }`; `POST /api/rider/orders/{order}/claim` (pool →
-  `out_for_delivery`, sets the rider); `POST …/status` (`out_for_delivery` /
-  `completed`, own orders only, guarded by the same `Order::canTransitionTo`);
+### Riders admin section
+
+**Admin console → Riders** (`AdminRiderController`, `*/api/admin/riders*`):
+
+- `POST /api/admin/riders` `{email}` promotes an existing account to a rider.
+- `PATCH /api/admin/riders/{user}` sets `phone`, `rider_is_active` (on/off shift),
+  a **home base** (`rider_base_address` — geocoded on save when
+  `rider_base_lat`/`lng` are blank — or a dragged map pin) and **`store_ids[]`**:
+  the stores this rider serves. The `rider_store` pivot links a rider to one or
+  more stores (nearby cities can share a rider).
+- `DELETE /api/admin/riders/{user}` drops the role and detaches the stores; the
+  account stays.
+- The list shows each rider's stores, live/base location, on-shift state and
+  current active-job count.
+
+### Auto-assignment
+
+When an order becomes `ready_for_delivery` **unassigned**, `RiderAssignment` (in
+`AdminOrderController::update`) picks a rider automatically:
+
+- candidates = riders with `is_rider` **and** `rider_is_active`, **linked to the
+  order's `store_id`**, that have a usable location;
+- ranked by **distance from the store** plus a load penalty
+  (`BUSY_PENALTY_KM = 6` km per active delivery), so an idle rider a little
+  further out beats a busy neighbour;
+- **location** = the live GPS fix pinged by the rider app when it's fresh
+  (`< 15 min`, `User::riderLocation()`), otherwise the admin-set base;
+- if no rider is eligible the order stays in the **first-come pool** exactly as
+  before. An admin can still assign/override from the Orders tab, and a
+  pre-assigned order is never touched.
+- Toggle the whole behaviour with **Admin console → Settings → Delivery →
+  "Auto-assign riders to orders"** (`rider_auto_assign` setting, default **on**).
+
+### Rider API (`auth:sanctum` + `rider`)
+
+- `GET /api/rider/orders` → `{ assigned, pool }`. The **pool is scoped to the
+  rider's linked stores** (plus any order with no `store_id` — legacy data); a
+  rider with no store links yet still sees the whole pool.
+- `POST /api/rider/location` `{lat,lng}` — the Expo app pings this while the
+  Deliveries screen is open (on focus, then every ~2 min); it feeds
+  auto-assignment's "live location".
+- `POST /api/rider/orders/{order}/claim` (pool → `out_for_delivery`, sets the
+  rider); `POST …/status` (`out_for_delivery` / `completed`, own orders only);
   `POST …/cash-collected` (COD → `payment_status = paid`).
-- **Rider app**: the same Expo project — a user with `is_rider` gets the
-  **Deliveries** screen (My deliveries + Available to pick up, item list, address
-  → Maps link, COD amount) instead of the shop. Pick up → Cash collected (COD) →
-  Mark delivered. The customer's order tracker follows along.
-- Admins can still override any status / courier from the Orders tab.
+
+### Rider app
+
+The same Expo project — a user with `is_rider` gets the **Deliveries** screen
+(My deliveries + Available to pick up, item list, address → Maps link, COD
+amount) instead of the shop. Pick up → Cash collected (COD) → Mark delivered. The
+customer's order tracker follows along. Admins can still override any status /
+courier from the Orders tab.
 
 ## Customer support
 
@@ -493,6 +535,11 @@ latitude/longitude blank and the address is geocoded on save (OpenStreetMap
 Nominatim); if it can't be located, the row shows *"not located"* and does not
 enforce anything until coordinates are added.
 
+- Stores are independent — put them in **different cities**. A customer is
+  deliverable when their point sits inside **any** active store's radius; the
+  nearest such store *serves* the order and its per-product availability (below)
+  applies. `Geo::servingStore()` / `Geo::coveringStores()` implement this, so a
+  small store nearby no longer shadows a wider store slightly farther away.
 - A checkout whose address falls outside **every** active, located store's radius
   is rejected with `422` and the message *"We don't deliver to your area yet — we're
   expanding fast and will reach you soon."*
@@ -515,14 +562,17 @@ building even when the street isn't in the geocoder.
 
 Address lookups go through the backend, not the browser:
 
-- `GET /api/geocode/search?q=` — forward search, **restricted** to a box around
-  the first active store (`viewbox` + `bounded=1`) and to ~4x the delivery radius,
-  so a sparse street query lands near the store instead of on a namesake in
-  another city. Falls back to a wider pass only if nothing local matches. Works
-  in the USA or India (no country lock); relaxes the query progressively
-  (drops a trailing `"..., CH"`, the house number, then trailing parts). With no
-  store located yet there is no centre, so results come from anywhere — set the
-  store's coordinates (drag its pin in Admin -> stores) to focus them.
+- `GET /api/geocode/search?q=&lat=&lng=` — forward search, **restricted** to a
+  box (`viewbox` + `bounded=1`) around a store and to ~4x its delivery radius, so
+  a sparse street query lands near the store instead of on a namesake in another
+  city. The store is the one **nearest the `lat`/`lng`** the caller passes (the
+  storefront sends the map's current centre), so a multi-store shop biases to the
+  right city's store; with no `lat`/`lng` it uses the first active store. Falls
+  back to a wider pass only if nothing local matches. Works in the USA or India
+  (no country lock); relaxes the query progressively (drops a trailing
+  `"..., CH"`, the house number, then trailing parts). With no store located yet
+  there is no centre, so results come from anywhere — set the store's coordinates
+  (drag its pin in Admin -> stores) to focus them.
 - `GET /api/geocode/reverse?lat=&lng=` — used by Detect my location and the pin.
 - Both reuse `App\Support\Geo` (day-long cache, Nominatim `User-Agent` from
   `NOMINATIM_USER_AGENT`) and are rate limited to 30/min per IP.
@@ -576,6 +626,61 @@ sellable option.
   Files go to the `public` disk; the endpoint returns the stored URL, which is
   saved into `image_url`. `FILESYSTEM_DISK=s3` moves storage to the cloud with no
   code change.
+
+## Per-store inventory
+
+Each store keeps its **own stock count** for a product and its variants, so a
+multi-store shop can say "Store A is out of milk, Store B has 20". Set it in
+**Admin console → Products → Store stock**.
+
+- Table `store_inventory` — one row per `(store_id, product_id, product_variant_id)`
+  (a null variant is the base product): `quantity` + `is_stocked` (the store
+  carries this line at all — can be `true` with `quantity 0` for "temporarily
+  out"). **No rows for a product ⇒ "single stock" mode**: its
+  `products.inventory_quantity` / `product_variants.inventory_quantity` applies
+  everywhere, so single-store installs and newly created products keep working.
+- `Product::availabilityAt($storeId, $variant)` → `{sold, quantity, per_store}`;
+  `Product::scopeVisibleAtStore($storeId)` filters a catalog query.
+  `Purchasable::resolve($product, $variant, $storeId)` folds it into the existing
+  price/stock/active shape (plus `sold` / `per_store`).
+- The storefront sends the chosen location as `?lat=&lng=` on `GET /api/products`,
+  `GET /api/products/{slug}` and `GET /api/categories`. The API resolves the
+  **serving store** (nearest store whose radius covers the point — see Delivery
+  Area) and, for a product on per-store stock:
+  - a line the store doesn't carry is **dropped** (uncarried variants too; a
+    product with no carried option, and categories with nothing carried nearby,
+    disappear);
+  - `inventory_quantity` on the product and each variant is **rewritten to that
+    store's count**, and `out_of_stock` flags a carried-but-empty line — the
+    storefront greys the card and disables **Add** ("Out of stock").
+  - No location → the full catalog at single-stock numbers (out-of-area customers
+    still browse). `GET /api/products/{slug}` 404s only when the serving store
+    carries no option of it.
+- `POST /api/cart/items` and `PATCH /api/cart/items/{item}` take optional
+  `lat`/`lng` so the add-to-cart stock check reads the serving store's shelf.
+- `POST /api/checkout` re-checks every line against the serving store: not
+  carried → `422` *"{name} isn't available for delivery to your area."*; over the
+  store's count → *"…does not have enough inventory."* On success it **decrements
+  that store's `store_inventory` row** (locked), not the shared column.
+- Admin product editor: **"Track stock per store"** turns on a stores × options
+  grid (Carried toggle + a quantity per store, per variant); `store_stock` on
+  `POST/PATCH /api/admin/products` is a full replacement of the product's rows
+  (empty array clears them, back to single stock).
+- Bulk switch an existing catalog over: `php artisan inventory:seed-stores`
+  seeds a row for every product/variant at every active store from its current
+  single count (`--fresh` overwrites, `--store=ID` limits scope).
+- The order is **stamped with the serving store** — `orders.store_id` (nullable;
+  null when no stores are configured, or for orders placed before multi-store).
+  The admin Orders tab shows *🏬 {store}* on each row (`store:id,name,city` is
+  eager-loaded on the admin order endpoints). The **PDF bill** is issued from
+  this store (`Order::fulfillingStore()`); a legacy order with no `store_id`
+  falls back to the nearest active store to the delivery address, then the first.
+- `GET /api/delivery-eta` now also returns `store_id` (the serving store).
+- **Mobile**: the Expo app has a *"Use my location"* control (Catalog + Checkout,
+  `expo-location`, foreground permission) that stores `{lat,lng}` in
+  `AsyncStorage`; `api.products`/`api.categories`/`api.product` send it, and a
+  new checkout address is saved with those coordinates so the same serving-store
+  and availability checks apply.
 
 ## Checkout Charges
 

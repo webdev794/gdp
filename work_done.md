@@ -13,11 +13,12 @@
 | Menu | What it does |
 | --- | --- |
 | **Dashboard** | Business overview — revenue, order and customer counts, discounts, refunds, plus orders-trend, payments-vs-refunds, "when orders come in" and period-comparison charts. |
-| **Orders** | View every order, filter by status, advance the delivery stage, assign a rider, mark cash collected, and issue full/partial Stripe refunds. |
-| **Products** | Add, edit and delete products — price, sale price, stock, image, and per-item variants (size/weight/flavour). |
+| **Orders** | View every order (with the store that fulfils it), filter by status, advance the delivery stage, assign a rider, mark cash collected, and issue full/partial Stripe refunds. |
+| **Products** | Add, edit and delete products — price, sale price, image, per-item variants (size/weight/flavour), and **per-store stock**: turn on "Track stock per store" for a grid of each store's own count (0 = shown "out of stock", unticked = not carried there). |
 | **Categories** | Add, edit, delete and reorder product categories, set their image and active/inactive state. |
 | **Customers** | See all customers with order count and spend, open a customer's addresses and order history, and grant the delivery-rider role. |
-| **Stores** | Manage store/hub locations — address, map coordinates, delivery radius and active state. |
+| **Riders** | Add a rider (by email), set their phone, on/off-shift state, home base (address or map pin) and which stores they serve. Orders are auto-assigned to the nearest on-shift rider linked to the order's store; unassigned ones fall back to the pickup pool. |
+| **Stores** | Manage store/hub locations — address, map coordinates, delivery radius and active state. Stores can be in different cities; a customer inside any store's radius can order, and the nearest covering store serves them. |
 | **Store settings** | Set the store name, tagline, logo, favicon, light/dark theme, brand colours and boxed/full page width. |
 | **Secure access** | Change the admin email/phone and manage the Stripe API keys, protected by a password re-check. |
 | **Pages → Homepage** | Manage the homepage banners (hero and 3-up strip) and the category tiles — images, links, order and visibility. |
@@ -25,7 +26,7 @@
 | **Pages → All pages** | Create and edit content pages (About, Contact, Privacy, etc.) using text or drag-and-drop section blocks and a header banner image. |
 | **Pages → Blogs** | Create and edit blog posts as their own pages, kept in a separate group. |
 | **Support** | Read customer support chats, reply, mark them resolved/reopened, and issue a refund from within a conversation. |
-| **Settings** | Configure checkout charges — tax rate, delivery fee, handling fee, small-cart surcharge, and turn cash-on-delivery on/off. |
+| **Settings** | Configure checkout charges — tax rate, delivery fee, handling fee, small-cart surcharge — turn cash-on-delivery on/off, and turn rider auto-assignment on/off. |
 
 ---
 

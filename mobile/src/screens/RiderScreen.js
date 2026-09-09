@@ -3,8 +3,22 @@ import { useFocusEffect } from '@react-navigation/native';
 import {
   ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
+import * as Location from 'expo-location';
 import { api } from '../api';
 import { colors, money } from '../theme';
+
+// Best-effort: tell the server where the rider is so auto-assignment can pick the
+// closest one. Silent on failure (permission denied, GPS off, offline).
+async function pingLocation() {
+  try {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') return;
+    const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+    await api.riderLocation(pos.coords.latitude, pos.coords.longitude);
+  } catch {
+    // ignore
+  }
+}
 
 function addressLine(a) {
   if (!a) return '';
@@ -72,8 +86,11 @@ export default function RiderScreen({ navigation }) {
   useFocusEffect(useCallback(() => {
     let active = true;
     (async () => { await load(); if (active) setLoading(false); })();
+    pingLocation();
     const timer = setInterval(load, 15000);
-    return () => { active = false; clearInterval(timer); };
+    // Refresh the rider's position every couple of minutes while the screen is open.
+    const locTimer = setInterval(pingLocation, 120000);
+    return () => { active = false; clearInterval(timer); clearInterval(locTimer); };
   }, [load]));
 
   const onAction = async (kind, order) => {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Geo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -27,7 +28,7 @@ class Order extends Model
     ];
 
     protected $fillable = [
-        'user_id', 'status', 'courier_name', 'payment_status', 'payment_method',
+        'user_id', 'store_id', 'status', 'courier_name', 'payment_status', 'payment_method',
         'subtotal_cents', 'tax_cents', 'delivery_fee_cents', 'handling_fee_cents',
         'small_cart_fee_cents', 'total_cents', 'delivery_address', 'delivery_instructions',
         'stripe_payment_intent_id', 'stripe_refund_id', 'refunded_amount_cents',
@@ -52,6 +53,7 @@ class Order extends Model
     }
 
     public function user(): BelongsTo { return $this->belongsTo(User::class); }
+    public function store(): BelongsTo { return $this->belongsTo(Store::class); }
     public function deliveryPartner(): BelongsTo { return $this->belongsTo(User::class, 'delivery_partner_id'); }
     public function items(): HasMany { return $this->hasMany(OrderItem::class); }
     public function refunds(): HasMany { return $this->hasMany(OrderRefund::class); }
@@ -75,6 +77,37 @@ class Order extends Model
         $prefix = str_starts_with((string) config('services.stripe.secret'), 'sk_test_') ? 'test/' : '';
 
         return "https://dashboard.stripe.com/{$prefix}payments/{$this->stripe_payment_intent_id}";
+    }
+
+    /**
+     * The shop the bill is issued from. Prefer the store recorded at checkout
+     * (`store_id`); for older orders placed before that column existed, fall
+     * back to the active store nearest the delivery address, then to the first
+     * active store. Null when no stores are configured.
+     */
+    public function fulfillingStore(): ?Store
+    {
+        if ($this->store_id) {
+            return $this->relationLoaded('store') ? $this->store : $this->store()->first();
+        }
+
+        $stores = Store::query()->where('is_active', true)->orderBy('id')->get();
+
+        if ($stores->isEmpty()) {
+            return null;
+        }
+
+        $lat = $this->delivery_address['latitude'] ?? null;
+        $lng = $this->delivery_address['longitude'] ?? null;
+
+        if ($lat !== null && $lng !== null) {
+            $nearest = Geo::nearestStore($stores, (float) $lat, (float) $lng);
+            if ($nearest) {
+                return $nearest['store'];
+            }
+        }
+
+        return $stores->first();
     }
 
     public function canTransitionTo(string $status): bool

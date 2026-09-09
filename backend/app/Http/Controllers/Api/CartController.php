@@ -8,6 +8,7 @@ use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Support\Purchasable;
+use App\Support\StoreLocator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +16,20 @@ use Illuminate\Validation\ValidationException;
 
 class CartController extends Controller
 {
+    /**
+     * Serving store id from an optional lat/lng on the request, so cart stock
+     * checks use that store's shelf. Null → the product's single stock.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function servingStoreId(array $validated): ?int
+    {
+        return StoreLocator::servingStore(
+            isset($validated['lat']) ? (float) $validated['lat'] : null,
+            isset($validated['lng']) ? (float) $validated['lng'] : null,
+        )?->id;
+    }
+
     public function show(Request $request): JsonResponse
     {
         $cart = $this->cartFor($request);
@@ -28,15 +43,18 @@ class CartController extends Controller
             'product_id' => ['required', 'integer', 'exists:products,id'],
             'product_variant_id' => ['sometimes', 'nullable', 'integer', 'exists:product_variants,id'],
             'quantity' => ['required', 'integer', 'min:1', 'max:1000'],
+            'lat' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
+            'lng' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
         ]);
 
+        $storeId = $this->servingStoreId($validated);
         $cart = $this->cartFor($request);
 
-        DB::transaction(function () use ($cart, $validated): void {
+        DB::transaction(function () use ($cart, $validated, $storeId): void {
             $product = Product::query()->whereKey($validated['product_id'])->lockForUpdate()->firstOrFail();
             $variant = $this->resolveVariant($product, $validated['product_variant_id'] ?? null, true);
 
-            $state = Purchasable::resolve($product, $variant);
+            $state = Purchasable::resolve($product, $variant, $storeId);
             $this->ensurePurchasable($state);
 
             $existing = $cart->items()
@@ -61,18 +79,21 @@ class CartController extends Controller
     {
         $validated = $request->validate([
             'quantity' => ['required', 'integer', 'min:1', 'max:1000'],
+            'lat' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
+            'lng' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
         ]);
 
+        $storeId = $this->servingStoreId($validated);
         $cart = $this->cartFor($request);
         abort_unless($cartItem->cart_id === $cart->id, 404);
 
-        DB::transaction(function () use ($cartItem, $validated): void {
+        DB::transaction(function () use ($cartItem, $validated, $storeId): void {
             $product = Product::query()->whereKey($cartItem->product_id)->lockForUpdate()->firstOrFail();
             $variant = $cartItem->product_variant_id
                 ? ProductVariant::query()->whereKey($cartItem->product_variant_id)->lockForUpdate()->first()
                 : null;
 
-            $state = Purchasable::resolve($product, $variant);
+            $state = Purchasable::resolve($product, $variant, $storeId);
             $this->ensurePurchasable($state);
             $this->ensureStock($state, $validated['quantity']);
 

@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\Store;
 use App\Models\User;
+use App\Support\Branding;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -78,7 +79,7 @@ class OrderReceiptTest extends TestCase
         $html = view('receipts.order', [
             'order' => $order,
             'store' => $store,
-            'branding' => \App\Support\Branding::current(),
+            'branding' => Branding::current(),
         ])->render();
 
         $this->assertStringContainsString('$6.49', $html);   // Line A regular, struck
@@ -86,6 +87,52 @@ class OrderReceiptTest extends TestCase
         $this->assertStringContainsString('You saved', $html);
         // (649-519)*10 + (1099-899)*5 = 1300 + 1000 = 2300
         $this->assertStringContainsString('$23.00', $html);
+    }
+
+    public function test_bill_is_issued_from_the_store_recorded_on_the_order(): void
+    {
+        // A store nearer the delivery address, plus the one that actually took
+        // the order (recorded as store_id at checkout). The bill must name the
+        // recorded store, not the nearest one.
+        Store::create([
+            'name' => 'Corner Shop', 'line1' => '1 Near St', 'city' => 'Brooklyn', 'state' => 'NY',
+            'postal_code' => '11201', 'latitude' => 40.6782, 'longitude' => -73.9442, 'is_active' => true,
+        ]);
+        $serving = Store::create([
+            'name' => 'Serving Hub', 'line1' => '99 Hub Ave', 'city' => 'Queens', 'state' => 'NY',
+            'postal_code' => '11101', 'latitude' => 40.7000, 'longitude' => -73.8000, 'is_active' => true,
+        ]);
+
+        $order = $this->order(User::factory()->create(), ['store_id' => $serving->id]);
+        $order->delivery_address = [
+            'name' => 'C', 'line1' => '10 Main', 'city' => 'Brooklyn', 'state' => 'NY',
+            'postal_code' => '11201', 'latitude' => 40.6780, 'longitude' => -73.9440,
+        ];
+        $order->save();
+
+        $this->assertSame($serving->id, $order->fulfillingStore()?->id);
+    }
+
+    public function test_bill_falls_back_to_the_nearest_store_for_a_legacy_order_without_store_id(): void
+    {
+        $far = Store::create([
+            'name' => 'Far Store', 'line1' => '1 Far Rd', 'city' => 'Queens', 'state' => 'NY',
+            'postal_code' => '11101', 'latitude' => 41.2000, 'longitude' => -73.2000, 'is_active' => true,
+        ]);
+        $near = Store::create([
+            'name' => 'Near Store', 'line1' => '1 Near Rd', 'city' => 'Brooklyn', 'state' => 'NY',
+            'postal_code' => '11201', 'latitude' => 40.6780, 'longitude' => -73.9440, 'is_active' => true,
+        ]);
+
+        $order = $this->order(User::factory()->create()); // no store_id
+        $order->delivery_address = [
+            'name' => 'C', 'line1' => '10 Main', 'city' => 'Brooklyn', 'state' => 'NY',
+            'postal_code' => '11201', 'latitude' => 40.6781, 'longitude' => -73.9441,
+        ];
+        $order->save();
+
+        $this->assertSame($near->id, $order->fulfillingStore()?->id);
+        $this->assertNotSame($far->id, $order->fulfillingStore()?->id);
     }
 
     public function test_customer_cannot_download_another_customers_bill(): void

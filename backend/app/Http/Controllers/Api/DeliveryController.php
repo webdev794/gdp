@@ -37,7 +37,11 @@ class DeliveryController extends Controller
             ]]);
         }
 
-        $best = Geo::nearestStore($stores, (float) $data['lat'], (float) $data['lng']);
+        // Deliverable when the point is inside *any* active store's radius; the
+        // nearest such store serves it. Otherwise fall back to the nearest store
+        // for the "how far out of range" numbers.
+        $serving = Geo::servingStore($stores, (float) $data['lat'], (float) $data['lng']);
+        $best = $serving ?? Geo::nearestStore($stores, (float) $data['lat'], (float) $data['lng']);
         $km = $best['km'];
         $radiusKm = (float) $best['store']->delivery_radius_km;
 
@@ -46,11 +50,12 @@ class DeliveryController extends Controller
 
         return response()->json(['data' => [
             'configured' => true,
-            'deliverable' => $km <= $radiusKm,
+            'deliverable' => $serving !== null,
             'distance_km' => round($km, 2),
             'radius_km' => $best['store']->delivery_radius_km,
             'minutes' => $minutes,
             'store_name' => $best['store']->name,
+            'store_id' => $best['store']->id,
             'delivery_mode' => $fees['delivery_mode'],
             'delivery_fee_cents' => CheckoutFees::distanceFeeCents($fees, $km, $radiusKm),
         ]]);

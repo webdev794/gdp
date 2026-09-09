@@ -278,14 +278,18 @@ class AdminController extends Controller
         };
     }
 
-    public function customers(): JsonResponse
+    public function customers(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'per_page' => ['sometimes', 'integer', 'min:1', 'max:1000'],
+        ]);
+
         $customers = User::query()
             ->where('is_admin', false)
             ->withCount('orders')
             ->withSum(['orders as spent_cents' => fn ($query) => $query->where('payment_status', 'paid')], 'total_cents')
             ->latest()
-            ->paginate(25);
+            ->paginate($validated['per_page'] ?? 10);
 
         return response()->json([
             'data' => $customers->through(fn (User $user) => [
@@ -301,6 +305,7 @@ class AdminController extends Controller
             'meta' => [
                 'current_page' => $customers->currentPage(),
                 'last_page' => $customers->lastPage(),
+                'per_page' => $customers->perPage(),
                 'total' => $customers->total(),
             ],
         ]);
@@ -333,15 +338,13 @@ class AdminController extends Controller
         }
 
         $validated = $request->validate(['is_rider' => ['required', 'boolean']]);
-        $user->forceFill(['is_rider' => $validated['is_rider']])->save();
+
+        // Promoting from the quick toggle also puts the rider "on shift".
+        $user->forceFill([
+            'is_rider' => $validated['is_rider'],
+            'rider_is_active' => $validated['is_rider'],
+        ])->save();
 
         return response()->json(['data' => ['id' => $user->id, 'is_rider' => (bool) $user->is_rider]]);
-    }
-
-    public function riders(): JsonResponse
-    {
-        return response()->json([
-            'data' => User::where('is_rider', true)->orderBy('name')->get(['id', 'name', 'email']),
-        ]);
     }
 }

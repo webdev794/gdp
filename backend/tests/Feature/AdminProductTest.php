@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\Store;
+use App\Models\StoreInventory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -90,6 +92,50 @@ class AdminProductTest extends TestCase
 
         $this->getJson('/api/admin/products')->assertForbidden();
         $this->patchJson("/api/admin/products/{$product->id}", ['price_cents' => 1])->assertForbidden();
+    }
+
+    public function test_product_list_sorts_newest_first_by_default_and_by_other_keys(): void
+    {
+        $category = Category::factory()->create();
+        $old = Product::factory()->create(['category_id' => $category->id, 'name' => 'Zebra bar', 'inventory_quantity' => 2, 'created_at' => now()->subDays(3)]);
+        $new = Product::factory()->create(['category_id' => $category->id, 'name' => 'Apple juice', 'inventory_quantity' => 9, 'created_at' => now()]);
+        Sanctum::actingAs($this->admin());
+
+        $this->getJson('/api/admin/products')
+            ->assertOk()->assertJsonPath('data.0.id', $new->id);
+
+        $this->getJson('/api/admin/products?sort=name')
+            ->assertOk()->assertJsonPath('data.0.id', $new->id); // "Apple" before "Zebra"
+
+        $this->getJson('/api/admin/products?sort=stock_low')
+            ->assertOk()->assertJsonPath('data.0.id', $old->id); // 2 < 9
+
+        $this->getJson('/api/admin/products?sort=stock_high')
+            ->assertOk()->assertJsonPath('data.0.id', $new->id);
+    }
+
+    public function test_product_list_can_be_filtered_and_sorted_by_store(): void
+    {
+        $category = Category::factory()->create();
+        $store = Store::create([
+            'name' => 'Hub', 'line1' => '1 St', 'city' => 'NY', 'state' => 'NY', 'postal_code' => '10001',
+            'latitude' => 40.7, 'longitude' => -74.0, 'delivery_radius_km' => 5, 'is_active' => true,
+        ]);
+        $everywhere = Product::factory()->create(['category_id' => $category->id, 'inventory_quantity' => 100]);
+        $atStore = Product::factory()->create(['category_id' => $category->id, 'inventory_quantity' => 0]);
+        StoreInventory::create(['store_id' => $store->id, 'product_id' => $atStore->id, 'product_variant_id' => null, 'quantity' => 4, 'is_stocked' => true]);
+        $notHere = Product::factory()->create(['category_id' => $category->id, 'inventory_quantity' => 50]);
+        StoreInventory::create(['store_id' => $store->id, 'product_id' => $notHere->id, 'product_variant_id' => null, 'quantity' => 0, 'is_stocked' => false]);
+
+        Sanctum::actingAs($this->admin());
+
+        $res = $this->getJson("/api/admin/products?store_id={$store->id}&sort=stock_low")->assertOk();
+        $ids = array_column($res->json('data'), 'id');
+
+        $this->assertContains($everywhere->id, $ids);  // no per-store row → sold everywhere
+        $this->assertContains($atStore->id, $ids);
+        $this->assertNotContains($notHere->id, $ids);   // explicitly not stocked here
+        $this->assertSame($atStore->id, $ids[0]);        // effective stock 4 < 100
     }
 
     private function admin(): User

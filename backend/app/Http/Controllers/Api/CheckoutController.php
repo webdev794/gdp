@@ -99,7 +99,14 @@ class CheckoutController extends Controller
                     throw ValidationException::withMessages(['cart' => ["An option for {$product->name} is no longer available."]]);
                 }
 
-                $state = Purchasable::resolve($product, $variant);
+                $storeId = $area['store']?->id;
+                $state = Purchasable::resolve($product, $variant, $storeId);
+
+                if ($storeId && $state['per_store'] && ! $state['sold']) {
+                    throw ValidationException::withMessages([
+                        'cart' => ["{$product->name} isn't available for delivery to your area."],
+                    ]);
+                }
 
                 if (! $state['active']) {
                     throw ValidationException::withMessages(['cart' => ["{$product->name} is no longer available."]]);
@@ -125,7 +132,17 @@ class CheckoutController extends Controller
                     'line_total_cents' => $lineTotal,
                 ];
 
-                if ($variant) {
+                // Take the stock off the shelf it was sold from: the serving
+                // store's row when the product is on per-store stock, otherwise
+                // the single product/variant counter.
+                if ($storeId && $state['per_store']) {
+                    $product->storeInventory()
+                        ->where('store_id', $storeId)
+                        ->where('product_variant_id', $variant?->id)
+                        ->lockForUpdate()
+                        ->first()
+                        ?->decrement('quantity', $cartItem->quantity);
+                } elseif ($variant) {
                     $variant->decrement('inventory_quantity', $cartItem->quantity);
                 } else {
                     $product->decrement('inventory_quantity', $cartItem->quantity);
@@ -141,6 +158,9 @@ class CheckoutController extends Controller
 
             $order = Order::create([
                 'user_id' => $request->user()->id,
+                // The store whose radius covers this address (null when no stores
+                // are configured); it's the one that packs and dispatches.
+                'store_id' => $area['store']?->id,
                 // Cash-on-delivery skips Stripe, so the order is confirmed and
                 // enters the delivery pipeline immediately; cash is collected on
                 // hand-off and an admin marks it paid then.
@@ -166,27 +186,25 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Resolve the delivery point against the active stores: reject an
-     * out-of-range address when radius enforcement is on, and return the
-     * nearest-store distance + radius for a distance-based delivery fee.
+     * Resolve the delivery point against the active stores: find the store that
+     * serves the address (nearest one whose radius reaches it), reject an
+     * out-of-range address when radius enforcement is on, and return that
+     * store's distance + radius for a distance-based delivery fee. The returned
+     * `store` also drives the per-product availability check at checkout.
      *
      * @param  array<string, mixed>  $address
      * @param  array<string, int|string>  $fees
-     * @return array{km: float|null, radius_km: float|null}
+     * @return array{km: float|null, radius_km: float|null, store: Store|null}
      */
     private function resolveDelivery(array $address, array $fees): array
     {
         $enforce = (bool) config('checkout.enforce_radius');
-        $distanceMode = ($fees['delivery_mode'] ?? 'fixed') === 'distance';
-        $none = ['km' => null, 'radius_km' => null];
-
-        if (! $enforce && ! $distanceMode) {
-            return $none;
-        }
+        $none = ['km' => null, 'radius_km' => null, 'store' => null];
 
         $stores = Store::query()->where('is_active', true)
             ->whereNotNull('latitude')->whereNotNull('longitude')->get();
 
+        // No stores configured — nothing to check against.
         if ($stores->isEmpty()) {
             return $none;
         }
@@ -210,20 +228,30 @@ class CheckoutController extends Controller
                 ]);
             }
 
-            // Distance mode without coordinates: charge the far (worst-case) fee.
+            // Can't place the address and we're not enforcing — skip the store
+            // checks; a distance fee falls back to the far (worst-case) price.
             return $none;
         }
 
-        $nearest = Geo::nearestStore($stores, (float) $lat, (float) $lng);
-        $km = $nearest['km'];
-        $radiusKm = (float) $nearest['store']->delivery_radius_km;
+        // Deliverable when the point sits inside *any* active store's radius —
+        // the nearest such store serves the order (and its per-product
+        // availability applies). Stores can be in different cities.
+        $serving = Geo::servingStore($stores, (float) $lat, (float) $lng);
 
-        if ($enforce && $km > $radiusKm) {
+        if ($serving === null && $enforce) {
             throw ValidationException::withMessages([
                 'address' => ["We don't deliver to your area yet — we're expanding fast and will reach you soon."],
             ]);
         }
 
-        return ['km' => $km, 'radius_km' => $radiusKm];
+        // The distance-based fee needs a store to measure from; with no serving
+        // store (enforcement off, out of range) fall back to the nearest one.
+        $basis = $serving ?? Geo::nearestStore($stores, (float) $lat, (float) $lng);
+
+        return [
+            'km' => $basis['km'],
+            'radius_km' => (float) $basis['store']->delivery_radius_km,
+            'store' => $serving['store'] ?? null,
+        ];
     }
 }

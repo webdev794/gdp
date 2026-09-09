@@ -163,12 +163,19 @@ class AdminSettingController extends Controller
     public function update(Request $request): JsonResponse
     {
         $validated = $request->validate(
-            ['cod_enabled' => ['sometimes', 'boolean']]
+            [
+                'cod_enabled' => ['sometimes', 'boolean'],
+                'rider_auto_assign' => ['sometimes', 'boolean'],
+            ]
             + self::FEE_RULES + self::BRANDING_RULES + self::PAYMENT_RULES + self::FOOTER_RULES
         );
 
         if (array_key_exists('cod_enabled', $validated)) {
             Setting::put('cod_enabled', (bool) $validated['cod_enabled']);
+        }
+
+        if (array_key_exists('rider_auto_assign', $validated)) {
+            Setting::put('rider_auto_assign', (bool) $validated['rider_auto_assign']);
         }
 
         $this->mergeInto('checkout_fees', array_intersect_key($validated, self::FEE_RULES));
@@ -219,6 +226,7 @@ class AdminSettingController extends Controller
 
         return [
             'cod_enabled' => (bool) Setting::get('cod_enabled', false),
+            'rider_auto_assign' => (bool) Setting::get('rider_auto_assign', true),
             ...CheckoutFees::current(),
             'branding' => Branding::current(),
             'footer' => FooterConfig::current(),

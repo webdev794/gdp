@@ -3,8 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Order;
+use App\Models\Store;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -72,6 +74,110 @@ class AdminRiderTest extends TestCase
 
         $this->patchJson("/api/admin/orders/{$order->id}", ['delivery_partner_id' => $notRider->id])
             ->assertStatus(422);
+    }
+
+    public function test_admin_promotes_an_account_to_rider_by_email(): void
+    {
+        $user = User::factory()->create(['email' => 'newrider@example.com']);
+        Sanctum::actingAs($this->admin());
+
+        $this->postJson('/api/admin/riders', ['email' => 'newrider@example.com'])
+            ->assertCreated()
+            ->assertJsonPath('data.id', $user->id)
+            ->assertJsonPath('data.rider_is_active', true);
+
+        $this->assertTrue($user->fresh()->is_rider);
+    }
+
+    public function test_promoting_an_unknown_email_is_rejected(): void
+    {
+        Sanctum::actingAs($this->admin());
+
+        $this->postJson('/api/admin/riders', ['email' => 'nobody@example.com'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('email');
+    }
+
+    public function test_admin_sets_a_riders_stores_base_and_shift_state(): void
+    {
+        $rider = User::factory()->create(['is_rider' => true]);
+        $a = $this->store('Downtown');
+        $b = $this->store('Uptown');
+        Sanctum::actingAs($this->admin());
+
+        $this->patchJson("/api/admin/riders/{$rider->id}", [
+            'phone' => '555-0100',
+            'rider_base_lat' => 40.7128,
+            'rider_base_lng' => -74.0060,
+            'rider_is_active' => false,
+            'store_ids' => [$a->id, $b->id],
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.rider_is_active', false)
+            ->assertJsonCount(2, 'data.stores');
+
+        $rider->refresh();
+        $this->assertEqualsWithDelta(40.7128, (float) $rider->rider_base_lat, 0.0001);
+        $this->assertEqualsWithDelta(2, $rider->stores()->count(), 0);
+    }
+
+    public function test_base_address_is_geocoded_when_no_coordinates_are_given(): void
+    {
+        Http::fake(['nominatim.openstreetmap.org/*' => Http::response([[
+            'lat' => '40.7484', 'lon' => '-73.9857',
+            'display_name' => '20 W 34th St, New York, NY', 'address' => ['city' => 'New York'],
+        ]])]);
+
+        $rider = User::factory()->create(['is_rider' => true]);
+        Sanctum::actingAs($this->admin());
+
+        $this->patchJson("/api/admin/riders/{$rider->id}", ['rider_base_address' => '20 W 34th St, New York'])
+            ->assertOk();
+
+        $rider->refresh();
+        $this->assertEqualsWithDelta(40.7484, (float) $rider->rider_base_lat, 0.0001);
+        $this->assertEqualsWithDelta(-73.9857, (float) $rider->rider_base_lng, 0.0001);
+    }
+
+    public function test_cannot_edit_a_non_rider_through_the_rider_endpoint(): void
+    {
+        $user = User::factory()->create(); // not a rider
+        Sanctum::actingAs($this->admin());
+
+        $this->patchJson("/api/admin/riders/{$user->id}", ['rider_is_active' => true])->assertNotFound();
+    }
+
+    public function test_removing_the_rider_role_detaches_stores(): void
+    {
+        $rider = User::factory()->create(['is_rider' => true]);
+        $rider->stores()->attach($this->store('S')->id);
+        Sanctum::actingAs($this->admin());
+
+        $this->deleteJson("/api/admin/riders/{$rider->id}")->assertNoContent();
+
+        $rider->refresh();
+        $this->assertFalse($rider->is_rider);
+        $this->assertSame(0, $rider->stores()->count());
+    }
+
+    public function test_rider_posts_its_live_location(): void
+    {
+        $rider = User::factory()->create(['is_rider' => true]);
+        Sanctum::actingAs($rider);
+
+        $this->postJson('/api/rider/location', ['lat' => 40.7128, 'lng' => -74.0060])->assertOk();
+
+        $rider->refresh();
+        $this->assertEqualsWithDelta(40.7128, (float) $rider->rider_last_lat, 0.0001);
+        $this->assertNotNull($rider->rider_last_located_at);
+    }
+
+    private function store(string $name): Store
+    {
+        return Store::create([
+            'name' => $name, 'line1' => '1 St', 'city' => 'NY', 'state' => 'NY', 'postal_code' => '10001',
+            'latitude' => 40.7128, 'longitude' => -74.0060, 'delivery_radius_km' => 8, 'is_active' => true,
+        ]);
     }
 
     private function admin(): User

@@ -28,7 +28,13 @@
     },
     "plugins": [
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Grocerly uses your location to show items your nearest store stocks and to estimate delivery."
+        }
+      ]
     ]
   }
 }

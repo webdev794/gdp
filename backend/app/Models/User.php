@@ -7,10 +7,11 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'password', 'phone', 'stripe_customer_id'])]
@@ -40,6 +41,41 @@ class User extends Authenticatable
         return $this->hasMany(SupportThread::class);
     }
 
+    /** Orders this user is the delivery rider for. */
+    public function deliveries(): HasMany
+    {
+        return $this->hasMany(Order::class, 'delivery_partner_id');
+    }
+
+    /** Stores this rider serves (auto-assignment only considers these). */
+    public function stores(): BelongsToMany
+    {
+        return $this->belongsToMany(Store::class, 'rider_store');
+    }
+
+    /**
+     * The rider's position for "nearest rider" maths: the live fix when it's
+     * fresh (pinged within 15 min), otherwise the admin-set base. Null when we
+     * have neither.
+     *
+     * @return array{lat: float, lng: float, source: 'live'|'base'}|null
+     */
+    public function riderLocation(): ?array
+    {
+        $fresh = $this->rider_last_located_at
+            && $this->rider_last_located_at->gt(now()->subMinutes(15));
+
+        if ($fresh && $this->rider_last_lat !== null && $this->rider_last_lng !== null) {
+            return ['lat' => (float) $this->rider_last_lat, 'lng' => (float) $this->rider_last_lng, 'source' => 'live'];
+        }
+
+        if ($this->rider_base_lat !== null && $this->rider_base_lng !== null) {
+            return ['lat' => (float) $this->rider_base_lat, 'lng' => (float) $this->rider_base_lng, 'source' => 'base'];
+        }
+
+        return null;
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -52,6 +88,12 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_admin' => 'boolean',
             'is_rider' => 'boolean',
+            'rider_is_active' => 'boolean',
+            'rider_base_lat' => 'float',
+            'rider_base_lng' => 'float',
+            'rider_last_lat' => 'float',
+            'rider_last_lng' => 'float',
+            'rider_last_located_at' => 'datetime',
         ];
     }
 }

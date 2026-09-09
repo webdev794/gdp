@@ -10,5 +10,11 @@ export default defineConfig(({ mode }) => {
     // Set VITE_BASE (e.g. /gdp/) when the app is served from a sub-path.
     base: env.VITE_BASE || '/',
     plugins: [react()],
+    // Leaflet is only imported dynamically (map pickers), so Vite doesn't
+    // pre-bundle it during startup — pre-declaring it here means the first map
+    // open doesn't stall the page to optimize the dependency.
+    optimizeDeps: {
+      include: ['leaflet'],
+    },
   }
 })

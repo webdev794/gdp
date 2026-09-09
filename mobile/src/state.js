@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, loadToken, setToken } from './api';
 
 const CART_KEY = 'grocerly_cart';
+const LOCATION_KEY = 'grocerly_location';
 
 const AppContext = createContext(null);
 
@@ -11,12 +12,19 @@ export function AppProvider({ children }) {
   const [user, setUser] = useState(null);
   const [cart, setCart] = useState([]);
   const [config, setConfig] = useState(null);
+  // { lat, lng } once the customer shares their location — scopes the catalog to
+  // the store that serves them and feeds the checkout delivery check.
+  const [deliveryLocation, setDeliveryLocation] = useState(null);
 
   useEffect(() => {
     (async () => {
       try {
         const stored = await AsyncStorage.getItem(CART_KEY);
         if (stored) setCart(JSON.parse(stored));
+      } catch {}
+      try {
+        const loc = await AsyncStorage.getItem(LOCATION_KEY);
+        if (loc) setDeliveryLocation(JSON.parse(loc));
       } catch {}
       try {
         const { data } = await api.config();
@@ -49,6 +57,13 @@ export function AppProvider({ children }) {
       cart,
       cartCount,
       cartTotal,
+      deliveryLocation,
+      setDeliveryLocation(loc) {
+        // loc is { lat, lng } or null to forget it.
+        setDeliveryLocation(loc);
+        if (loc) AsyncStorage.setItem(LOCATION_KEY, JSON.stringify(loc)).catch(() => {});
+        else AsyncStorage.removeItem(LOCATION_KEY).catch(() => {});
+      },
       async signIn(token) {
         await setToken(token);
         setUser(await api.me());
@@ -92,7 +107,7 @@ export function AppProvider({ children }) {
         setCart([]);
       },
     };
-  }, [booting, user, config, cart]);
+  }, [booting, user, config, cart, deliveryLocation]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
