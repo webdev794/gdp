@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { mediaUrl } from './mediaUrl'
 import './Admin.css'
 
 // The console itself is a big module — load it only once an admin is signed in,
@@ -50,6 +51,26 @@ export default function AdminEntry() {
       .then((user) => { if (!cancelled && user?.is_admin) { setToken(existing); setAuthed(true) } })
       .catch(() => {})
       .finally(() => { if (!cancelled) setChecking(false) })
+    return () => { cancelled = true }
+  }, [])
+
+  // Tab title + favicon for the admin pages (the storefront does the same from
+  // its own copy of /api/config). index.html carries the default favicon.
+  useEffect(() => {
+    let cancelled = false
+    fetch(`${API_URL}/config`, { headers: { Accept: 'application/json' } })
+      .then(readJson)
+      .then(({ data }) => {
+        if (cancelled || !data?.branding) return
+        const name = data.branding.store_name || 'Grocerly'
+        document.title = `${name} · Admin`
+        if (data.branding.favicon_url) {
+          let link = document.querySelector("link[rel='icon']")
+          if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link) }
+          link.href = mediaUrl(data.branding.favicon_url)
+        }
+      })
+      .catch(() => {})
     return () => { cancelled = true }
   }, [])
 
