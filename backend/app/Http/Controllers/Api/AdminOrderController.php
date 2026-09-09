@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\User;
+use App\Notifications\RiderAssigned;
 use App\Support\RiderAssignment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -108,7 +109,18 @@ class AdminOrderController extends Controller
             $changes['payment_status'] = 'refunded';
         }
 
+        $previousRiderId = $order->delivery_partner_id;
+
         $order->update($changes);
+
+        // Tell a rider the moment they're put on an order by hand (auto-assign
+        // notifies from RiderAssignment). Only on an actual change of rider.
+        if (array_key_exists('delivery_partner_id', $changes)
+            && $changes['delivery_partner_id']
+            && $changes['delivery_partner_id'] !== $previousRiderId
+            && isset($rider)) {
+            $rider->notify(RiderAssigned::forOrder($order));
+        }
 
         // An order that just became ready for delivery with no rider gets one
         // auto-assigned (nearest rider linked to its store); if none is eligible

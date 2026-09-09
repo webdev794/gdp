@@ -194,6 +194,7 @@ Administrators must be able to manage:
 - [x] Support chat (web + Expo) with admin inbox; partial/full Stripe refunds issued from a thread
 - [x] Delivery rider role + Expo rider mode: admin-assign, auto-assign (nearest on-shift rider linked to the store), or pool claim; rider status + COD collection
 - [x] Rider dashboard (web + Expo): lifetime/weekly deliveries with change-vs-last-week, ★ rating, code-verified share
+- [x] Rider "new delivery" alert: email on assignment + live alarm tone (choose a preset or upload a clip) / vibration + banner in the consoles
 - [x] Customer rates the rider 1–5 with an admin-only comment (from the delivered order or the delivery chat); feeds the rider's overall rating
 - [x] Customer rates a support conversation 1–5 with a comment, at the end of the chat once staff have replied; shown to the admin
 - [x] Server reconciles an order from Stripe when the webhook is missed or delayed
@@ -398,6 +399,24 @@ When an order becomes `ready_for_delivery` **unassigned**, `RiderAssignment` (in
   pre-assigned order is never touched.
 - Toggle the whole behaviour with **Admin console → Settings → Delivery →
   "Auto-assign riders to orders"** (`rider_auto_assign` setting, default **on**).
+
+### Assignment notification
+
+Whenever a rider is put on an order — auto-assigned by `RiderAssignment`, or
+assigned by hand in the admin Orders tab — they get a `RiderAssigned` mail
+notification (`$rider->notify(...)`; only on an actual change of rider, not on a
+re-save or when the rider is cleared). Both rider consoles also react live:
+
+- **Web** — the console diffs its own `assigned` list on every 15 s poll; a newly
+  appeared order plays a chosen alarm tone and drops a yellow "New delivery
+  assigned — #N" banner. The **Alert sound** menu in the header picks a preset
+  (Urgent alarm / Chime / Bell / Siren, synthesised with Web Audio — no asset),
+  or the rider can **upload a short clip of their own** (kept in that browser's
+  `localStorage`), with a mute toggle and a Test button. It never fires for
+  orders already in the queue when the screen opens.
+- **Mobile** — the Deliveries screen does the same diff and fires a strong
+  `Vibration` pattern plus the banner. (A custom sound file would need `expo-av`,
+  which isn't in the app yet.)
 
 ### Rider API (`auth:sanctum` + `rider`)
 

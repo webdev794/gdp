@@ -1,7 +1,7 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View,
+  ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, Vibration, View,
 } from 'react-native';
 import * as Location from 'expo-location';
 import { api } from '../api';
@@ -96,12 +96,27 @@ export default function RiderScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [newOrders, setNewOrders] = useState([]);
+  const seenRef = useRef(null); // Set<orderId>, null until the first poll seeds it
 
   const load = useCallback(async () => {
     try {
       const { data: d } = await api.riderOrders();
-      setData(d ?? { assigned: [], pool: [] });
+      const next = d ?? { assigned: [], pool: [] };
+      setData(next);
       setError('');
+
+      const ids = (next.assigned ?? []).map((o) => o.id);
+      if (seenRef.current === null) {
+        seenRef.current = new Set(ids);
+      } else {
+        const fresh = ids.filter((id) => !seenRef.current.has(id));
+        if (fresh.length) {
+          Vibration.vibrate([0, 400, 180, 400, 180, 700]);
+          setNewOrders((cur) => [...new Set([...cur, ...fresh])]);
+        }
+        seenRef.current = new Set(ids);
+      }
     } catch (e) {
       setError(e.message);
     }
@@ -148,6 +163,13 @@ export default function RiderScreen({ navigation }) {
     >
       {!!error && <Text style={styles.error}>{error}</Text>}
 
+      {newOrders.length > 0 && (
+        <View style={styles.newBanner}>
+          <Text style={styles.newBannerText}>🛵 New delivery assigned — {newOrders.map((id) => `#${id}`).join(', ')}</Text>
+          <Pressable onPress={() => setNewOrders([])}><Text style={styles.newBannerBtn}>Got it</Text></Pressable>
+        </View>
+      )}
+
       <StatStrip stats={stats} />
 
       <Text style={styles.section}>My deliveries ({data.assigned.length})</Text>
@@ -171,6 +193,9 @@ const styles = StyleSheet.create({
   section: { fontSize: 13, fontWeight: '800', color: colors.ink, marginTop: 18, marginBottom: 8, textTransform: 'uppercase' },
   muted: { color: colors.muted, fontSize: 13 },
   error: { color: colors.danger, marginBottom: 10 },
+  newBanner: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10, padding: 11, borderRadius: 10, backgroundColor: '#fff3d6', borderWidth: 1, borderColor: '#e7c66b' },
+  newBannerText: { flex: 1, minWidth: 160, color: '#7a5c14', fontWeight: '800', fontSize: 13 },
+  newBannerBtn: { color: '#7a5c14', fontWeight: '800', fontSize: 12, borderWidth: 1, borderColor: '#d8b451', borderRadius: 8, paddingVertical: 5, paddingHorizontal: 10, overflow: 'hidden' },
   stats: { flexDirection: 'row', gap: 8, marginBottom: 4 },
   stat: { flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 10 },
   statN: { fontSize: 18, fontWeight: '800', color: colors.ink },

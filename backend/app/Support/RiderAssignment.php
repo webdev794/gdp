@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Order;
 use App\Models\Setting;
 use App\Models\User;
+use App\Notifications\RiderAssigned;
 
 /**
  * Picks the delivery rider for an order: among the riders linked to the order's
@@ -79,6 +80,8 @@ class RiderAssignment
             'delivery_partner_id' => $best['rider']->id,
             'courier_name' => $best['rider']->name,
         ]);
+
+        $best['rider']->notify(RiderAssigned::forOrder($order));
 
         return $best['rider'];
     }

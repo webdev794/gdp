@@ -73,3 +73,9 @@ refreshed every 15 seconds.
 A dashboard strip at the top of the console shows lifetime deliveries, this
 week's count with the change vs last week, the ★ rating and the code-verified
 share. Scores only — customer comments are never shown to the rider.
+
+When a new order is assigned (by the admin or auto-assign), the rider gets an
+email and the console sounds an alarm + shows a banner. The **Alert sound** menu
+in the header picks a preset tone (Urgent alarm / Chime / Bell / Siren) or lets
+the rider upload their own short clip, with a mute toggle and a Test button. The
+mobile app vibrates and shows the same banner.

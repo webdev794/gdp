@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { TONES, loadAlertPrefs, saveAlertPrefs, getCustomTone, saveCustomTone, clearCustomTone, playRiderAlert, previewTone } from './riderAlert'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api'
 const STORE_URL = import.meta.env.BASE_URL || '/'
@@ -151,6 +152,63 @@ function RiderStats({ stats }) {
   )
 }
 
+function AlertSettings({ open, onClose }) {
+  const [prefs, setPrefs] = useState(loadAlertPrefs)
+  const [custom, setCustom] = useState(getCustomTone)
+  const [err, setErr] = useState('')
+  const fileRef = useRef(null)
+
+  if (!open) return null
+
+  const update = (patch) => setPrefs(saveAlertPrefs(patch))
+
+  const onUpload = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    setErr('')
+    try {
+      const name = await saveCustomTone(file)
+      setCustom(getCustomTone())
+      update({ toneId: 'custom' })
+      setErr(`Saved “${name}”.`)
+    } catch (ex) { setErr(ex.message) }
+  }
+
+  const removeCustom = () => {
+    clearCustomTone()
+    setCustom(null)
+    if (prefs.toneId === 'custom') update({ toneId: 'alarm' })
+  }
+
+  return (
+    <div className="rider-alert-pop" role="dialog" aria-label="Alert sound">
+      <div className="rider-alert-row">
+        <label className="rider-alert-check">
+          <input type="checkbox" checked={!prefs.muted} onChange={(e) => update({ muted: !e.target.checked })} />
+          Sound on new delivery
+        </label>
+      </div>
+      <div className="rider-alert-row">
+        <label htmlFor="rider-tone">Tone</label>
+        <select id="rider-tone" value={prefs.toneId} disabled={prefs.muted}
+          onChange={(e) => update({ toneId: e.target.value })}>
+          {TONES.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+          {custom && <option value="custom">My clip — {custom.name}</option>}
+        </select>
+        <button type="button" className="rider-link-btn" onClick={() => previewTone(prefs.toneId)}>Test</button>
+      </div>
+      <div className="rider-alert-row">
+        <button type="button" className="rider-btn ghost" onClick={() => fileRef.current?.click()}>Upload your own…</button>
+        {custom && <button type="button" className="rider-link-btn danger" onClick={removeCustom}>Remove clip</button>}
+        <input ref={fileRef} type="file" accept="audio/*" hidden onChange={onUpload} />
+      </div>
+      {err && <p className="rider-alert-note">{err}</p>}
+      <p className="rider-alert-note">A 2–3 second clip works best. It’s stored only in this browser.</p>
+      <button type="button" className="rider-link-btn" onClick={onClose}>Close</button>
+    </div>
+  )
+}
+
 export default function RiderConsole({ token, onSignOut }) {
   const headers = useCallback((json) => ({
     Accept: 'application/json',
@@ -165,14 +223,33 @@ export default function RiderConsole({ token, onSignOut }) {
   const [chatOrder, setChatOrder] = useState(null)
   const [chat, setChat] = useState({ messages: [], thread_id: null })
   const [reply, setReply] = useState('')
+  const [newOrders, setNewOrders] = useState([])
+  const [alertOpen, setAlertOpen] = useState(false)
   const chatLogRef = useRef(null)
+  const seenRef = useRef(null)   // Set<orderId>, null until the first poll seeds it
 
   const load = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/rider/orders`, { headers: headers() })
       const body = await readJson(res)
-      if (res.ok) { setData(body.data ?? { assigned: [], pool: [] }); setError('') }
-      else setError(body.message ?? 'Could not load your deliveries.')
+      if (res.ok) {
+        const next = body.data ?? { assigned: [], pool: [] }
+        setData(next)
+        setError('')
+
+        const ids = (next.assigned ?? []).map((o) => o.id)
+        if (seenRef.current === null) {
+          seenRef.current = new Set(ids)   // seed — don't alarm for what's already there
+        } else {
+          const fresh = ids.filter((id) => !seenRef.current.has(id))
+          if (fresh.length) {
+            playRiderAlert()
+            setNewOrders((cur) => [...new Set([...cur, ...fresh])])
+          }
+          // track the current queue so an order re-assigned later re-alarms
+          seenRef.current = new Set(ids)
+        }
+      } else setError(body.message ?? 'Could not load your deliveries.')
     } catch { setError('Cannot reach the server.') }
   }, [headers])
 
@@ -242,11 +319,23 @@ export default function RiderConsole({ token, onSignOut }) {
       <header className="rider-bar">
         <strong>Deliveries</strong>
         <div>
+          <div className="rider-alert-wrap">
+            <button type="button" className="rider-link" aria-expanded={alertOpen} onClick={() => setAlertOpen((v) => !v)}>Alert sound</button>
+            <AlertSettings open={alertOpen} onClose={() => setAlertOpen(false)} />
+          </div>
           <button type="button" className="rider-link" onClick={refresh}>Refresh</button>
           <a className="rider-link" href={STORE_URL}>Store</a>
           <button type="button" className="rider-link" onClick={onSignOut}>Sign out</button>
         </div>
       </header>
+
+      {newOrders.length > 0 && (
+        <div className="rider-newbanner" role="alert">
+          <span>🛵 New delivery assigned — {newOrders.map((id) => `#${id}`).join(', ')}</span>
+          <button type="button" onClick={() => previewTone(loadAlertPrefs().toneId)} className="rider-newbanner-play" aria-label="Replay tone">▶</button>
+          <button type="button" onClick={() => setNewOrders([])}>Got it</button>
+        </div>
+      )}
 
       {error && <p className="rider-error">{error}</p>}
 
