@@ -160,6 +160,52 @@ class AuthController extends Controller
         return response()->json(['message' => 'If that account exists, a new code is on its way.']);
     }
 
+    /**
+     * "Forgot password" — email a reset code. The response is deliberately the
+     * same whether or not the account exists.
+     */
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate(['email' => ['required', 'email']]);
+        $email = mb_strtolower(trim($validated['email']));
+
+        if (User::where('email', $email)->exists()) {
+            try {
+                $this->otp->issue($email, 'password_reset');
+            } catch (\Illuminate\Validation\ValidationException) {
+                // resend cooldown — act as if it was sent
+            }
+        }
+
+        return response()->json(['message' => 'If that email has an account, a reset code is on its way.']);
+    }
+
+    /**
+     * Set a new password with the code from forgotPassword(). Signs the user in
+     * and revokes every other session.
+     */
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
+            'code' => ['required', 'string', 'max:12'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+        $email = mb_strtolower(trim($validated['email']));
+
+        if (! $this->otp->verify($email, 'password_reset', $validated['code'])) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'code' => ['That code is invalid or has expired.'],
+            ]);
+        }
+
+        $user = User::where('email', $email)->firstOrFail();
+        $user->tokens()->delete();
+        $user->forceFill(['password' => Hash::make($validated['password'])])->save();
+
+        return $this->tokenResponse($user);
+    }
+
     private function createPasswordless(string $email): User
     {
         return User::create([

@@ -48,12 +48,12 @@
 | **Checkout** | Choose a saved or new delivery address, add a phone number and delivery note, and pick card or cash on delivery. |
 | **Payment** | Pay by card (Stripe), use a saved card, or tick "save this card" for next time. |
 | **Orders** | Track delivery status, complete payment, cancel an order, download the bill (PDF), or get help on an order. |
-| **Account → Profile** | Update name and phone number. |
+| **Account → Profile** | Update name and phone, and change password. |
 | **Account → Addresses** | Add, edit, delete and set a default delivery address. |
 | **Account → Payment methods** | Add a card, set a default, and remove saved cards. |
 | **Help** | Start a support chat (optionally linked to an order) and message the store. |
 | **Footer pages** | Read About Us, Blog, Contact, FAQs, Privacy Policy, Terms of Service and Security. |
-| **Sign in / Log out** | Sign in by emailed code or email + password; log out. |
+| **Sign in / Sign up** | Email-code, or email + password (Create an account / Forgot password on the Password tab). |
 
 ### Rider console (web) — BASE + /rider
 

@@ -493,7 +493,17 @@ re-sent within 60 seconds.
   `{"requires_otp": true, "purpose": "...", "email": "..."}` and no token.
 - `POST /api/auth/verify-otp` with `{"email", "purpose", "code"}` returns `{"user", "token"}`.
 - `POST /api/auth/resend-otp` with `{"email", "purpose"}` sends a fresh code.
-- All four routes are rate limited to 12 requests per minute per IP.
+- **Forgot password**: `POST /api/auth/forgot-password` `{"email"}` emails a
+  `password_reset` code (same generic response whether or not the account
+  exists); `POST /api/auth/reset-password` `{"email", "code", "password",
+  "password_confirmation"}` sets the new password, revokes every session and
+  returns a fresh `{"user", "token"}`.
+- **Change password** (signed in): `PATCH /api/profile/password`
+  `{"current_password", "password", "password_confirmation"}` — verifies the
+  current password and signs other devices out.
+- The storefront **Password** tab has *Sign in* / *Create an account* /
+  *Forgot password?*; the Account → Profile panel has a *Change password* form.
+- All auth routes are rate limited to 12 requests per minute per IP.
 
 Local development: `MAIL_MAILER=log`, so the email is written to
 `backend/storage/logs/laravel.log`. With `APP_DEBUG=true` the code is also logged on its own

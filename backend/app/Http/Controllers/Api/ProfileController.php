@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class ProfileController extends Controller
 {
@@ -27,5 +29,30 @@ class ProfileController extends Controller
         $request->user()->update($validated);
 
         return response()->json(['data' => $request->user()->fresh()]);
+    }
+
+    /**
+     * Change the signed-in user's password. Requires the current password;
+     * signs every other device out.
+     */
+    public function password(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = $request->user();
+
+        if (! Hash::check($validated['current_password'], (string) $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['That password is incorrect.'],
+            ]);
+        }
+
+        $user->forceFill(['password' => Hash::make($validated['password'])])->save();
+        $user->tokens()->where('id', '!=', $user->currentAccessToken()?->id)->delete();
+
+        return response()->json(['data' => ['ok' => true]]);
     }
 }
