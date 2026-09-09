@@ -1179,16 +1179,27 @@ export default function Admin({ token, onClose }) {
                     <td><span className={`pill pill-${order.payment_status}`}>{order.payment_status}</span></td>
                     <td>{STATUS_LABELS[order.status] ?? order.status}{order.store && <span className="admin-note" title={`Fulfilled by ${order.store.name}${order.store.city ? `, ${order.store.city}` : ''}`}>🏬 {order.store.name}</span>}{order.status === 'completed' && order.delivery_verified === true && <span className="admin-note" style={{ color: '#2f6d34' }} title={order.delivered_at ? `Confirmed ${new Date(order.delivered_at).toLocaleString()}` : ''}>✓ code verified</span>}{order.status === 'completed' && order.delivery_verified === false && <span className="admin-note" style={{ color: '#a23b28' }} title={order.delivery_note || ''}>⚠ delivered without code{order.delivery_note ? ` — ${order.delivery_note}` : ''}</span>}</td>
                     <td className="admin-courier">
-                      {riders.length > 0 && (
-                        <select value={order.delivery_partner_id ?? ''} disabled={busyId === order.id}
-                          onChange={(event) => patchOrder(order, { delivery_partner_id: event.target.value ? Number(event.target.value) : null })}>
-                          <option value="">— rider —</option>
-                          {riders.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                        </select>
+                      {riders.length > 0 ? (
+                        <>
+                          <select value={order.delivery_partner_id ?? ''} disabled={busyId === order.id}
+                            onChange={(event) => patchOrder(order, { delivery_partner_id: event.target.value ? Number(event.target.value) : null })}>
+                            <option value="">— rider —</option>
+                            {riders.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                          </select>
+                          {order.courier_name && !order.delivery_partner_id && (
+                            <span className="admin-note">manual: {order.courier_name}
+                              <button type="button" className="link" disabled={busyId === order.id} onClick={() => patchOrder(order, { courier_name: null })}> clear</button>
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        // No riders configured yet — fall back to a free-text courier name.
+                        <>
+                          <input value={courierDraft[order.id] ?? (order.courier_name ?? '')} placeholder="courier name"
+                            onChange={(event) => setCourierDraft((current) => ({ ...current, [order.id]: event.target.value }))} />
+                          <button type="button" disabled={busyId === order.id || courierDraft[order.id] === undefined} onClick={() => patchOrder(order, { courier_name: (courierDraft[order.id] ?? '').trim() || null })}>Save</button>
+                        </>
                       )}
-                      <input value={courierDraft[order.id] ?? (order.delivery_partner_id ? '' : (order.courier_name ?? ''))} placeholder="or type a name"
-                        onChange={(event) => setCourierDraft((current) => ({ ...current, [order.id]: event.target.value }))} />
-                      <button type="button" disabled={busyId === order.id || courierDraft[order.id] === undefined} onClick={() => patchOrder(order, { courier_name: (courierDraft[order.id] ?? '').trim() || null, delivery_partner_id: null })}>Save</button>
                     </td>
                     <td className="admin-actions">
                       {order.payment_method === 'cod' && order.payment_status !== 'paid' && order.status !== 'cancelled' && (
