@@ -66,27 +66,27 @@ class RiderOrdersTest extends TestCase
         $this->postJson("/api/rider/orders/{$notReady->id}/claim")->assertStatus(422);
     }
 
-    public function test_rider_marks_delivered_only_on_their_own_order(): void
+    public function test_rider_starts_delivery_only_on_their_own_order(): void
     {
         $rider = $this->rider();
-        $mine = $this->order(['status' => 'out_for_delivery', 'delivery_partner_id' => $rider->id]);
-        $notMine = $this->order(['status' => 'out_for_delivery', 'delivery_partner_id' => $this->rider()->id]);
+        $mine = $this->order(['status' => 'ready_for_delivery', 'delivery_partner_id' => $rider->id]);
+        $notMine = $this->order(['status' => 'ready_for_delivery', 'delivery_partner_id' => $this->rider()->id]);
         Sanctum::actingAs($rider);
 
-        $this->postJson("/api/rider/orders/{$notMine->id}/status", ['status' => 'completed'])->assertNotFound();
+        $this->postJson("/api/rider/orders/{$notMine->id}/status", ['status' => 'out_for_delivery'])->assertNotFound();
 
-        $this->postJson("/api/rider/orders/{$mine->id}/status", ['status' => 'completed'])
+        $this->postJson("/api/rider/orders/{$mine->id}/status", ['status' => 'out_for_delivery'])
             ->assertOk()
-            ->assertJsonPath('data.status', 'completed');
+            ->assertJsonPath('data.status', 'out_for_delivery');
     }
 
-    public function test_cannot_skip_steps(): void
+    public function test_cannot_start_delivery_before_the_store_marks_it_ready(): void
     {
         $rider = $this->rider();
-        $order = $this->order(['status' => 'ready_for_delivery', 'delivery_partner_id' => $rider->id]);
+        $order = $this->order(['status' => 'packing', 'delivery_partner_id' => $rider->id]);
         Sanctum::actingAs($rider);
 
-        $this->postJson("/api/rider/orders/{$order->id}/status", ['status' => 'completed'])->assertStatus(422);
+        $this->postJson("/api/rider/orders/{$order->id}/status", ['status' => 'out_for_delivery'])->assertStatus(422);
     }
 
     public function test_cash_collected_on_a_cod_order_marks_it_paid(): void

@@ -147,6 +147,8 @@ Route::middleware(['auth:sanctum', 'rider'])->prefix('rider')->group(function ()
     Route::post('/location', [RiderController::class, 'location']);
     Route::post('/orders/{order}/claim', [RiderController::class, 'claim']);
     Route::post('/orders/{order}/status', [RiderController::class, 'status']);
+    Route::post('/orders/{order}/delivery-otp', [RiderController::class, 'sendDeliveryOtp']);
+    Route::post('/orders/{order}/deliver', [RiderController::class, 'deliver']);
     Route::post('/orders/{order}/cash-collected', [RiderController::class, 'cashCollected']);
     Route::get('/orders/{order}/messages', [RiderController::class, 'messages']);
     Route::post('/orders/{order}/messages', [RiderController::class, 'postMessage']);

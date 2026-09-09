@@ -52,8 +52,8 @@ function DeliveryCard({ order, mine, onAction, navigation, busy }) {
                 <Text style={styles.actText}>Cash collected</Text>
               </Pressable>
             )}
-            <Pressable style={[styles.actBtn, styles.primaryBtn]} disabled={busy} onPress={() => onAction('deliver', order)}>
-              <Text style={styles.actText}>Mark delivered</Text>
+            <Pressable style={[styles.actBtn, styles.primaryBtn]} disabled={busy} onPress={() => navigation.navigate('DeliveryDetail', { id: order.id })}>
+              <Text style={styles.actText}>Deliver</Text>
             </Pressable>
           </>
         ) : (
@@ -99,7 +99,7 @@ export default function RiderScreen({ navigation }) {
     try {
       if (kind === 'claim') await api.claimOrder(order.id);
       if (kind === 'cash') await api.riderCashCollected(order.id);
-      if (kind === 'deliver') await api.riderStatus(order.id, 'completed');
+      if (kind === 'start') await api.riderStatus(order.id, 'out_for_delivery');
       await load();
     } catch (e) {
       setError(e.message);

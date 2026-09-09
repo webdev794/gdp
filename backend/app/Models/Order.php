@@ -33,10 +33,15 @@ class Order extends Model
         'small_cart_fee_cents', 'total_cents', 'delivery_address', 'delivery_instructions',
         'stripe_payment_intent_id', 'stripe_refund_id', 'refunded_amount_cents',
         'delivery_partner_id',
+        'delivered_at', 'delivery_verified', 'delivery_note',
+        'delivery_code', 'delivery_code_expires_at',
     ];
 
     /** A Stripe dashboard link for support/audit; the payment page shows the refund. */
     protected $appends = ['stripe_dashboard_url'];
+
+    /** The handover code is surfaced only to the owning customer, explicitly. */
+    protected $hidden = ['delivery_code', 'delivery_code_expires_at'];
 
     protected function casts(): array
     {
@@ -49,7 +54,17 @@ class Order extends Model
             'total_cents' => 'integer',
             'refunded_amount_cents' => 'integer',
             'delivery_address' => 'array',
+            'delivered_at' => 'datetime',
+            'delivery_verified' => 'boolean',
+            'delivery_code_expires_at' => 'datetime',
         ];
+    }
+
+    public function deliveryCodeActive(): bool
+    {
+        return $this->delivery_code !== null
+            && $this->delivery_code_expires_at !== null
+            && $this->delivery_code_expires_at->isFuture();
     }
 
     public function user(): BelongsTo { return $this->belongsTo(User::class); }

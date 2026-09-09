@@ -116,6 +116,10 @@ export const api = {
     request(`/rider/orders/${id}/status`, { method: 'POST', body: { status }, auth: true }),
   riderCashCollected: (id) =>
     request(`/rider/orders/${id}/cash-collected`, { method: 'POST', auth: true }),
+  sendDeliveryOtp: (id) =>
+    request(`/rider/orders/${id}/delivery-otp`, { method: 'POST', auth: true }),
+  deliverOrder: (id, body) =>
+    request(`/rider/orders/${id}/deliver`, { method: 'POST', body, auth: true }),
 };
 
 export const ISSUE_TYPES = [

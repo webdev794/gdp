@@ -21,6 +21,10 @@ class OrderController extends Controller
             ->latest()
             ->paginate(20);
 
+        // The handover code is hidden by default; the owning customer sees it so
+        // they can read it to the rider at the door.
+        $orders->getCollection()->each->makeVisible(['delivery_code', 'delivery_code_expires_at']);
+
         return response()->json([
             'data' => $orders->items(),
             'meta' => [
@@ -35,7 +39,7 @@ class OrderController extends Controller
     {
         abort_unless($order->user_id === $request->user()->id, 404);
 
-        return response()->json(['data' => $order->load('items')]);
+        return response()->json(['data' => $order->load('items')->makeVisible(['delivery_code', 'delivery_code_expires_at'])]);
     }
 
     /**

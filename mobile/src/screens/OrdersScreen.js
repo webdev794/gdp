@@ -90,6 +90,9 @@ export default function OrdersScreen({ navigation }) {
               <Text style={styles.total}>{money(item.total_cents)}</Text>
             </View>
             {paymentPaid && <Tracker status={item.status} />}
+            {item.status === 'out_for_delivery' && item.delivery_code && new Date(item.delivery_code_expires_at) > new Date() && (
+              <Text style={styles.handover}>Delivery code {item.delivery_code} — read this to your rider.</Text>
+            )}
             {!!item.courier_name && paymentPaid && (
               <Text style={styles.courier}>Courier: {item.courier_name}</Text>
             )}
@@ -137,5 +140,6 @@ const styles = StyleSheet.create({
   trackerLabel: { marginLeft: 6, fontSize: 10, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.4 },
   cancelled: { marginTop: 12, fontSize: 11, color: colors.danger, textTransform: 'uppercase', letterSpacing: 0.4 },
   courier: { marginTop: 8, fontSize: 12, color: colors.muted },
+  handover: { marginTop: 8, fontSize: 13, fontWeight: '700', color: '#1f4e8a' },
   help: { marginTop: 10, fontSize: 12, color: colors.accent, fontWeight: '700' },
 });

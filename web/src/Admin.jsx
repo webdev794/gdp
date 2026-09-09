@@ -1176,7 +1176,7 @@ export default function Admin({ token, onClose }) {
                     <td>{money(order.total_cents)}</td>
                     <td>{order.payment_method === 'cod' ? 'Cash on delivery' : 'Card'}</td>
                     <td><span className={`pill pill-${order.payment_status}`}>{order.payment_status}</span></td>
-                    <td>{STATUS_LABELS[order.status] ?? order.status}{order.store && <span className="admin-note" title={`Fulfilled by ${order.store.name}${order.store.city ? `, ${order.store.city}` : ''}`}>🏬 {order.store.name}</span>}</td>
+                    <td>{STATUS_LABELS[order.status] ?? order.status}{order.store && <span className="admin-note" title={`Fulfilled by ${order.store.name}${order.store.city ? `, ${order.store.city}` : ''}`}>🏬 {order.store.name}</span>}{order.status === 'completed' && order.delivery_verified === true && <span className="admin-note" style={{ color: '#2f6d34' }} title={order.delivered_at ? `Confirmed ${new Date(order.delivered_at).toLocaleString()}` : ''}>✓ code verified</span>}{order.status === 'completed' && order.delivery_verified === false && <span className="admin-note" style={{ color: '#a23b28' }} title={order.delivery_note || ''}>⚠ delivered without code{order.delivery_note ? ` — ${order.delivery_note}` : ''}</span>}</td>
                     <td className="admin-courier">
                       {riders.length > 0 && (
                         <select value={order.delivery_partner_id ?? ''} disabled={busyId === order.id}

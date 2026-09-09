@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-  ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View,
+  ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { api } from '../api';
 import { colors, money } from '../theme';
@@ -13,6 +13,10 @@ export default function DeliveryDetailScreen({ route, navigation }) {
   const [order, setOrder] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [stage, setStage] = useState(null); // null | 'code' | 'override'
+  const [sentTo, setSentTo] = useState('');
+  const [code, setCode] = useState('');
+  const [note, setNote] = useState('');
 
   const load = useCallback(async () => {
     try {
@@ -33,7 +37,12 @@ export default function DeliveryDetailScreen({ route, navigation }) {
     try {
       if (kind === 'claim') await api.claimOrder(id);
       if (kind === 'cash') await api.riderCashCollected(id);
-      if (kind === 'deliver') { await api.riderStatus(id, 'completed'); navigation.goBack(); return; }
+      if (kind === 'sendCode') {
+        const { data } = await api.sendDeliveryOtp(id);
+        setSentTo(data?.to || 'the customer');
+      }
+      if (kind === 'confirmCode') { await api.deliverOrder(id, { code: code.trim() }); navigation.goBack(); return; }
+      if (kind === 'confirmOverride') { await api.deliverOrder(id, { override: true, note: note.trim() }); navigation.goBack(); return; }
       await load();
     } catch (e) {
       setError(e.message);
@@ -90,12 +99,40 @@ export default function DeliveryDetailScreen({ route, navigation }) {
             {order.cod_due > 0 && (
               <Pressable style={styles.btn} disabled={busy} onPress={() => act('cash')}><Text style={styles.btnText}>Cash collected</Text></Pressable>
             )}
-            <Pressable style={[styles.btn, styles.primary]} disabled={busy} onPress={() => act('deliver')}><Text style={styles.btnText}>Mark delivered</Text></Pressable>
+            {stage === null && (
+              <Pressable style={[styles.btn, styles.primary]} disabled={busy} onPress={() => setStage('code')}><Text style={styles.btnText}>Deliver</Text></Pressable>
+            )}
           </>
         ) : (
           <Pressable style={[styles.btn, styles.primary]} disabled={busy} onPress={() => act('claim')}><Text style={styles.btnText}>Pick up</Text></Pressable>
         )}
       </View>
+
+      {stage === 'code' && (
+        <View style={styles.deliver}>
+          <Text style={styles.deliverH}>Confirm handover with a code</Text>
+          {!sentTo
+            ? <Pressable style={[styles.btn, styles.primary]} disabled={busy} onPress={() => act('sendCode')}><Text style={styles.btnText}>Send code to customer</Text></Pressable>
+            : <>
+                <Text style={styles.body}>Code sent to {sentTo}. Ask them to read it out.</Text>
+                <TextInput style={styles.codeInput} keyboardType="number-pad" maxLength={6} placeholder="6-digit code" value={code} onChangeText={(t) => setCode(t.replace(/[^0-9]/g, ''))} />
+                <Pressable style={[styles.btn, styles.primary]} disabled={busy || code.length < 4} onPress={() => act('confirmCode')}><Text style={styles.btnText}>Confirm delivery</Text></Pressable>
+                <Pressable onPress={() => act('sendCode')} disabled={busy}><Text style={styles.linkSm}>Resend</Text></Pressable>
+              </>}
+          <Pressable onPress={() => setStage('override')}><Text style={[styles.linkSm, { color: colors.danger }]}>Can’t verify? Mark delivered without a code</Text></Pressable>
+          <Pressable onPress={() => { setStage(null); setCode(''); }}><Text style={styles.linkSm}>Cancel</Text></Pressable>
+        </View>
+      )}
+
+      {stage === 'override' && (
+        <View style={styles.deliver}>
+          <Text style={styles.deliverH}>Mark delivered without a code</Text>
+          <Text style={styles.body}>Recorded for the store. Say what happened.</Text>
+          <TextInput style={styles.noteInput} multiline placeholder="What happened at handover" value={note} onChangeText={setNote} />
+          <Pressable style={[styles.btn, styles.primary]} disabled={busy || note.trim().length < 5} onPress={() => act('confirmOverride')}><Text style={styles.btnText}>Mark delivered</Text></Pressable>
+          <Pressable onPress={() => setStage('code')}><Text style={styles.linkSm}>Back to code</Text></Pressable>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -114,4 +151,9 @@ const styles = StyleSheet.create({
   btn: { paddingVertical: 12, paddingHorizontal: 18, borderRadius: 8, backgroundColor: colors.brand },
   primary: { backgroundColor: colors.accent },
   btnText: { color: '#fff', fontWeight: '800' },
+  deliver: { marginTop: 18, padding: 14, borderWidth: 1, borderColor: colors.line, borderRadius: 10, backgroundColor: colors.surface, gap: 10 },
+  deliverH: { fontSize: 14, fontWeight: '800', color: colors.ink },
+  codeInput: { borderWidth: 1, borderColor: colors.line, borderRadius: 8, padding: 12, fontSize: 20, letterSpacing: 6, textAlign: 'center' },
+  noteInput: { borderWidth: 1, borderColor: colors.line, borderRadius: 8, padding: 12, fontSize: 14, minHeight: 70, textAlignVertical: 'top' },
+  linkSm: { color: colors.muted, fontSize: 13, textDecorationLine: 'underline', marginTop: 2 },
 });

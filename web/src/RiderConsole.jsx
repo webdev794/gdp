@@ -15,6 +15,104 @@ async function readJson(res) {
   try { return text ? JSON.parse(text) : {} } catch { return {} }
 }
 
+function DeliveryCard({ order, pool, headers, onDone, onChat }) {
+  const a = order.delivery_address || {}
+  const canStart = order.status === 'ready_for_delivery'
+  const canDeliver = order.status === 'out_for_delivery'
+  const preparing = order.status === 'confirmed' || order.status === 'packing'
+
+  const [stage, setStage] = useState(null)   // null | 'code' | 'override'
+  const [sentTo, setSentTo] = useState('')
+  const [code, setCode] = useState('')
+  const [note, setNote] = useState('')
+  const [working, setWorking] = useState(false)
+  const [err, setErr] = useState('')
+
+  const post = async (path, body) => {
+    setWorking(true); setErr('')
+    try {
+      const res = await fetch(`${API_URL}/rider/orders/${order.id}/${path}`, {
+        method: 'POST', headers: headers(true), body: body ? JSON.stringify(body) : undefined,
+      })
+      const data = await readJson(res)
+      if (!res.ok) throw new Error(data.message ?? Object.values(data.errors ?? {})[0]?.[0] ?? 'That failed.')
+      return data
+    } catch (e) { setErr(e.message); throw e } finally { setWorking(false) }
+  }
+
+  const simpleAct = async (path, body) => { try { await post(path, body); onDone() } catch { /* err shown */ } }
+
+  const sendCode = async () => {
+    try {
+      const { data } = await post('delivery-otp')
+      setSentTo(data?.to || 'the customer')
+    } catch { /* err shown */ }
+  }
+  const confirmWithCode = async () => { try { await post('deliver', { code: code.trim() }); onDone() } catch { /* err shown */ } }
+  const confirmOverride = async () => { try { await post('deliver', { override: true, note: note.trim() }); onDone() } catch { /* err shown */ } }
+
+  return (
+    <article className="rider-card">
+      <div className="rider-card-top">
+        <strong>Order #{order.id}</strong>
+        <span className={`rider-pill s-${order.status}`}>{STATUS_LABEL[order.status] ?? order.status}</span>
+      </div>
+      <div className="rider-card-cust">
+        <span>{order.customer_name || 'Customer'}</span>
+        {order.customer_phone && <a href={`tel:${order.customer_phone}`}>📞 {order.customer_phone}</a>}
+      </div>
+      <p className="rider-card-addr">{addressText(a)}</p>
+      {order.delivery_instructions && <p className="rider-card-note">“{order.delivery_instructions}”</p>}
+      <ul className="rider-card-items">
+        {order.items?.map((it, i) => <li key={i}>{it.quantity} × {it.name}</li>)}
+      </ul>
+      {order.cod_due > 0 && <p className="rider-card-cod">Collect cash: <b>{money(order.cod_due)}</b></p>}
+
+      <div className="rider-card-actions">
+        <a className="rider-btn ghost" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressText(a))}`} target="_blank" rel="noreferrer">Directions</a>
+        <button className="rider-btn ghost" type="button" onClick={() => onChat(order.id)}>Message customer</button>
+        {pool && <button className="rider-btn" type="button" disabled={working} onClick={() => simpleAct('claim')}>Pick up</button>}
+        {!pool && preparing && <span className="rider-wait">Waiting for the store to pack it…</span>}
+        {!pool && canStart && <button className="rider-btn" type="button" disabled={working} onClick={() => simpleAct('status', { status: 'out_for_delivery' })}>Picked up — start delivery</button>}
+        {!pool && order.cod_due > 0 && (canStart || canDeliver) && <button className="rider-btn" type="button" disabled={working} onClick={() => simpleAct('cash-collected')}>Cash collected</button>}
+        {!pool && canDeliver && stage === null && <button className="rider-btn primary" type="button" onClick={() => setStage('code')}>Deliver</button>}
+      </div>
+
+      {stage === 'code' && (
+        <div className="rider-deliver">
+          <p className="rider-deliver-h">Confirm handover with a code</p>
+          {!sentTo
+            ? <button className="rider-btn" type="button" disabled={working} onClick={sendCode}>Send code to customer</button>
+            : <>
+                <p className="rider-deliver-sent">Code sent to {sentTo}. Ask them to read it out.</p>
+                <div className="rider-deliver-row">
+                  <input inputMode="numeric" maxLength={6} placeholder="6-digit code" value={code} onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, ''))} />
+                  <button className="rider-btn primary" type="button" disabled={working || code.length < 4} onClick={confirmWithCode}>Confirm delivery</button>
+                </div>
+                <button className="rider-link-btn" type="button" onClick={sendCode} disabled={working}>Resend</button>
+              </>}
+          {err && <p className="rider-deliver-err">{err}</p>}
+          <button className="rider-link-btn danger" type="button" onClick={() => { setStage('override'); setErr('') }}>Can’t verify? Mark delivered without a code</button>
+          <button className="rider-link-btn" type="button" onClick={() => { setStage(null); setErr(''); setCode('') }}>Cancel</button>
+        </div>
+      )}
+
+      {stage === 'override' && (
+        <div className="rider-deliver">
+          <p className="rider-deliver-h">Mark delivered without a code</p>
+          <p className="rider-deliver-sent">This is recorded for the store. Say what happened (e.g. code not arriving, handed to customer in person, left with neighbour).</p>
+          <textarea rows={3} placeholder="What happened at handover" value={note} onChange={(e) => setNote(e.target.value)} />
+          {err && <p className="rider-deliver-err">{err}</p>}
+          <div className="rider-deliver-row">
+            <button className="rider-btn primary" type="button" disabled={working || note.trim().length < 5} onClick={confirmOverride}>Mark delivered</button>
+            <button className="rider-link-btn" type="button" onClick={() => { setStage('code'); setErr('') }}>Back to code</button>
+          </div>
+        </div>
+      )}
+    </article>
+  )
+}
+
 export default function RiderConsole({ token, onSignOut }) {
   const headers = useCallback((json) => ({
     Accept: 'application/json',
@@ -24,9 +122,8 @@ export default function RiderConsole({ token, onSignOut }) {
 
   const [data, setData] = useState({ assigned: [], pool: [] })
   const [loading, setLoading] = useState(true)
-  const [busyId, setBusyId] = useState(null)
   const [error, setError] = useState('')
-  const [chatOrder, setChatOrder] = useState(null) // { id }
+  const [chatOrder, setChatOrder] = useState(null)
   const [chat, setChat] = useState({ messages: [], thread_id: null })
   const [reply, setReply] = useState('')
   const chatLogRef = useRef(null)
@@ -37,9 +134,7 @@ export default function RiderConsole({ token, onSignOut }) {
       const body = await readJson(res)
       if (res.ok) { setData(body.data ?? { assigned: [], pool: [] }); setError('') }
       else setError(body.message ?? 'Could not load your deliveries.')
-    } catch {
-      setError('Cannot reach the server.')
-    }
+    } catch { setError('Cannot reach the server.') }
   }, [headers])
 
   useEffect(() => {
@@ -49,21 +144,6 @@ export default function RiderConsole({ token, onSignOut }) {
     return () => { stop = true; clearInterval(t) }
   }, [load])
 
-  async function act(order, path, bodyObj) {
-    setBusyId(order.id)
-    setError('')
-    try {
-      const res = await fetch(`${API_URL}/rider/orders/${order.id}/${path}`, {
-        method: 'POST', headers: headers(true),
-        body: bodyObj ? JSON.stringify(bodyObj) : undefined,
-      })
-      const body = await readJson(res)
-      if (!res.ok) throw new Error(body.message ?? 'That action failed.')
-      await load()
-    } catch (e) { setError(e.message) } finally { setBusyId(null) }
-  }
-
-  // ---- chat ----
   const loadChat = useCallback(async (orderId) => {
     try {
       const res = await fetch(`${API_URL}/rider/orders/${orderId}/messages`, { headers: headers() })
@@ -74,10 +154,10 @@ export default function RiderConsole({ token, onSignOut }) {
 
   useEffect(() => {
     if (!chatOrder) return
-    const id = chatOrder.id
+    const id = chatOrder
     let alive = true
     const tick = () => { if (alive) loadChat(id) }
-    Promise.resolve().then(tick) // off the sync effect body
+    Promise.resolve().then(tick)
     const t = setInterval(tick, 4000)
     return () => { alive = false; clearInterval(t) }
   }, [chatOrder, loadChat])
@@ -91,7 +171,7 @@ export default function RiderConsole({ token, onSignOut }) {
     if (!text || !chatOrder) return
     setReply('')
     try {
-      const res = await fetch(`${API_URL}/rider/orders/${chatOrder.id}/messages`, {
+      const res = await fetch(`${API_URL}/rider/orders/${chatOrder}/messages`, {
         method: 'POST', headers: headers(true), body: JSON.stringify({ body: text }),
       })
       const body = await readJson(res)
@@ -101,43 +181,6 @@ export default function RiderConsole({ token, onSignOut }) {
   }
 
   if (loading) return <div className="rider-shell"><div className="rider-loading">Loading your deliveries…</div></div>
-
-  const OrderCard = ({ order, pool }) => {
-    const a = order.delivery_address || {}
-    const canStart = order.status === 'ready_for_delivery'
-    const canDeliver = order.status === 'out_for_delivery'
-    const preparing = order.status === 'confirmed' || order.status === 'packing'
-    return (
-      <article className="rider-card">
-        <div className="rider-card-top">
-          <strong>Order #{order.id}</strong>
-          <span className={`rider-pill s-${order.status}`}>{STATUS_LABEL[order.status] ?? order.status}</span>
-        </div>
-        <div className="rider-card-cust">
-          <span>{order.customer_name || 'Customer'}</span>
-          {order.customer_phone && <a href={`tel:${order.customer_phone}`}>📞 {order.customer_phone}</a>}
-        </div>
-        <p className="rider-card-addr">{addressText(a)}</p>
-        {order.delivery_instructions && <p className="rider-card-note">“{order.delivery_instructions}”</p>}
-        <ul className="rider-card-items">
-          {order.items?.map((it, i) => <li key={i}>{it.quantity} × {it.name}</li>)}
-        </ul>
-        {order.cod_due > 0 && <p className="rider-card-cod">Collect cash: <b>{money(order.cod_due)}</b></p>}
-        <div className="rider-card-actions">
-          <a className="rider-btn ghost" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addressText(a))}`} target="_blank" rel="noreferrer">Directions</a>
-          <button className="rider-btn ghost" type="button" onClick={() => setChatOrder({ id: order.id })}>Message customer</button>
-          {pool
-            ? <button className="rider-btn" type="button" disabled={busyId === order.id} onClick={() => act(order, 'claim')}>Pick up</button>
-            : <>
-                {preparing && <span className="rider-wait">Waiting for the store to pack it…</span>}
-                {canStart && <button className="rider-btn" type="button" disabled={busyId === order.id} onClick={() => act(order, 'status', { status: 'out_for_delivery' })}>Start delivery</button>}
-                {order.cod_due > 0 && (canStart || canDeliver) && <button className="rider-btn" type="button" disabled={busyId === order.id} onClick={() => act(order, 'cash-collected')}>Cash collected</button>}
-                {canDeliver && <button className="rider-btn primary" type="button" disabled={busyId === order.id} onClick={() => act(order, 'status', { status: 'completed' })}>Mark delivered</button>}
-              </>}
-        </div>
-      </article>
-    )
-  }
 
   return (
     <div className="rider-shell">
@@ -156,13 +199,13 @@ export default function RiderConsole({ token, onSignOut }) {
         <h2>My deliveries ({data.assigned.length})</h2>
         {data.assigned.length === 0
           ? <p className="rider-empty">Nothing assigned to you right now. New assignments appear here automatically.</p>
-          : data.assigned.map((o) => <OrderCard key={o.id} order={o} />)}
+          : data.assigned.map((o) => <DeliveryCard key={o.id} order={o} headers={headers} onDone={load} onChat={setChatOrder} />)}
       </section>
 
       {data.pool.length > 0 && (
         <section className="rider-section">
           <h2>Available to pick up ({data.pool.length})</h2>
-          {data.pool.map((o) => <OrderCard key={o.id} order={o} pool />)}
+          {data.pool.map((o) => <DeliveryCard key={o.id} order={o} pool headers={headers} onDone={load} onChat={setChatOrder} />)}
         </section>
       )}
 
@@ -170,7 +213,7 @@ export default function RiderConsole({ token, onSignOut }) {
         <div className="rider-chat-overlay" role="presentation" onClick={() => setChatOrder(null)}>
           <aside className="rider-chat" onClick={(e) => e.stopPropagation()}>
             <div className="rider-chat-head">
-              <strong>Order #{chatOrder.id} · customer</strong>
+              <strong>Order #{chatOrder} · customer</strong>
               <button type="button" onClick={() => setChatOrder(null)}>Close</button>
             </div>
             <div className="rider-chat-log" ref={chatLogRef}>

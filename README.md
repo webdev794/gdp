@@ -405,8 +405,16 @@ When an order becomes `ready_for_delivery` **unassigned**, `RiderAssignment` (in
   Deliveries screen is open (on focus, then every ~2 min); it feeds
   auto-assignment's "live location".
 - `POST /api/rider/orders/{order}/claim` (pool → `out_for_delivery`, sets the
-  rider); `POST …/status` (`out_for_delivery` / `completed`, own orders only);
+  rider); `POST …/status` (`out_for_delivery` only — "picked up");
   `POST …/cash-collected` (COD → `payment_status = paid`).
+- **Proof of delivery.** `POST …/delivery-otp` mints a 6-digit handover code
+  (15 min), emails it to the customer, and exposes it on the customer's own
+  `GET /api/orders` (`delivery_code` — hidden from everyone else). `POST …/deliver`
+  completes the order: with `{code}` it must match → `delivery_verified = true`;
+  with `{override: true, note}` it completes anyway and records the note →
+  `delivery_verified = false`, so the store keeps the evidence. `orders` gains
+  `delivered_at`, `delivery_verified`, `delivery_note`; the admin Orders row shows
+  *✓ code verified* or *⚠ delivered without code — {note}*.
 - `GET/POST /api/rider/orders/{order}/messages` — rider ↔ customer chat for a
   delivery. It reuses the support-thread system: the rider's messages land as
   "staff" messages, so the customer sees them in their **Get help** inbox and

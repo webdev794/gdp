@@ -64,7 +64,7 @@ refreshed every 15 seconds.
 | Action | What it does |
 | --- | --- |
 | **Start delivery** | Moves a ready order to out-for-delivery. |
-| **Mark delivered** | Completes the delivery; the customer's tracker updates. |
+| **Deliver** | Confirms the handover: sends a 6-digit code to the customer to read back, or — if that can't be done — marks it delivered with a required note. |
 | **Cash collected** | Marks a cash-on-delivery order paid. |
 | **Pick up** | Claims an unassigned order from the pool. |
 | **Directions** | Opens the delivery address in Google Maps. |
