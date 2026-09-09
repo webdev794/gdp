@@ -68,7 +68,9 @@ class AdminOrderController extends Controller
         $changes = array_intersect_key($validated, array_flip(['status', 'courier_name']));
 
         // Assigning a delivery partner: must be a rider, and it also fills the
-        // display courier_name. A null clears both.
+        // display courier_name. Clearing the rider (null) only wipes the display
+        // name when a replacement name wasn't sent in the same request — so
+        // "type a courier name + Save" keeps the typed name.
         if (array_key_exists('delivery_partner_id', $validated)) {
             $rider = $validated['delivery_partner_id']
                 ? User::find($validated['delivery_partner_id'])
@@ -79,7 +81,11 @@ class AdminOrderController extends Controller
             }
 
             $changes['delivery_partner_id'] = $rider?->id;
-            $changes['courier_name'] = $rider?->name;
+            if ($rider) {
+                $changes['courier_name'] = $rider->name;
+            } elseif (! array_key_exists('courier_name', $validated)) {
+                $changes['courier_name'] = null;
+            }
         }
 
         // Cash collected on hand-off settles a cash-on-delivery order.

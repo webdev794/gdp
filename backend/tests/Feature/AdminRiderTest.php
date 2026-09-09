@@ -66,6 +66,32 @@ class AdminRiderTest extends TestCase
             ->assertJsonPath('data.courier_name', 'Alex Rider');
     }
 
+    public function test_switching_from_a_rider_to_a_typed_courier_name_keeps_the_name(): void
+    {
+        $rider = User::factory()->create(['is_rider' => true, 'name' => 'Alex Rider']);
+        $order = $this->order(['delivery_partner_id' => $rider->id, 'courier_name' => 'Alex Rider']);
+        Sanctum::actingAs($this->admin());
+
+        // The "type a name + Save" button sends both keys.
+        $this->patchJson("/api/admin/orders/{$order->id}", [
+            'courier_name' => 'Contract Courier Co', 'delivery_partner_id' => null,
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.delivery_partner_id', null)
+            ->assertJsonPath('data.courier_name', 'Contract Courier Co');
+    }
+
+    public function test_clearing_the_rider_alone_clears_the_courier_name(): void
+    {
+        $rider = User::factory()->create(['is_rider' => true, 'name' => 'Alex Rider']);
+        $order = $this->order(['delivery_partner_id' => $rider->id, 'courier_name' => 'Alex Rider']);
+        Sanctum::actingAs($this->admin());
+
+        $this->patchJson("/api/admin/orders/{$order->id}", ['delivery_partner_id' => null])
+            ->assertOk()
+            ->assertJsonPath('data.courier_name', null);
+    }
+
     public function test_assigning_a_non_rider_is_rejected(): void
     {
         $notRider = User::factory()->create();
@@ -185,12 +211,13 @@ class AdminRiderTest extends TestCase
         return User::factory()->create(['is_admin' => true]);
     }
 
-    private function order(): Order
+    private function order(array $overrides = []): Order
     {
         return Order::create([
             'user_id' => User::factory()->create()->id, 'status' => 'ready_for_delivery', 'payment_status' => 'paid',
             'subtotal_cents' => 1000, 'tax_cents' => 0, 'delivery_fee_cents' => 0, 'total_cents' => 1000,
             'delivery_address' => ['name' => 'X', 'line1' => '1 St', 'city' => 'NY', 'state' => 'NY', 'postal_code' => '10001'],
+            ...$overrides,
         ]);
     }
 }

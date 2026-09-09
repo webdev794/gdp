@@ -1188,7 +1188,7 @@ export default function Admin({ token, onClose }) {
                       )}
                       <input value={courierDraft[order.id] ?? (order.delivery_partner_id ? '' : (order.courier_name ?? ''))} placeholder="or type a name"
                         onChange={(event) => setCourierDraft((current) => ({ ...current, [order.id]: event.target.value }))} />
-                      <button type="button" disabled={busyId === order.id} onClick={() => patchOrder(order, { courier_name: (courierDraft[order.id] ?? order.courier_name ?? '').trim() || null, delivery_partner_id: null })}>Save</button>
+                      <button type="button" disabled={busyId === order.id || courierDraft[order.id] === undefined} onClick={() => patchOrder(order, { courier_name: (courierDraft[order.id] ?? '').trim() || null, delivery_partner_id: null })}>Save</button>
                     </td>
                     <td className="admin-actions">
                       {order.payment_method === 'cod' && order.payment_status !== 'paid' && order.status !== 'cancelled' && (
