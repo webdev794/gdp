@@ -293,6 +293,7 @@ export default function Storefront() {
   const [supportReply, setSupportReply] = useState('')
   const [supportBusy, setSupportBusy] = useState(false)
   const [supportMsg, setSupportMsg] = useState('')
+  const [supportUnread, setSupportUnread] = useState(0)
 
   useEffect(() => {
     localStorage.setItem('gdp_cart', JSON.stringify(cart))
@@ -928,7 +929,7 @@ export default function Storefront() {
   }
 
   function loadThreads() {
-    authGet('/support/threads').then(responseJson).then((d) => setThreads(d.data ?? [])).catch(() => {})
+    authGet('/support/threads').then(responseJson).then((d) => { setThreads(d.data ?? []); markThreadsSeen(d.data ?? []) }).catch(() => {})
   }
 
   async function openThread(id) {
@@ -936,6 +937,7 @@ export default function Storefront() {
     try {
       const data = await responseJson(await authGet(`/support/threads/${id}`))
       setSupportView(data.data)
+      markThreadsSeen([data.data])
     } catch { setSupportMsg('Could not open that conversation.') }
   }
 
@@ -967,6 +969,42 @@ export default function Storefront() {
       setSupportView(data.data)
     } catch (error) { setSupportMsg(error.message) } finally { setSupportBusy(false) }
   }
+
+  // Unread = a thread whose latest message is from staff (incl. the delivery
+  // rider) and the customer hasn't opened it since. "Seen" timestamps per thread
+  // live in localStorage.
+  const readSeen = () => { try { return JSON.parse(localStorage.getItem('gdp_support_seen') || '{}') } catch { return {} } }
+  const threadHasStaffUnread = (t, seen) => {
+    const s = t.last_staff_message_at
+    if (!s) return false
+    if (t.last_message_at && new Date(s) < new Date(t.last_message_at)) return false // customer sent the latest
+    return seen[t.id] !== s
+  }
+  const markThreadsSeen = (list) => {
+    const seen = readSeen()
+    ;(list ?? []).forEach((t) => { if (t.last_staff_message_at) seen[t.id] = t.last_staff_message_at })
+    try { localStorage.setItem('gdp_support_seen', JSON.stringify(seen)) } catch { /* private mode */ }
+    setSupportUnread(0)
+  }
+
+  // Background check for new staff/rider messages while the support panel is
+  // closed, so the header "Help" link can show a dot.
+  useEffect(() => {
+    if (!currentUser) { setSupportUnread(0); return }
+    let stopped = false
+    const check = async () => {
+      if (supportView) return // panel open — it manages "seen" itself
+      try {
+        const d = await responseJson(await authGet('/support/threads'))
+        if (stopped) return
+        const seen = readSeen()
+        setSupportUnread((d.data ?? []).filter((t) => threadHasStaffUnread(t, seen)).length)
+      } catch { /* keep last */ }
+    }
+    check()
+    const timer = setInterval(check, 20000)
+    return () => { stopped = true; clearInterval(timer) }
+  }, [currentUser, supportView])
 
   // Poll the open conversation for new staff replies.
   const activeThreadId = (supportView && typeof supportView === 'object') ? supportView.id : null
@@ -1191,7 +1229,7 @@ export default function Storefront() {
           {currentUser ? <>
             <button className="link-btn" type="button" onClick={() => { setOrdersOpen(true); setOrdersLoading(true); setOrders([]); setOrdersMessage('') }}>Orders</button>
             <button className="link-btn" type="button" onClick={() => openAccount('profile')}>Account</button>
-            <button className="link-btn" type="button" onClick={() => openSupport()}>Help</button>
+            <button className={supportUnread ? 'link-btn has-dot' : 'link-btn'} type="button" onClick={() => openSupport()}>Help{supportUnread ? <span className="link-dot" aria-label={`${supportUnread} new message${supportUnread === 1 ? '' : 's'}`} /> : null}</button>
             {currentUser.is_admin && <button className="link-btn" type="button" onClick={() => { window.location.href = `${import.meta.env.BASE_URL}admin` }}>Admin</button>}
             {currentUser.is_rider && <button className="link-btn" type="button" onClick={() => { window.location.href = `${import.meta.env.BASE_URL}rider` }}>Deliveries</button>}
             <button className="link-btn" type="button" onClick={logout}>{(currentUser.name || currentUser.email || 'Account').split(' ')[0]} &middot; Log out</button>

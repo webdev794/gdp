@@ -23,6 +23,8 @@ button{cursor:pointer}
 .deliver-to:hover strong{color:var(--green)}
 .topbar-actions{margin-left:auto;display:flex;align-items:center;gap:16px}
 .link-btn{border:0;background:0;font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap}
+.link-btn.has-dot{position:relative}
+.link-dot{position:absolute;top:-2px;right:-8px;width:8px;height:8px;border-radius:50%;background:#c02b0a}
 .link-btn:hover{color:var(--green)}
 .cart-pill{display:flex;align-items:center;gap:7px;background:var(--green);color:#fff;border:0;border-radius:10px;padding:9px 14px;font-weight:800;font-size:13px}
 .cart-pill b{background:rgba(255,255,255,.22);border-radius:6px;padding:1px 7px;font-size:12px}

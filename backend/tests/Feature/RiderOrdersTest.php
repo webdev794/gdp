@@ -105,6 +105,7 @@ class RiderOrdersTest extends TestCase
 
     public function test_rider_chats_with_the_customer_on_their_own_order(): void
     {
+        \Illuminate\Support\Facades\Notification::fake();
         $rider = $this->rider();
         $order = $this->order(['status' => 'out_for_delivery', 'delivery_partner_id' => $rider->id]);
         Sanctum::actingAs($rider);
@@ -119,6 +120,8 @@ class RiderOrdersTest extends TestCase
             ->assertJsonPath('data.messages.1.body', "I'm 5 minutes away.")
             ->assertJsonPath('data.messages.1.mine', true)
             ->assertJsonPath('data.messages.1.from', 'staff');
+
+        \Illuminate\Support\Facades\Notification::assertSentOnDemand(\App\Notifications\RiderMessage::class);
 
         // The customer sees it as a normal support thread.
         Sanctum::actingAs(User::find($order->user_id));

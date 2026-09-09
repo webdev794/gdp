@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\SupportThread;
 use App\Notifications\DeliveryHandoverCode;
+use App\Notifications\RiderMessage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -229,6 +230,12 @@ class RiderController extends Controller
         }
         // Rider messages read as "staff" on the customer's side.
         $thread->post($request->user(), $validated['body'], isStaff: true);
+
+        // Delivery chat is time-sensitive — nudge the customer by email too.
+        $email = $order->user?->email;
+        if ($email) {
+            Notification::route('mail', $email)->notify(new RiderMessage($order->id, $validated['body']));
+        }
 
         return response()->json(['data' => $this->threadPayload($thread->fresh(), $request->user()->id)]);
     }
