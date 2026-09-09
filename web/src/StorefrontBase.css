@@ -202,9 +202,9 @@ a.psec-feature.is-link img{width:100%;height:150px;object-fit:cover;border-radiu
 .site-footer-bottom{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;margin-top:24px;padding-top:16px;border-top:1px solid var(--line);font:11px 'DM Mono',monospace;color:var(--muted)}
 .site-footer-copy{color:var(--ink)}
 .site-footer-app{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-/* Compact app-store badges, Blinkit-sized (~30px tall), on a solid blue. */
-.app-badge{display:inline-flex;align-items:center;gap:7px;background:#1a73e8;color:#fff;border-radius:6px;padding:4px 10px;text-decoration:none;line-height:1;height:30px;box-sizing:border-box}
-.app-badge:hover{background:#155ec4}
+/* Compact app-store badges, Blinkit-sized (~30px tall). Blinkit's badge fill. */
+.app-badge{display:inline-flex;align-items:center;gap:7px;background:#213b50;color:#fff;border-radius:6px;padding:4px 10px;text-decoration:none;line-height:1;height:30px;box-sizing:border-box}
+.app-badge:hover{background:#182d3d}
 .app-badge svg{flex:none;width:15px;height:15px}
 .app-badge span{display:flex;flex-direction:column;gap:1px}
 .app-badge small{font-size:6.5px;letter-spacing:.05em;text-transform:uppercase;opacity:.9}
