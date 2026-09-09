@@ -47,6 +47,22 @@ class User extends Authenticatable
         return $this->hasMany(Order::class, 'delivery_partner_id');
     }
 
+    /** Customer reviews of this user as a delivery rider. */
+    public function riderReviews(): HasMany
+    {
+        return $this->hasMany(RiderReview::class, 'rider_id');
+    }
+
+    /** Refresh the denormalised rider rating from the reviews. */
+    public function recomputeRiderRating(): void
+    {
+        $agg = $this->riderReviews()->selectRaw('avg(rating) as a, count(*) as c')->first();
+        $this->forceFill([
+            'rider_rating_avg' => $agg->c ? round((float) $agg->a, 2) : null,
+            'rider_rating_count' => (int) $agg->c,
+        ])->save();
+    }
+
     /** Stores this rider serves (auto-assignment only considers these). */
     public function stores(): BelongsToMany
     {
@@ -89,6 +105,8 @@ class User extends Authenticatable
             'is_admin' => 'boolean',
             'is_rider' => 'boolean',
             'rider_is_active' => 'boolean',
+            'rider_rating_avg' => 'float',
+            'rider_rating_count' => 'integer',
             'rider_base_lat' => 'float',
             'rider_base_lng' => 'float',
             'rider_last_lat' => 'float',

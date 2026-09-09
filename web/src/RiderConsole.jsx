@@ -113,6 +113,44 @@ function DeliveryCard({ order, pool, headers, onDone, onChat }) {
   )
 }
 
+function Delta({ now, prev }) {
+  const d = (now ?? 0) - (prev ?? 0)
+  if (d === 0) return <em className="rider-stat-delta flat">no change vs last week</em>
+  return <em className={`rider-stat-delta ${d > 0 ? 'up' : 'down'}`}>{d > 0 ? '▲' : '▼'} {Math.abs(d)} vs last week</em>
+}
+
+function RiderStats({ stats }) {
+  const stars = stats.rating_avg != null ? stats.rating_avg.toFixed(1) : '—'
+  const verified = stats.verified_rate != null ? `${Math.round(stats.verified_rate * 100)}%` : '—'
+  return (
+    <section className="rider-stats">
+      <div className="rider-stat">
+        <span className="rider-stat-n">{stats.deliveries_total}</span>
+        <span className="rider-stat-l">Deliveries all-time</span>
+      </div>
+      <div className="rider-stat">
+        <span className="rider-stat-n">{stats.deliveries_week}</span>
+        <span className="rider-stat-l">This week</span>
+        <Delta now={stats.deliveries_week} prev={stats.deliveries_week_prev} />
+      </div>
+      <div className="rider-stat">
+        <span className="rider-stat-n">★ {stars}</span>
+        <span className="rider-stat-l">{stats.rating_count} rating{stats.rating_count === 1 ? '' : 's'}</span>
+      </div>
+      <div className="rider-stat">
+        <span className="rider-stat-n">{verified}</span>
+        <span className="rider-stat-l">Code-verified</span>
+      </div>
+      {stats.cod_collected_cents > 0 && (
+        <div className="rider-stat">
+          <span className="rider-stat-n">{money(stats.cod_collected_cents)}</span>
+          <span className="rider-stat-l">Cash collected</span>
+        </div>
+      )}
+    </section>
+  )
+}
+
 export default function RiderConsole({ token, onSignOut }) {
   const headers = useCallback((json) => ({
     Accept: 'application/json',
@@ -121,6 +159,7 @@ export default function RiderConsole({ token, onSignOut }) {
   }), [token])
 
   const [data, setData] = useState({ assigned: [], pool: [] })
+  const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [chatOrder, setChatOrder] = useState(null)
@@ -137,12 +176,26 @@ export default function RiderConsole({ token, onSignOut }) {
     } catch { setError('Cannot reach the server.') }
   }, [headers])
 
+  const loadStats = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/rider/stats`, { headers: headers() })
+      const body = await readJson(res)
+      if (res.ok) setStats(body.data ?? null)
+    } catch { /* keep last */ }
+  }, [headers])
+
   useEffect(() => {
     let stop = false
     ;(async () => { await load(); if (!stop) setLoading(false) })()
     const t = setInterval(load, 15000)
     return () => { stop = true; clearInterval(t) }
   }, [load])
+
+  useEffect(() => {
+    Promise.resolve().then(loadStats)
+    const t = setInterval(loadStats, 60000)
+    return () => clearInterval(t)
+  }, [loadStats])
 
   const loadChat = useCallback(async (orderId) => {
     try {
@@ -180,6 +233,8 @@ export default function RiderConsole({ token, onSignOut }) {
     } catch { setReply(text); setError('Message not sent.') }
   }
 
+  const refresh = () => { load(); loadStats() }
+
   if (loading) return <div className="rider-shell"><div className="rider-loading">Loading your deliveries…</div></div>
 
   return (
@@ -187,7 +242,7 @@ export default function RiderConsole({ token, onSignOut }) {
       <header className="rider-bar">
         <strong>Deliveries</strong>
         <div>
-          <button type="button" className="rider-link" onClick={load}>Refresh</button>
+          <button type="button" className="rider-link" onClick={refresh}>Refresh</button>
           <a className="rider-link" href={STORE_URL}>Store</a>
           <button type="button" className="rider-link" onClick={onSignOut}>Sign out</button>
         </div>
@@ -195,17 +250,19 @@ export default function RiderConsole({ token, onSignOut }) {
 
       {error && <p className="rider-error">{error}</p>}
 
+      {stats && <RiderStats stats={stats} />}
+
       <section className="rider-section">
         <h2>My deliveries ({data.assigned.length})</h2>
         {data.assigned.length === 0
           ? <p className="rider-empty">Nothing assigned to you right now. New assignments appear here automatically.</p>
-          : data.assigned.map((o) => <DeliveryCard key={o.id} order={o} headers={headers} onDone={load} onChat={setChatOrder} />)}
+          : data.assigned.map((o) => <DeliveryCard key={o.id} order={o} headers={headers} onDone={refresh} onChat={setChatOrder} />)}
       </section>
 
       {data.pool.length > 0 && (
         <section className="rider-section">
           <h2>Available to pick up ({data.pool.length})</h2>
-          {data.pool.map((o) => <DeliveryCard key={o.id} order={o} pool headers={headers} onDone={load} onChat={setChatOrder} />)}
+          {data.pool.map((o) => <DeliveryCard key={o.id} order={o} pool headers={headers} onDone={refresh} onChat={setChatOrder} />)}
         </section>
       )}
 

@@ -72,6 +72,7 @@ class Order extends Model
     public function deliveryPartner(): BelongsTo { return $this->belongsTo(User::class, 'delivery_partner_id'); }
     public function items(): HasMany { return $this->hasMany(OrderItem::class); }
     public function refunds(): HasMany { return $this->hasMany(OrderRefund::class); }
+    public function riderReview(): \Illuminate\Database\Eloquent\Relations\HasOne { return $this->hasOne(RiderReview::class); }
 
     public function refundableRemainingCents(): int
     {

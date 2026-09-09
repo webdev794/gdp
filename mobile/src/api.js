@@ -109,6 +109,9 @@ export const api = {
     request(`/support/threads/${id}/messages`, { method: 'POST', body: { body }, auth: true }),
 
   riderOrders: () => request('/rider/orders', { auth: true }),
+  riderStats: () => request('/rider/stats', { auth: true }),
+  rateRider: (orderId, body) =>
+    request(`/orders/${orderId}/rider-review`, { method: 'POST', body, auth: true }),
   riderLocation: (lat, lng) =>
     request('/rider/location', { method: 'POST', body: { lat, lng }, auth: true }),
   claimOrder: (id) => request(`/rider/orders/${id}/claim`, { method: 'POST', auth: true }),

@@ -1,8 +1,72 @@
 import React, { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { api } from '../api';
 import { colors, money, STATUS_LABELS, DELIVERY_STAGES } from '../theme';
+
+function RiderRating({ order, onSaved }) {
+  const existing = order.rider_review;
+  const [rating, setRating] = useState(existing?.rating ?? 0);
+  const [comment, setComment] = useState(existing?.comment ?? '');
+  const [editing, setEditing] = useState(!existing);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  const submit = async () => {
+    if (!rating) { setMsg('Tap a star to rate.'); return; }
+    setBusy(true); setMsg('');
+    try {
+      const { data } = await api.rateRider(order.id, { rating, comment: comment.trim() || null, source: 'delivery' });
+      onSaved(data);
+      setEditing(false);
+      setMsg('Thanks for the feedback!');
+    } catch (e) {
+      setMsg(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const stars = (
+    <View style={styles.starRow}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Pressable key={n} disabled={!editing} onPress={() => setRating(n)} hitSlop={4}>
+          <Text style={[styles.star, n <= rating && styles.starOn]}>★</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+
+  if (!editing) {
+    return (
+      <View style={styles.ratingBox}>
+        <Text style={styles.ratingDone}>You rated your rider</Text>
+        {stars}
+        <Pressable onPress={() => setEditing(true)}><Text style={styles.help}>Edit</Text></Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.ratingBox}>
+      <Text style={styles.ratingH}>Rate your delivery rider</Text>
+      {stars}
+      <TextInput
+        style={styles.ratingInput}
+        placeholder="Private note for the Grocerly team (optional)"
+        placeholderTextColor={colors.muted}
+        value={comment}
+        onChangeText={setComment}
+        multiline
+        maxLength={1000}
+      />
+      <Pressable style={styles.ratingBtn} disabled={busy} onPress={submit}>
+        <Text style={styles.ratingBtnText}>{existing ? 'Update rating' : 'Submit rating'}</Text>
+      </Pressable>
+      {!!msg && <Text style={styles.ratingMsg}>{msg}</Text>}
+    </View>
+  );
+}
 
 function Tracker({ status }) {
   if (status === 'cancelled') return <Text style={styles.cancelled}>Cancelled</Text>;
@@ -99,6 +163,12 @@ export default function OrdersScreen({ navigation }) {
             <Pressable onPress={() => navigation.navigate('Support', { orderId: item.id })}>
               <Text style={styles.help}>Get help with this order</Text>
             </Pressable>
+            {item.status === 'completed' && item.delivery_partner_id && (
+              <RiderRating
+                order={item}
+                onSaved={(rv) => setOrders((current) => current.map((row) => (row.id === item.id ? { ...row, rider_review: rv } : row)))}
+              />
+            )}
           </View>
         );
       }}
@@ -142,4 +212,14 @@ const styles = StyleSheet.create({
   courier: { marginTop: 8, fontSize: 12, color: colors.muted },
   handover: { marginTop: 8, fontSize: 13, fontWeight: '700', color: '#1f4e8a' },
   help: { marginTop: 10, fontSize: 12, color: colors.accent, fontWeight: '700' },
+  ratingBox: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.line, gap: 8 },
+  ratingH: { fontSize: 12, fontWeight: '700', color: colors.ink },
+  ratingDone: { fontSize: 12, color: colors.muted },
+  starRow: { flexDirection: 'row', gap: 4 },
+  star: { fontSize: 22, color: '#d3d8cd' },
+  starOn: { color: '#f5a623' },
+  ratingInput: { borderWidth: 1, borderColor: colors.line, borderRadius: 8, padding: 10, fontSize: 13, color: colors.ink, minHeight: 40 },
+  ratingBtn: { alignSelf: 'flex-start', backgroundColor: colors.accent, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 14 },
+  ratingBtnText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+  ratingMsg: { fontSize: 11, color: colors.muted },
 });

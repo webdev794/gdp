@@ -250,6 +250,7 @@ export default function Admin({ token, onClose }) {
   const [riders, setRiders] = useState([])
   const [riderForm, setRiderForm] = useState(null)
   const [riderEmail, setRiderEmail] = useState('')
+  const [riderDetail, setRiderDetail] = useState(null)
   const [settings, setSettings] = useState(null)
   const [feesForm, setFeesForm] = useState(null)
   const [brandingForm, setBrandingForm] = useState(null)
@@ -916,6 +917,17 @@ export default function Admin({ token, onClose }) {
     } catch (error) { setCustomerDetail(null); fail(error) }
   }
 
+  async function openRiderDetail(id) {
+    setMessage('')
+    setRiderDetail({ loading: true })
+    try {
+      const response = await fetch(`${API_URL}/admin/riders/${id}`, { headers: authHeaders() })
+      const data = await readJson(response)
+      if (!response.ok) throw new Error(data.message ?? 'Could not load the rider.')
+      setRiderDetail(data.data)
+    } catch (error) { setRiderDetail(null); fail(error) }
+  }
+
   async function toggleRider(id, isRider) {
     try {
       const response = await fetch(`${API_URL}/admin/customers/${id}`, { method: 'PATCH', headers: jsonHeaders(), body: JSON.stringify({ is_rider: isRider }) })
@@ -1512,7 +1524,7 @@ export default function Admin({ token, onClose }) {
 
           {listBusy.riders && riders.length === 0 ? <p className="admin-empty">Loading riders…</p> : riders.length === 0 ? <p className="admin-empty">No riders yet. Add one by email above.</p> : (
             <table className="admin-table">
-              <thead><tr><th>Name</th><th>Phone</th><th>Stores</th><th>Location</th><th>Active jobs</th><th>On shift</th><th></th></tr></thead>
+              <thead><tr><th>Name</th><th>Phone</th><th>Stores</th><th>Location</th><th>Rating</th><th>Active jobs</th><th>On shift</th><th></th></tr></thead>
               <tbody>
                 {pageSlice(riders, ridersPage).map((rider) => (
                   <tr key={rider.id}>
@@ -1524,6 +1536,7 @@ export default function Admin({ token, onClose }) {
                     <td>{rider.located
                       ? <span title={rider.located.last_ping_at ? `pinged ${new Date(rider.located.last_ping_at).toLocaleString()}` : ''}>{rider.located.source === 'live' ? '🟢 live' : '📍 base'}</span>
                       : <span className="muted">no base set</span>}</td>
+                    <td><button className="act ghost" type="button" onClick={() => openRiderDetail(rider.id)}>{rider.rating_count ? `★ ${(rider.rating_avg ?? 0).toFixed(1)} (${rider.rating_count})` : 'Reviews'}</button></td>
                     <td className={rider.active_deliveries > 0 ? 'low' : ''}>{rider.active_deliveries}</td>
                     <td>{rider.rider_is_active ? 'Yes' : 'No'}</td>
                     <td className="admin-actions">
@@ -2233,6 +2246,39 @@ export default function Admin({ token, onClose }) {
                     </li>
                   ))}
                   {(customerDetail.orders ?? []).length === 0 && <li className="muted">No orders.</li>}
+                </ul>
+              </>
+            )}
+          </aside>
+        </div>
+      )}
+
+      {riderDetail && (
+        <div className="admin-drawer" role="presentation" onClick={() => setRiderDetail(null)}>
+          <aside onClick={(event) => event.stopPropagation()}>
+            <button className="admin-close" type="button" onClick={() => setRiderDetail(null)}>Close</button>
+            {riderDetail.loading ? <p className="admin-empty">Loading…</p> : (
+              <>
+                <h3>{riderDetail.rider?.name}</h3>
+                <p className="muted">{riderDetail.rider?.email} · {riderDetail.rider?.phone || 'no phone'}</p>
+                <div className="admin-rider-stats">
+                  <span><strong>{riderDetail.rider?.completed_deliveries ?? 0}</strong> delivered</span>
+                  <span><strong>{riderDetail.rider?.active_deliveries ?? 0}</strong> active now</span>
+                  <span><strong>{riderDetail.rider?.rating_avg != null ? `★ ${riderDetail.rider.rating_avg.toFixed(1)}` : '—'}</strong> {riderDetail.rider?.rating_count ?? 0} rating{riderDetail.rider?.rating_count === 1 ? '' : 's'}</span>
+                </div>
+                <h4>Customer reviews ({riderDetail.reviews?.length ?? 0})</h4>
+                <p className="muted">Comments are for admins only — the rider never sees them.</p>
+                <ul className="admin-review-list">
+                  {(riderDetail.reviews ?? []).map((rv) => (
+                    <li key={rv.id}>
+                      <div className="admin-review-head">
+                        <span className="admin-review-stars">{'★'.repeat(rv.rating)}<span className="dim">{'★'.repeat(5 - rv.rating)}</span></span>
+                        <span className="muted">Order #{rv.order_id} · {rv.source === 'chat' ? 'from chat' : 'delivery'} · {new Date(rv.at).toLocaleDateString()}</span>
+                      </div>
+                      {rv.comment ? <p className="admin-review-comment">{rv.comment}</p> : <p className="muted">No comment.</p>}
+                    </li>
+                  ))}
+                  {(riderDetail.reviews ?? []).length === 0 && <li className="muted">No reviews yet.</li>}
                 </ul>
               </>
             )}

@@ -53,6 +53,61 @@ class RiderController extends Controller
         ]);
     }
 
+    /**
+     * The rider's own dashboard: lifetime deliveries, how this week and month
+     * compare with the one before, their star rating, the share of deliveries
+     * confirmed by a handover code, cash collected, and their most recent
+     * ratings (scores and dates only — written feedback is for the admin).
+     */
+    public function stats(Request $request): JsonResponse
+    {
+        $rider = $request->user();
+        $me = $rider->id;
+
+        $delivered = Order::query()
+            ->where('delivery_partner_id', $me)
+            ->where('status', 'completed');
+
+        $since = fn ($from, $to = null) => (clone $delivered)
+            ->where('delivered_at', '>=', $from)
+            ->when($to, fn ($q) => $q->where('delivered_at', '<', $to))
+            ->count();
+
+        $now = now();
+        $weekAgo = $now->copy()->subDays(7);
+        $twoWeeksAgo = $now->copy()->subDays(14);
+        $monthAgo = $now->copy()->subDays(30);
+        $twoMonthsAgo = $now->copy()->subDays(60);
+
+        $total = (clone $delivered)->count();
+        $verified = (clone $delivered)->where('delivery_verified', true)->count();
+        $codCents = (int) Order::query()
+            ->where('delivery_partner_id', $me)
+            ->where('status', 'completed')
+            ->where('payment_method', 'cod')
+            ->where('payment_status', 'paid')
+            ->sum('total_cents');
+
+        $recent = $rider->riderReviews()
+            ->latest()
+            ->limit(10)
+            ->get(['rating', 'source', 'created_at'])
+            ->map(fn ($r) => ['rating' => (int) $r->rating, 'source' => $r->source, 'at' => $r->created_at]);
+
+        return response()->json(['data' => [
+            'deliveries_total' => $total,
+            'deliveries_week' => $since($weekAgo),
+            'deliveries_week_prev' => $since($twoWeeksAgo, $weekAgo),
+            'deliveries_month' => $since($monthAgo),
+            'deliveries_month_prev' => $since($twoMonthsAgo, $monthAgo),
+            'rating_avg' => $rider->rider_rating_avg !== null ? (float) $rider->rider_rating_avg : null,
+            'rating_count' => (int) $rider->rider_rating_count,
+            'verified_rate' => $total ? round($verified / $total, 3) : null,
+            'cod_collected_cents' => $codCents,
+            'recent_ratings' => $recent,
+        ]]);
+    }
+
     public function claim(Request $request, Order $order): JsonResponse
     {
         if ($order->status !== 'ready_for_delivery'

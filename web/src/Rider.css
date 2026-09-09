@@ -9,6 +9,15 @@
 .rider-link:hover{background:#26311f}
 
 .rider-error{margin:12px 18px 0;padding:10px 13px;background:#f6e3e0;color:#a23b28;font-size:12px;border-radius:8px}
+
+.rider-stats{display:flex;flex-wrap:wrap;gap:10px;padding:16px 18px 0;max-width:640px}
+.rider-stat{flex:1 1 120px;background:#fff;border:1px solid #cdd5c8;border-radius:12px;padding:12px 13px;box-shadow:0 3px 12px rgba(24,33,28,.06)}
+.rider-stat-n{display:block;font-size:20px;font-weight:800;letter-spacing:-.02em;color:#1b2417}
+.rider-stat-l{display:block;margin-top:2px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7770}
+.rider-stat-delta{display:block;margin-top:5px;font-size:11px;font-style:normal;font-weight:700}
+.rider-stat-delta.up{color:#2e7d32}
+.rider-stat-delta.down{color:#a23b28}
+.rider-stat-delta.flat{color:#8a938c;font-weight:600}
 .rider-section{padding:16px 18px 4px;max-width:640px}
 .rider-section h2{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#5b6560}
 

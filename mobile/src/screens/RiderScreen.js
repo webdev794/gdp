@@ -66,8 +66,32 @@ function DeliveryCard({ order, mine, onAction, navigation, busy }) {
   );
 }
 
+function StatStrip({ stats }) {
+  if (!stats) return null;
+  const delta = (stats.deliveries_week ?? 0) - (stats.deliveries_week_prev ?? 0);
+  const deltaText = delta === 0 ? 'no change vs last week' : `${delta > 0 ? '▲' : '▼'} ${Math.abs(delta)} vs last week`;
+  return (
+    <View style={styles.stats}>
+      <View style={styles.stat}>
+        <Text style={styles.statN}>{stats.deliveries_total ?? 0}</Text>
+        <Text style={styles.statL}>All-time</Text>
+      </View>
+      <View style={styles.stat}>
+        <Text style={styles.statN}>{stats.deliveries_week ?? 0}</Text>
+        <Text style={styles.statL}>This week</Text>
+        <Text style={[styles.statD, delta > 0 && styles.statUp, delta < 0 && styles.statDown]}>{deltaText}</Text>
+      </View>
+      <View style={styles.stat}>
+        <Text style={styles.statN}>{stats.rating_avg != null ? `★ ${stats.rating_avg.toFixed(1)}` : '★ —'}</Text>
+        <Text style={styles.statL}>{stats.rating_count ?? 0} ratings</Text>
+      </View>
+    </View>
+  );
+}
+
 export default function RiderScreen({ navigation }) {
   const [data, setData] = useState({ assigned: [], pool: [] });
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -80,6 +104,12 @@ export default function RiderScreen({ navigation }) {
       setError('');
     } catch (e) {
       setError(e.message);
+    }
+    try {
+      const { data: s } = await api.riderStats();
+      setStats(s ?? null);
+    } catch {
+      // keep last
     }
   }, []);
 
@@ -118,6 +148,8 @@ export default function RiderScreen({ navigation }) {
     >
       {!!error && <Text style={styles.error}>{error}</Text>}
 
+      <StatStrip stats={stats} />
+
       <Text style={styles.section}>My deliveries ({data.assigned.length})</Text>
       {data.assigned.length === 0 && <Text style={styles.muted}>Nothing on the go.</Text>}
       {data.assigned.map((o) => (
@@ -139,6 +171,13 @@ const styles = StyleSheet.create({
   section: { fontSize: 13, fontWeight: '800', color: colors.ink, marginTop: 18, marginBottom: 8, textTransform: 'uppercase' },
   muted: { color: colors.muted, fontSize: 13 },
   error: { color: colors.danger, marginBottom: 10 },
+  stats: { flexDirection: 'row', gap: 8, marginBottom: 4 },
+  stat: { flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 10 },
+  statN: { fontSize: 18, fontWeight: '800', color: colors.ink },
+  statL: { fontSize: 10, color: colors.muted, textTransform: 'uppercase', marginTop: 2 },
+  statD: { fontSize: 10, color: colors.muted, marginTop: 4, fontWeight: '700' },
+  statUp: { color: colors.accent },
+  statDown: { color: colors.danger },
   card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 14, marginBottom: 10 },
   cardHead: { flexDirection: 'row', justifyContent: 'space-between' },
   orderId: { fontWeight: '800', color: colors.ink },

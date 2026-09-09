@@ -193,6 +193,8 @@ Administrators must be able to manage:
 - [x] Customer order cancellation until dispatch; one-click Stripe refund from the admin panel
 - [x] Support chat (web + Expo) with admin inbox; partial/full Stripe refunds issued from a thread
 - [x] Delivery rider role + Expo rider mode: admin-assign, auto-assign (nearest on-shift rider linked to the store), or pool claim; rider status + COD collection
+- [x] Rider dashboard (web + Expo): lifetime/weekly deliveries with change-vs-last-week, ★ rating, code-verified share
+- [x] Customer rates the rider 1–5 with an admin-only comment (from the delivered order or the delivery chat); feeds the rider's overall rating
 - [x] Server reconciles an order from Stripe when the webhook is missed or delayed
 - [x] Checkout address modal dismissed when payment begins
 - [x] Admin role flag on users, denied by default and never mass-assignable
@@ -419,6 +421,26 @@ When an order becomes `ready_for_delivery` **unassigned**, `RiderAssignment` (in
   delivery. It reuses the support-thread system: the rider's messages land as
   "staff" messages, so the customer sees them in their **Get help** inbox and
   staff in the admin **Support** tab.
+- `GET /api/rider/stats` — the rider's own dashboard: lifetime deliveries, this
+  week / month with the change vs the period before, `rating_avg` / `rating_count`,
+  the code-verified share, cash collected, and the 10 most recent ratings —
+  **scores and dates only; customer comments are never returned here**.
+
+### Rider feedback & rating
+
+- `POST /api/orders/{order}/rider-review` `{rating: 1..5, comment?, source?}`
+  (`auth:sanctum`, owning customer). One review per order (`rider_reviews`,
+  `order_id` unique) — a repeat call edits it. Allowed once the order is
+  `out_for_delivery` or `completed` and has a `delivery_partner_id`. Writing a
+  review recomputes the rider's denormalised `users.rider_rating_avg` /
+  `rider_rating_count`. The **comment is admin-only** — it is never surfaced on
+  any `/api/rider/*` route.
+- Customers rate from **Orders → (delivered order)** and from inside the delivery
+  chat panel; `GET /api/orders` embeds their own `rider_review` so the widget
+  shows and can edit an existing score.
+- `GET /api/admin/riders/{user}` (`AdminRiderController::show`) returns the rider
+  with `completed_deliveries` and every review **including the comment**; the
+  Riders list row carries `rating_avg` / `rating_count`.
 
 ### Rider consoles
 
@@ -430,10 +452,12 @@ Two front ends, same API:
   pick up**, polled every 15 s. Per order: address → Directions, tap-to-call,
   item list, COD amount, **Start delivery / Mark delivered / Cash collected**,
   and **Message customer** (chat drawer, polled every 4 s). A signed-in rider
-  also gets a **Deliveries** link in the storefront header.
+  also gets a **Deliveries** link in the storefront header. A stats strip at the
+  top (`GET /api/rider/stats`) shows lifetime deliveries, this week's count + the
+  change vs last week, the ★ rating and the code-verified share.
 - **Mobile** — the same Expo project; a user with `is_rider` gets the
-  **Deliveries** screen instead of the shop, and pings its GPS for
-  auto-assignment.
+  **Deliveries** screen instead of the shop (with the same stats strip), and
+  pings its GPS for auto-assignment.
 
 Admins can still override any status / courier from the Orders tab.
 

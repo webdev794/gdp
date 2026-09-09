@@ -126,6 +126,69 @@ async function responseJson(response) {
   return JSON.parse(text.slice(jsonStart))
 }
 
+function StarPicker({ value, onChange, readOnly }) {
+  return (
+    <span className="star-picker" role="radiogroup" aria-label="Rating">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button key={n} type="button" role="radio" aria-checked={n === value} aria-label={`${n} star${n === 1 ? '' : 's'}`}
+          className={n <= value ? 'star on' : 'star'} disabled={readOnly} onClick={() => onChange?.(n)}>★</button>
+      ))}
+    </span>
+  )
+}
+
+/**
+ * Customer's 1–5 rating and optional private note for the rider on an order or a
+ * delivery chat. The comment is shown only to the Grocerly team, never the rider.
+ */
+function RiderRating({ orderId, existing, source, onSaved }) {
+  const [rating, setRating] = useState(existing?.rating ?? 0)
+  const [comment, setComment] = useState(existing?.comment ?? '')
+  const [editing, setEditing] = useState(!existing)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  async function submit() {
+    if (!rating) { setMsg('Tap a star to rate.'); return }
+    setBusy(true); setMsg('')
+    try {
+      const res = await fetch(`${API_URL}/orders/${orderId}/rider-review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', Authorization: `Bearer ${localStorage.getItem('gdp_token')}` },
+        body: JSON.stringify({ rating, comment: comment.trim() || null, source }),
+      })
+      const data = await responseJson(res)
+      if (!res.ok) throw new Error(data.message ?? 'Could not save your rating.')
+      onSaved?.(data.data)
+      setEditing(false)
+      setMsg('Thanks for the feedback!')
+    } catch (error) { setMsg(error.message) } finally { setBusy(false) }
+  }
+
+  if (!editing) {
+    return (
+      <div className="rider-rating done">
+        <span>You rated your rider</span>
+        <StarPicker value={rating} readOnly />
+        <button type="button" className="text-button" onClick={() => setEditing(true)}>Edit</button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rider-rating">
+      <span className="rider-rating-h">Rate your delivery rider</span>
+      <StarPicker value={rating} onChange={setRating} />
+      <textarea rows="2" maxLength="1000" placeholder="Add a note for the Grocerly team (optional, private — the rider never sees it)" value={comment} onChange={(event) => setComment(event.target.value)} />
+      <div className="rider-rating-actions">
+        <button type="button" className="text-button" disabled={busy} onClick={submit}>{existing ? 'Update rating' : 'Submit rating'}</button>
+        {existing && <button type="button" className="text-button" onClick={() => { setEditing(false); setRating(existing.rating); setComment(existing.comment ?? '') }}>Cancel</button>}
+      </div>
+      {msg && <p className="rider-rating-msg">{msg}</p>}
+    </div>
+  )
+}
+
 function PaymentForm({ clientSecret, onComplete, savedCards = [] }) {
   const stripe = useStripe()
   const elements = useElements()
@@ -1489,7 +1552,7 @@ export default function Storefront() {
         {accountMsg && <p className="auth-message">{accountMsg}</p>}
       </div>
     </div>}
-    {ordersOpen && <div className="overlay" role="presentation" onClick={() => setOrdersOpen(false)}><div className="auth-modal orders-modal" role="dialog" aria-modal="true" aria-labelledby="orders-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setOrdersOpen(false)} aria-label="Close orders">x</button><p className="eyebrow">Your grocery runs</p><h2 id="orders-title">Order history</h2>{ordersLoading ? <p className="auth-intro">Loading your orders...</p> : orders.length === 0 ? <p className="auth-intro">No orders yet. Your completed checkouts will appear here.</p> : <ul className="orders-list">{orders.map((entry) => <li className="order-row" key={entry.id}><div className="order-row-head"><strong>Order #{entry.id}</strong><span className={`order-badge order-badge-${entry.payment_status}`}>{orderLabel(entry)}</span></div><div className="order-row-meta"><span>{new Date(entry.created_at).toLocaleDateString()}</span><span>{entry.items?.length ?? 0} {entry.items?.length === 1 ? 'item' : 'items'}</span><strong>{price(entry.total_cents)}</strong></div>{(entry.payment_status === 'paid' || entry.payment_method === 'cod') && DELIVERY_STAGES.includes(entry.status) && <div className="order-track" aria-label={`Delivery status: ${DELIVERY_LABELS[entry.status]}`}>{DELIVERY_STAGES.map((stage, index) => <span key={stage} className={index <= DELIVERY_STAGES.indexOf(entry.status) ? 'track-step done' : 'track-step'} title={DELIVERY_LABELS[stage]} />)}<em>{DELIVERY_LABELS[entry.status]}</em></div>}{entry.status === 'cancelled' && <p className="order-track-note">Cancelled</p>}{entry.status === 'out_for_delivery' && entry.delivery_code && new Date(entry.delivery_code_expires_at) > new Date() && <p className="order-handover">Delivery code <b>{entry.delivery_code}</b> — read this to your rider to confirm you got the order.</p>}{entry.payment_method !== 'cod' && entry.status !== 'cancelled' && entry.payment_status !== 'paid' && entry.payment_status !== 'cancelled' && <button className="text-button order-pay" type="button" onClick={() => resumePayment(entry)}>Complete payment <span>-&gt;</span></button>}{CANCELLABLE_STAGES.includes(entry.status) && <button className="text-button order-cancel" type="button" onClick={() => cancelOrder(entry)}>Cancel order</button>}{(entry.payment_status === 'paid' || entry.payment_method === 'cod') && entry.status !== 'cancelled' && <button className="text-button order-receipt" type="button" onClick={() => downloadReceipt(entry.id)}>Download bill (PDF)</button>}<button className="text-button order-help" type="button" onClick={() => { setOrdersOpen(false); openSupport(entry) }}>Get help</button></li>)}</ul>}{ordersMessage && <p className="auth-message">{ordersMessage}</p>}</div></div>}
+    {ordersOpen && <div className="overlay" role="presentation" onClick={() => setOrdersOpen(false)}><div className="auth-modal orders-modal" role="dialog" aria-modal="true" aria-labelledby="orders-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setOrdersOpen(false)} aria-label="Close orders">x</button><p className="eyebrow">Your grocery runs</p><h2 id="orders-title">Order history</h2>{ordersLoading ? <p className="auth-intro">Loading your orders...</p> : orders.length === 0 ? <p className="auth-intro">No orders yet. Your completed checkouts will appear here.</p> : <ul className="orders-list">{orders.map((entry) => <li className="order-row" key={entry.id}><div className="order-row-head"><strong>Order #{entry.id}</strong><span className={`order-badge order-badge-${entry.payment_status}`}>{orderLabel(entry)}</span></div><div className="order-row-meta"><span>{new Date(entry.created_at).toLocaleDateString()}</span><span>{entry.items?.length ?? 0} {entry.items?.length === 1 ? 'item' : 'items'}</span><strong>{price(entry.total_cents)}</strong></div>{(entry.payment_status === 'paid' || entry.payment_method === 'cod') && DELIVERY_STAGES.includes(entry.status) && <div className="order-track" aria-label={`Delivery status: ${DELIVERY_LABELS[entry.status]}`}>{DELIVERY_STAGES.map((stage, index) => <span key={stage} className={index <= DELIVERY_STAGES.indexOf(entry.status) ? 'track-step done' : 'track-step'} title={DELIVERY_LABELS[stage]} />)}<em>{DELIVERY_LABELS[entry.status]}</em></div>}{entry.status === 'cancelled' && <p className="order-track-note">Cancelled</p>}{entry.status === 'out_for_delivery' && entry.delivery_code && new Date(entry.delivery_code_expires_at) > new Date() && <p className="order-handover">Delivery code <b>{entry.delivery_code}</b> — read this to your rider to confirm you got the order.</p>}{entry.payment_method !== 'cod' && entry.status !== 'cancelled' && entry.payment_status !== 'paid' && entry.payment_status !== 'cancelled' && <button className="text-button order-pay" type="button" onClick={() => resumePayment(entry)}>Complete payment <span>-&gt;</span></button>}{CANCELLABLE_STAGES.includes(entry.status) && <button className="text-button order-cancel" type="button" onClick={() => cancelOrder(entry)}>Cancel order</button>}{(entry.payment_status === 'paid' || entry.payment_method === 'cod') && entry.status !== 'cancelled' && <button className="text-button order-receipt" type="button" onClick={() => downloadReceipt(entry.id)}>Download bill (PDF)</button>}<button className="text-button order-help" type="button" onClick={() => { setOrdersOpen(false); openSupport(entry) }}>Get help</button>{entry.status === 'completed' && entry.delivery_partner_id && <RiderRating orderId={entry.id} existing={entry.rider_review} source="delivery" onSaved={(rv) => setOrders((current) => current.map((row) => row.id === entry.id ? { ...row, rider_review: rv } : row))} />}</li>)}</ul>}{ordersMessage && <p className="auth-message">{ordersMessage}</p>}</div></div>}
     {locationOpen && <div className="overlay" role="presentation" onClick={() => { if (location) setLocationOpen(false) }}><div className="auth-modal location-modal" role="dialog" aria-modal="true" aria-labelledby="loc-title" onClick={(event) => event.stopPropagation()}>{location && <button className="close-button" type="button" onClick={() => setLocationOpen(false)} aria-label="Close location">x</button>}<p className="eyebrow">Deliver to</p><h2 id="loc-title">Where are you?</h2><p className="auth-intro">Drop the pin on your building — that&rsquo;s the location we deliver to. Search or &ldquo;detect&rdquo; just move the map near your area.</p>
       {outOfArea && <p className="loc-unserviceable">{UNSERVICEABLE_MSG}</p>}
       <div className="loc-tools">
@@ -1531,6 +1594,12 @@ export default function Storefront() {
       </> : <>
         <h2 id="support-title">{issueLabel(supportView.issue_type)}{supportView.order_id ? ` · Order #${supportView.order_id}` : ''}</h2>
         {supportView.status === 'resolved' && <p className="loc-unserviceable">This conversation is resolved. Reply to re-open it.</p>}
+        {supportView.issue_type === 'delivery' && (() => {
+          const chatOrder = orders.find((o) => o.id === supportView.order_id)
+          return chatOrder && chatOrder.delivery_partner_id
+            ? <RiderRating orderId={chatOrder.id} existing={chatOrder.rider_review} source="chat" onSaved={(rv) => setOrders((current) => current.map((row) => row.id === chatOrder.id ? { ...row, rider_review: rv } : row))} />
+            : null
+        })()}
         <div className="chat-log">{(supportView.messages ?? []).map((m) => <div key={m.id} className={`chat-msg ${m.is_staff ? 'staff' : m.user_id ? 'me' : 'system'}`}><span>{m.body}</span><em>{new Date(m.created_at).toLocaleString()}</em></div>)}</div>
         <div className="chat-send"><input placeholder="Type a message" value={supportReply} onChange={(event) => setSupportReply(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') sendSupportReply() }} /><button type="button" disabled={supportBusy || !supportReply.trim()} onClick={sendSupportReply}>Send</button></div>
         <button className="switch-auth" type="button" onClick={() => { setSupportView('list'); loadThreads() }}>All conversations</button>

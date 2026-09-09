@@ -17,7 +17,7 @@ class OrderController extends Controller
     public function index(Request $request): JsonResponse
     {
         $orders = $request->user()->orders()
-            ->with('items')
+            ->with(['items', 'riderReview'])
             ->latest()
             ->paginate(20);
 
@@ -39,7 +39,42 @@ class OrderController extends Controller
     {
         abort_unless($order->user_id === $request->user()->id, 404);
 
-        return response()->json(['data' => $order->load('items')->makeVisible(['delivery_code', 'delivery_code_expires_at'])]);
+        return response()->json(['data' => $order->load('items', 'riderReview')->makeVisible(['delivery_code', 'delivery_code_expires_at'])]);
+    }
+
+    /**
+     * The customer's rating (1–5) and optional written feedback for the rider who
+     * delivered this order, or who they chatted with. One review per order — a
+     * repeat call edits it. The comment is stored for the admin only and is
+     * never shown back to the rider. The rider's overall rating is recomputed
+     * from all their reviews.
+     */
+    public function storeRiderReview(Request $request, Order $order): JsonResponse
+    {
+        abort_unless($order->user_id === $request->user()->id, 404);
+        abort_unless($order->delivery_partner_id !== null, 422, 'This order has no delivery rider.');
+        abort_unless(in_array($order->status, ['out_for_delivery', 'completed'], true), 422, 'You can rate the rider once the order is on its way.');
+
+        $data = $request->validate([
+            'rating' => ['required', 'integer', 'between:1,5'],
+            'comment' => ['nullable', 'string', 'max:1000'],
+            'source' => ['sometimes', Rule::in(['delivery', 'chat'])],
+        ]);
+
+        $review = $order->riderReview()->updateOrCreate(
+            ['order_id' => $order->id],
+            [
+                'rider_id' => $order->delivery_partner_id,
+                'user_id' => $order->user_id,
+                'rating' => $data['rating'],
+                'comment' => $data['comment'] ?? null,
+                'source' => $data['source'] ?? 'delivery',
+            ],
+        );
+
+        $order->deliveryPartner?->recomputeRiderRating();
+
+        return response()->json(['data' => $review->only(['id', 'rating', 'comment', 'source', 'created_at', 'updated_at'])]);
     }
 
     /**

@@ -25,6 +25,41 @@ class AdminRiderController extends Controller
     }
 
     /**
+     * A single rider with every customer review — including the written comments,
+     * which are admin-only and never surface on the rider's own dashboard.
+     */
+    public function show(User $user): JsonResponse
+    {
+        abort_unless($user->is_rider, 404);
+
+        $user->load('stores:id,name,city')
+            ->loadCount([
+                'deliveries as active_deliveries' => fn ($query) => $query
+                    ->whereIn('status', ['ready_for_delivery', 'out_for_delivery']),
+                'deliveries as completed_deliveries' => fn ($query) => $query->where('status', 'completed'),
+            ]);
+
+        $reviews = $user->riderReviews()
+            ->with('order:id')
+            ->latest()
+            ->limit(100)
+            ->get()
+            ->map(fn ($r) => [
+                'id' => $r->id,
+                'order_id' => $r->order_id,
+                'rating' => (int) $r->rating,
+                'comment' => $r->comment,
+                'source' => $r->source,
+                'at' => $r->created_at,
+            ]);
+
+        return response()->json(['data' => [
+            'rider' => $this->row($user) + ['completed_deliveries' => (int) ($user->completed_deliveries ?? 0)],
+            'reviews' => $reviews,
+        ]]);
+    }
+
+    /**
      * Promote an existing account to a delivery rider, by email.
      */
     public function store(Request $request): JsonResponse
@@ -126,6 +161,8 @@ class AdminRiderController extends Controller
                 'last_ping_at' => $rider->rider_last_located_at,
             ] : null,
             'active_deliveries' => (int) ($rider->active_deliveries ?? 0),
+            'rating_avg' => $rider->rider_rating_avg !== null ? (float) $rider->rider_rating_avg : null,
+            'rating_count' => (int) $rider->rider_rating_count,
             'stores' => $rider->relationLoaded('stores')
                 ? $rider->stores->map(fn ($s) => ['id' => $s->id, 'name' => $s->name, 'city' => $s->city])->values()
                 : [],

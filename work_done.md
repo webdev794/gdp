@@ -17,7 +17,7 @@
 | **Products** | Add, edit and delete products — price, sale price, image, per-item variants (size/weight/flavour), and **per-store stock**: turn on "Track stock per store" for a grid of each store's own count (0 = shown "out of stock", unticked = not carried there). |
 | **Categories** | Add, edit, delete and reorder product categories, set their image and active/inactive state. |
 | **Customers** | See all customers with order count and spend, open a customer's addresses and order history, and grant the delivery-rider role. |
-| **Riders** | Add a rider (by email), set their phone, on/off-shift state, home base (address or map pin) and which stores they serve. Orders are auto-assigned to the nearest on-shift rider linked to the order's store; unassigned ones fall back to the pickup pool. |
+| **Riders** | Add a rider (by email), set their phone, on/off-shift state, home base (address or map pin) and which stores they serve. Orders are auto-assigned to the nearest on-shift rider linked to the order's store; unassigned ones fall back to the pickup pool. Each rider row shows their ★ rating; **Reviews** opens a panel with lifetime deliveries and every customer rating **including the written comment** — comments are admin-only and never shown to the rider. |
 | **Stores** | Manage store/hub locations — address, map coordinates, delivery radius and active state. Stores can be in different cities; a customer inside any store's radius can order, and the nearest covering store serves them. |
 | **Store settings** | Set the store name, tagline, logo, favicon, light/dark theme, brand colours and boxed/full page width. |
 | **Secure access** | Change the admin email/phone and manage the Stripe API keys, protected by a password re-check. |
@@ -47,7 +47,7 @@
 | **Cart / View cart** | Change quantities, remove items, and see the running subtotal, fees, tax and total. |
 | **Checkout** | Choose a saved or new delivery address, add a phone number and delivery note, and pick card or cash on delivery. |
 | **Payment** | Pay by card (Stripe), use a saved card, or tick "save this card" for next time. |
-| **Orders** | Track delivery status, complete payment, cancel an order, download the bill (PDF), or get help on an order. |
+| **Orders** | Track delivery status, complete payment, cancel an order, download the bill (PDF), or get help on an order. Once an order is delivered, rate the rider 1–5 stars with an optional private note (also available from the delivery chat); the note goes to the Grocerly team only. |
 | **Account → Profile** | Update name and phone, and change password. |
 | **Account → Addresses** | Add, edit, delete and set a default delivery address. |
 | **Account → Payment methods** | Add a card, set a default, and remove saved cards. |
@@ -69,3 +69,7 @@ refreshed every 15 seconds.
 | **Pick up** | Claims an unassigned order from the pool. |
 | **Directions** | Opens the delivery address in Google Maps. |
 | **Message customer** | Chat with the customer for that order (shows up in their Help inbox and the admin Support tab). |
+
+A dashboard strip at the top of the console shows lifetime deliveries, this
+week's count with the change vs last week, the ★ rating and the code-verified
+share. Scores only — customer comments are never shown to the rider.

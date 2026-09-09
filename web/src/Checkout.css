@@ -65,3 +65,14 @@
 
 .order-handover{margin:10px 0 0;padding:9px 11px;border-radius:8px;background:#e7f0ff;color:#1f4e8a;font-size:12px;line-height:1.45}
 .order-handover b{font:15px/1 "DM Mono",monospace;letter-spacing:.18em;color:#123a6b}
+
+.rider-rating{margin:11px 0 0;padding:11px 12px;border:1px solid var(--line);border-radius:9px;background:#fafbf7;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.rider-rating.done{flex-direction:row;align-items:center;gap:9px;font-size:12px;color:var(--muted)}
+.rider-rating-h{font-size:12px;font-weight:700;color:var(--ink)}
+.rider-rating textarea{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:7px;font:13px/1.4 inherit;background:white;color:var(--ink);resize:vertical}
+.rider-rating-actions{display:flex;gap:12px}
+.rider-rating-msg{margin:0;font-size:11px;color:var(--muted)}
+.star-picker{display:inline-flex;gap:2px}
+.star-picker .star{border:0;background:transparent;cursor:pointer;font-size:20px;line-height:1;color:#d3d8cd;padding:0}
+.star-picker .star.on{color:#f5a623}
+.star-picker .star:disabled{cursor:default}

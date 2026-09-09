@@ -77,6 +77,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/orders/{order}/receipt', [OrderController::class, 'receipt']);
     Route::patch('/orders/{order}/payment-method', [OrderController::class, 'setPaymentMethod']);
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);
+    Route::post('/orders/{order}/rider-review', [OrderController::class, 'storeRiderReview']);
     Route::post('/orders/{order}/payment-intent', [PaymentController::class, 'intent']);
 
     Route::get('/support/threads', [SupportThreadController::class, 'index']);
@@ -99,6 +100,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/customers/{user}', [AdminController::class, 'customer']);
     Route::patch('/customers/{user}', [AdminController::class, 'updateCustomer']);
     Route::get('/riders', [AdminRiderController::class, 'index']);
+    Route::get('/riders/{user}', [AdminRiderController::class, 'show']);
     Route::post('/riders', [AdminRiderController::class, 'store']);
     Route::patch('/riders/{user}', [AdminRiderController::class, 'update']);
     Route::delete('/riders/{user}', [AdminRiderController::class, 'destroy']);
@@ -147,6 +149,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 
 Route::middleware(['auth:sanctum', 'rider'])->prefix('rider')->group(function () {
     Route::get('/orders', [RiderController::class, 'orders']);
+    Route::get('/stats', [RiderController::class, 'stats']);
     Route::post('/location', [RiderController::class, 'location']);
     Route::post('/orders/{order}/claim', [RiderController::class, 'claim']);
     Route::post('/orders/{order}/status', [RiderController::class, 'status']);

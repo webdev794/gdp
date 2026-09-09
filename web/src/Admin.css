@@ -274,3 +274,13 @@
 .admin-gate-link{align-self:flex-start;padding:0;border:0;background:0;color:#3f7d43;font-size:12px;cursor:pointer}
 .admin-gate-back{margin-top:2px;color:#7c857a;font-size:12px;text-decoration:none}
 .admin-gate-back:hover{color:#20291f}
+
+.admin-rider-stats{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.admin-rider-stats span{flex:1 1 90px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:11px;color:var(--muted);background:#fafbf8}
+.admin-rider-stats strong{display:block;font-size:16px;color:var(--ink);letter-spacing:-.02em}
+.admin-review-list{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
+.admin-review-list>li{padding:10px 11px;border:1px solid var(--line);border-radius:8px;background:white}
+.admin-review-head{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.admin-review-stars{color:#f5a623;font-size:13px;letter-spacing:1px}
+.admin-review-stars .dim{color:#d3d8cd}
+.admin-review-comment{margin:6px 0 0;font-size:13px;line-height:1.45;color:var(--ink)}
