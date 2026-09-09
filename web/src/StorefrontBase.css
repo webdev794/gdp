@@ -202,16 +202,17 @@ a.psec-feature.is-link img{width:100%;height:150px;object-fit:cover;border-radiu
 .site-footer-bottom{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;margin-top:24px;padding-top:16px;border-top:1px solid var(--line);font:11px 'DM Mono',monospace;color:var(--muted)}
 .site-footer-copy{color:var(--ink)}
 .site-footer-app{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-/* Official-style dark app-store badges (kept dark in both themes, like the real ones). */
-.app-badge{display:inline-flex;align-items:center;gap:9px;background:#000;color:#fff;border:1px solid #3a3a3a;border-radius:9px;padding:7px 13px;text-decoration:none;line-height:1}
-.app-badge:hover{border-color:#6a6a6a}
-.app-badge svg{flex:none}
-.app-badge span{display:flex;flex-direction:column;gap:2px}
-.app-badge small{font-size:8px;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
-.app-badge b{font-size:15px;font-weight:600;letter-spacing:.01em}
+/* Compact app-store badges, Blinkit-sized (~30px tall), on a solid blue. */
+.app-badge{display:inline-flex;align-items:center;gap:7px;background:#1a73e8;color:#fff;border-radius:6px;padding:4px 10px;text-decoration:none;line-height:1;height:30px;box-sizing:border-box}
+.app-badge:hover{background:#155ec4}
+.app-badge svg{flex:none;width:15px;height:15px}
+.app-badge span{display:flex;flex-direction:column;gap:1px}
+.app-badge small{font-size:6.5px;letter-spacing:.05em;text-transform:uppercase;opacity:.9}
+.app-badge b{font-size:12px;font-weight:600;letter-spacing:.01em}
 .site-footer-socials{display:flex;align-items:center;gap:10px}
-.site-footer-socials a{display:grid;place-items:center;width:32px;height:32px;border:1px solid var(--line);border-radius:50%;color:var(--ink)}
-.site-footer-socials a:hover{border-color:var(--green);color:var(--green)}
+.site-footer-socials a{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--ink);color:var(--paper)}
+.site-footer-socials a svg{width:18px;height:18px}
+.site-footer-socials a:hover{background:var(--green);color:#fff}
 .site-footer-note{margin:14px 0 0;font:10px/1.6 'DM Mono',monospace;color:var(--muted)}
 @media(max-width:720px){
   .site-footer-cols{grid-template-columns:1fr;gap:20px}
