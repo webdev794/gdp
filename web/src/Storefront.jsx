@@ -1193,6 +1193,7 @@ export default function Storefront() {
             <button className="link-btn" type="button" onClick={() => openAccount('profile')}>Account</button>
             <button className="link-btn" type="button" onClick={() => openSupport()}>Help</button>
             {currentUser.is_admin && <button className="link-btn" type="button" onClick={() => { window.location.href = `${import.meta.env.BASE_URL}admin` }}>Admin</button>}
+            {currentUser.is_rider && <button className="link-btn" type="button" onClick={() => { window.location.href = `${import.meta.env.BASE_URL}rider` }}>Deliveries</button>}
             <button className="link-btn" type="button" onClick={logout}>{(currentUser.name || currentUser.email || 'Account').split(' ')[0]} &middot; Log out</button>
           </> : <button className="link-btn" type="button" onClick={() => { setAuthMode('login'); setAuthMessage('') }}>Sign in</button>}
           <button className="cart-pill" type="button" onClick={() => setCartOpen(true)} aria-label={`Cart with ${cartCount} items`}><span aria-hidden>&#128722;</span> <b>{cartCount}</b></button>

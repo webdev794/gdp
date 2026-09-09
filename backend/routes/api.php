@@ -148,6 +148,8 @@ Route::middleware(['auth:sanctum', 'rider'])->prefix('rider')->group(function ()
     Route::post('/orders/{order}/claim', [RiderController::class, 'claim']);
     Route::post('/orders/{order}/status', [RiderController::class, 'status']);
     Route::post('/orders/{order}/cash-collected', [RiderController::class, 'cashCollected']);
+    Route::get('/orders/{order}/messages', [RiderController::class, 'messages']);
+    Route::post('/orders/{order}/messages', [RiderController::class, 'postMessage']);
 });
 
 Route::post('/payments/stripe/webhook', [PaymentController::class, 'webhook']);

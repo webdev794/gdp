@@ -407,14 +407,27 @@ When an order becomes `ready_for_delivery` **unassigned**, `RiderAssignment` (in
 - `POST /api/rider/orders/{order}/claim` (pool → `out_for_delivery`, sets the
   rider); `POST …/status` (`out_for_delivery` / `completed`, own orders only);
   `POST …/cash-collected` (COD → `payment_status = paid`).
+- `GET/POST /api/rider/orders/{order}/messages` — rider ↔ customer chat for a
+  delivery. It reuses the support-thread system: the rider's messages land as
+  "staff" messages, so the customer sees them in their **Get help** inbox and
+  staff in the admin **Support** tab.
 
-### Rider app
+### Rider consoles
 
-The same Expo project — a user with `is_rider` gets the **Deliveries** screen
-(My deliveries + Available to pick up, item list, address → Maps link, COD
-amount) instead of the shop. Pick up → Cash collected (COD) → Mark delivered. The
-customer's order tracker follows along. Admins can still override any status /
-courier from the Orders tab.
+Two front ends, same API:
+
+- **Web** — `BASE + /rider` (or `#/rider`), its own sign-in gate (email +
+  password, `is_rider` only), lazy-loaded chunk. Shows **My deliveries** (incl.
+  orders still being packed, so the rider sees what's coming) + **Available to
+  pick up**, polled every 15 s. Per order: address → Directions, tap-to-call,
+  item list, COD amount, **Start delivery / Mark delivered / Cash collected**,
+  and **Message customer** (chat drawer, polled every 4 s). A signed-in rider
+  also gets a **Deliveries** link in the storefront header.
+- **Mobile** — the same Expo project; a user with `is_rider` gets the
+  **Deliveries** screen instead of the shop, and pings its GPS for
+  auto-assignment.
+
+Admins can still override any status / courier from the Orders tab.
 
 ## Customer support
 

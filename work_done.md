@@ -54,3 +54,18 @@
 | **Help** | Start a support chat (optionally linked to an order) and message the store. |
 | **Footer pages** | Read About Us, Blog, Contact, FAQs, Privacy Policy, Terms of Service and Security. |
 | **Sign in / Log out** | Sign in by emailed code or email + password; log out. |
+
+### Rider console (web) — BASE + /rider
+
+Sign in with a rider account (`rider@example.com` / `password`). Shows the rider's
+assigned deliveries (including orders still being packed) and the pickup pool,
+refreshed every 15 seconds.
+
+| Action | What it does |
+| --- | --- |
+| **Start delivery** | Moves a ready order to out-for-delivery. |
+| **Mark delivered** | Completes the delivery; the customer's tracker updates. |
+| **Cash collected** | Marks a cash-on-delivery order paid. |
+| **Pick up** | Claims an unassigned order from the pool. |
+| **Directions** | Opens the delivery address in Google Maps. |
+| **Message customer** | Chat with the customer for that order (shows up in their Help inbox and the admin Support tab). |

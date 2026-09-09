@@ -1,25 +1,26 @@
 import { lazy, Suspense } from 'react'
 import Storefront from './Storefront'
 
-// The admin console lives at its own URL (BASE + "admin", e.g. /gdp/admin) so
-// staff credentials are never entered on the shopper sign-in. A hash (#/admin)
-// works too where path rewrites aren't available.
+// The admin console and the rider console each live at their own URL
+// (BASE + "admin" / BASE + "rider") so staff credentials are never entered on
+// the shopper sign-in. A hash (#/admin, #/rider) works too where path rewrites
+// aren't available.
 const base = import.meta.env.BASE_URL || '/'
 const path = window.location.pathname.replace(/\/$/, '')
-const adminPath = `${base}admin`.replace(/\/$/, '')
-const isAdminRoute = path === adminPath || window.location.hash === '#/admin'
+const routeIs = (name) => path === `${base}${name}`.replace(/\/$/, '') || window.location.hash === `#/${name}`
+const isAdminRoute = routeIs('admin')
+const isRiderRoute = routeIs('rider')
 
-// The admin bundle (console + charts + map) is a separate chunk — shoppers never
-// download it, and an admin refresh doesn't pull in the whole storefront.
+// Both consoles are separate chunks — shoppers never download them.
 const AdminEntry = lazy(() => import('./AdminEntry'))
+const RiderEntry = lazy(() => import('./RiderEntry'))
+
+const fallback = (label) => <div style={{ padding: 40, font: '14px system-ui, sans-serif', color: '#555' }}>Loading {label}…</div>
 
 function App() {
-  if (!isAdminRoute) return <Storefront />
-  return (
-    <Suspense fallback={<div style={{ padding: 40, font: '14px system-ui, sans-serif', color: '#555' }}>Loading admin…</div>}>
-      <AdminEntry />
-    </Suspense>
-  )
+  if (isAdminRoute) return <Suspense fallback={fallback('admin')}><AdminEntry /></Suspense>
+  if (isRiderRoute) return <Suspense fallback={fallback('rider app')}><RiderEntry /></Suspense>
+  return <Storefront />
 }
 
 export default App

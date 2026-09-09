@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Order;
+use App\Models\SupportThread;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -100,6 +101,41 @@ class RiderOrdersTest extends TestCase
             ->assertJsonPath('data.payment_status', 'paid');
 
         $this->postJson("/api/rider/orders/{$card->id}/cash-collected")->assertStatus(422);
+    }
+
+    public function test_rider_chats_with_the_customer_on_their_own_order(): void
+    {
+        $rider = $this->rider();
+        $order = $this->order(['status' => 'out_for_delivery', 'delivery_partner_id' => $rider->id]);
+        Sanctum::actingAs($rider);
+
+        // First open creates the thread + a system line.
+        $this->getJson("/api/rider/orders/{$order->id}/messages")
+            ->assertOk()
+            ->assertJsonPath('data.messages.0.from', 'system');
+
+        $this->postJson("/api/rider/orders/{$order->id}/messages", ['body' => "I'm 5 minutes away."])
+            ->assertOk()
+            ->assertJsonPath('data.messages.1.body', "I'm 5 minutes away.")
+            ->assertJsonPath('data.messages.1.mine', true)
+            ->assertJsonPath('data.messages.1.from', 'staff');
+
+        // The customer sees it as a normal support thread.
+        Sanctum::actingAs(User::find($order->user_id));
+        $threadId = SupportThread::where('order_id', $order->id)->value('id');
+        $this->getJson("/api/support/threads/{$threadId}")
+            ->assertOk()
+            ->assertJsonFragment(['body' => "I'm 5 minutes away."]);
+    }
+
+    public function test_rider_cannot_message_an_order_that_is_not_theirs(): void
+    {
+        $rider = $this->rider();
+        $notMine = $this->order(['status' => 'out_for_delivery', 'delivery_partner_id' => $this->rider()->id]);
+        Sanctum::actingAs($rider);
+
+        $this->getJson("/api/rider/orders/{$notMine->id}/messages")->assertNotFound();
+        $this->postJson("/api/rider/orders/{$notMine->id}/messages", ['body' => 'hi'])->assertNotFound();
     }
 
     private function rider(): User
