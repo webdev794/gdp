@@ -209,10 +209,11 @@ a.psec-feature.is-link img{width:100%;height:150px;object-fit:cover;border-radiu
 .app-badge span{display:flex;flex-direction:column;gap:1px}
 .app-badge small{font-size:6.5px;letter-spacing:.05em;text-transform:uppercase;opacity:.9}
 .app-badge b{font-size:12px;font-weight:600;letter-spacing:.01em}
-.site-footer-socials{display:flex;align-items:center;gap:10px}
-.site-footer-socials a{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--ink);color:var(--paper)}
-.site-footer-socials a svg{width:18px;height:18px}
-.site-footer-socials a:hover{background:var(--green);color:#fff}
+/* Blinkit-style: plain dark glyphs, tightly spaced, round hover. */
+.site-footer-socials{display:flex;align-items:center;gap:2px}
+.site-footer-socials a{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;color:var(--ink)}
+.site-footer-socials a svg{width:22px;height:22px}
+.site-footer-socials a:hover{background:var(--lime);color:var(--green)}
 .site-footer-note{margin:14px 0 0;font:10px/1.6 'DM Mono',monospace;color:var(--muted)}
 @media(max-width:720px){
   .site-footer-cols{grid-template-columns:1fr;gap:20px}
