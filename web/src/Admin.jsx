@@ -138,6 +138,8 @@ function riderStatusChip(rider) {
   return (
     <>
       <span style={{ color: s.color, fontWeight: 600 }}>{s.label}</span>
+      {a.today_worked_minutes ? <span className="admin-note">{fmtWorked(a.today_worked_minutes)} today · {fmtWorked(a.week_worked_minutes)} this week</span>
+        : a.week_worked_minutes ? <span className="admin-note">{fmtWorked(a.week_worked_minutes)} this week</span> : null}
       {rider.online
         ? <span className="admin-note" style={{ color: '#2f6d34' }}>online now</span>
         : rider.last_seen_at && <span className="admin-note" title={`last seen ${new Date(rider.last_seen_at).toLocaleString()}`}>seen {new Date(rider.last_seen_at).toLocaleDateString()}</span>}
@@ -1615,6 +1617,7 @@ export default function Admin({ token, onClose }) {
                     <td className={rider.active_deliveries > 0 ? 'low' : ''}>{rider.active_deliveries}</td>
                     <td>{rider.rider_is_active ? 'Yes' : 'No'}</td>
                     <td className="admin-actions">
+                      <button className="act" type="button" onClick={() => openRiderDetail(rider.id)}>Attendance &amp; stats</button>
                       <button className="act" type="button" onClick={() => setRiderForm(riderFormFrom(rider))}>Edit</button>
                       {rider.attendance?.available
                         ? <button className="act" type="button" onClick={() => { const why = window.prompt('Reason for taking this rider offline (optional):', ''); if (why !== null) patchRider(rider, { rider_available: false, rider_unavailable_reason: why || null }) }}>Set offline</button>
