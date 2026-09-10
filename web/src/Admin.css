@@ -234,10 +234,12 @@ a.act{display:inline-block;text-decoration:none}
 .admin-image-field{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .admin-image-field input[type=text],.admin-image-field>input:not([type]){flex:1 1 200px}
 .admin-image-preview{width:44px;height:44px;object-fit:cover;border:1px solid var(--line,#e4e7df);border-radius:6px}
-.admin-color{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted,#7c857a)}
-.admin-color>span{display:flex;gap:6px;align-items:center}
-.admin-color input[type=color]{width:38px;height:34px;padding:0;border:1px solid var(--line,#e4e7df);border-radius:6px;background:none;cursor:pointer}
-.admin-color input:not([type]){flex:1;min-width:0}
+.admin-color{display:grid;gap:8px;padding:12px;border:1px solid var(--line,#ccd4c2);border-radius:10px;background:#f6f8f4;font:11px 'Okra',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#3f463a}
+.admin-color>span{display:flex;gap:8px;align-items:center}
+.admin-color input[type=color]{flex:0 0 auto;width:46px;height:38px;padding:2px;border:1px solid var(--field,#93a08c);border-radius:8px;background:#fff;cursor:pointer}
+.admin-color input:not([type]){flex:1 1 auto;min-width:0;width:100%;font:14px 'Okra',sans-serif;font-weight:400;text-transform:none;letter-spacing:0}
+.admin-color-hint{font:11px 'Okra',sans-serif;font-weight:400;font-style:normal;text-transform:none;letter-spacing:0;color:var(--muted,#5c6357);line-height:1.4}
+.admin-color-grid{grid-template-columns:repeat(auto-fill,minmax(224px,1fr))}
 .payments-gate{max-width:420px}
 .payments-gate input{font:15px 'Okra',sans-serif;letter-spacing:.3em}
 .admin-banner-preview{width:240px;max-width:100%;height:96px;object-fit:cover;border:1px solid var(--line,#e4e7df);border-radius:8px;background:#f2f4f0}

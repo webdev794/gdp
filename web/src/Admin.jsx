@@ -2082,13 +2082,18 @@ export default function Admin({ token, onClose }) {
 
               <fieldset className="admin-fieldset">
                 <legend>Colours</legend>
-                <div className="admin-form-grid">
-                  {[['color_brand', 'Brand / buttons'], ['color_accent', 'Accent'], ['color_heading', 'Headings & major text']].map(([key, label]) => (
+                <div className="admin-form-grid admin-color-grid">
+                  {[
+                    ['color_brand', 'Brand / buttons', 'Primary buttons, links and highlights'],
+                    ['color_accent', 'Accent', 'Badges, sale tags and small highlights'],
+                    ['color_heading', 'Headings & major text', 'Page titles and section headings'],
+                  ].map(([key, label, hint]) => (
                     <label key={key} className="admin-color">{label}
                       <span>
-                        <input type="color" value={brandingForm[key]} onChange={(event) => setBrandingForm({ ...brandingForm, [key]: event.target.value })} />
-                        <input value={brandingForm[key]} maxLength="7" onChange={(event) => setBrandingForm({ ...brandingForm, [key]: event.target.value })} />
+                        <input type="color" value={brandingForm[key]} aria-label={`${label} colour`} onChange={(event) => setBrandingForm({ ...brandingForm, [key]: event.target.value })} />
+                        <input value={brandingForm[key]} maxLength="7" spellCheck="false" aria-label={`${label} hex`} onChange={(event) => setBrandingForm({ ...brandingForm, [key]: event.target.value })} />
                       </span>
+                      <em className="admin-color-hint">{hint}</em>
                     </label>
                   ))}
                 </div>
