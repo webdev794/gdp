@@ -254,4 +254,73 @@ class RiderAttendanceTest extends TestCase
         $this->postJson('/api/rider/shift', ['action' => 'nope'])->assertStatus(422);
         $this->postJson('/api/rider/shift', [])->assertStatus(422);
     }
+
+    public function test_monthly_report_classifies_full_short_and_off_days(): void
+    {
+        $rider = $this->rider($this->store(), ['rider_daily_target_minutes' => 480]);
+        $mon = now()->startOfMonth();
+
+        // Day 1: a full 9h shift.
+        $rider->riderShifts()->create([
+            'clock_in_at' => (clone $mon)->setTime(9, 0), 'clock_out_at' => (clone $mon)->setTime(18, 0), 'source' => 'rider',
+        ]);
+        // Day 2: a short 3h shift.
+        $rider->riderShifts()->create([
+            'clock_in_at' => (clone $mon)->addDay()->setTime(9, 0), 'clock_out_at' => (clone $mon)->addDay()->setTime(12, 0), 'source' => 'rider',
+        ]);
+        // Day 3: no shift (off).
+
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+        $res = $this->getJson("/api/admin/riders/{$rider->id}/attendance?from={$mon->toDateString()}&to={$mon->copy()->addDays(2)->toDateString()}")
+            ->assertOk();
+
+        $res->assertJsonPath('data.target_minutes', 480)
+            ->assertJsonPath('data.summary.days_full', 1)
+            ->assertJsonPath('data.summary.days_short', 1)
+            ->assertJsonPath('data.summary.days_off', 1)
+            ->assertJsonPath('data.summary.total_worked_minutes', 540 + 180);
+
+        // days are newest-first
+        $days = $res->json('data.days');
+        $this->assertCount(3, $days);
+        $this->assertSame('off', $days[0]['status']);
+        $this->assertSame('short', $days[1]['status']);
+        $this->assertSame('full', $days[2]['status']);
+    }
+
+    public function test_report_defaults_to_the_current_month_and_stops_at_today(): void
+    {
+        $rider = $this->rider($this->store());
+        $rider->riderShifts()->create([
+            'clock_in_at' => now()->startOfMonth()->setTime(8, 0),
+            'clock_out_at' => now()->startOfMonth()->setTime(16, 0),
+            'source' => 'rider',
+        ]);
+
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+        $res = $this->getJson("/api/admin/riders/{$rider->id}/attendance")->assertOk();
+
+        $this->assertSame(now()->startOfMonth()->toDateString(), $res->json('data.from'));
+        // never lists days in the future
+        $this->assertLessThanOrEqual(today()->toDateString(), $res->json('data.days.0.date'));
+        $this->assertSame(480, $res->json('data.target_minutes')); // app default when unset
+    }
+
+    public function test_admin_can_set_a_rider_daily_target(): void
+    {
+        $rider = $this->rider($this->store());
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+
+        $this->patchJson("/api/admin/riders/{$rider->id}", ['rider_daily_target_minutes' => 360])
+            ->assertOk()
+            ->assertJsonPath('data.daily_target_minutes', 360);
+        $this->assertSame(360, $rider->fresh()->rider_daily_target_minutes);
+    }
+
+    public function test_rider_attendance_report_requires_a_rider(): void
+    {
+        $notRider = User::factory()->create();
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+        $this->getJson("/api/admin/riders/{$notRider->id}/attendance")->assertNotFound();
+    }
 }

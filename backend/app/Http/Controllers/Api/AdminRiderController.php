@@ -94,6 +94,25 @@ class AdminRiderController extends Controller
     }
 
     /**
+     * A single rider's full attendance for a date range (default: this calendar
+     * month) — every day classified full / short / off, with roll-up totals.
+     */
+    public function riderAttendance(Request $request, User $user): JsonResponse
+    {
+        abort_unless($user->is_rider, 404);
+
+        $data = $request->validate([
+            'from' => ['sometimes', 'date'],
+            'to' => ['sometimes', 'date', 'after_or_equal:from'],
+        ]);
+
+        $from = isset($data['from']) ? Carbon::parse($data['from']) : now()->startOfMonth();
+        $to = isset($data['to']) ? Carbon::parse($data['to']) : (clone $from)->endOfMonth();
+
+        return response()->json(['data' => RiderAttendance::report($user, $from, $to)]);
+    }
+
+    /**
      * Promote an existing account to a delivery rider, by email.
      */
     public function store(Request $request): JsonResponse
@@ -128,6 +147,8 @@ class AdminRiderController extends Controller
             // it's an override on top of whatever the rider has clocked.
             'rider_available' => ['sometimes', 'boolean'],
             'rider_unavailable_reason' => ['sometimes', 'nullable', 'string', 'max:200'],
+            // Expected worked minutes for a "full" day in the attendance report.
+            'rider_daily_target_minutes' => ['sometimes', 'nullable', 'integer', 'between:30,1440'],
             'rider_base_address' => ['sometimes', 'nullable', 'string', 'max:255'],
             'rider_base_lat' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
             'rider_base_lng' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
@@ -137,7 +158,7 @@ class AdminRiderController extends Controller
 
         $attributes = collect($data)->only([
             'phone', 'rider_is_active', 'rider_available', 'rider_unavailable_reason',
-            'rider_base_address', 'rider_base_lat', 'rider_base_lng',
+            'rider_daily_target_minutes', 'rider_base_address', 'rider_base_lat', 'rider_base_lng',
         ])->all();
 
         // Bringing a rider back online clears any stale "why" note.
@@ -214,6 +235,7 @@ class AdminRiderController extends Controller
             'active_deliveries' => (int) ($rider->active_deliveries ?? 0),
             'rating_avg' => $rider->rider_rating_avg !== null ? (float) $rider->rider_rating_avg : null,
             'rating_count' => (int) $rider->rider_rating_count,
+            'daily_target_minutes' => $rider->rider_daily_target_minutes ?: RiderAttendance::DEFAULT_TARGET_MINUTES,
             'offers_count' => (int) $rider->rider_offers_count,
             'declined_count' => (int) $rider->rider_declined_count,
             'missed_count' => (int) $rider->rider_missed_count,

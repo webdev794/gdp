@@ -12,6 +12,9 @@ use Illuminate\Support\Carbon;
  */
 final class RiderAttendance
 {
+    /** Fallback "full day" target when a rider has no per-rider target set. */
+    public const DEFAULT_TARGET_MINUTES = 480;
+
     /** The live shift/availability state for a single rider. */
     public static function state(User $rider): array
     {
@@ -70,6 +73,76 @@ final class RiderAttendance
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * A full attendance report for one rider across an arbitrary date range
+     * (e.g. a calendar month): every day in the window is present, classified as
+     * `full` (worked >= target), `short` (worked some, under target) or `off`
+     * (no shift), plus roll-up totals. Days after today are not included.
+     */
+    public static function report(User $rider, Carbon $from, Carbon $to): array
+    {
+        $from = $from->copy()->startOfDay();
+        $to = min($to->copy()->endOfDay(), today()->copy()->endOfDay());
+        $target = $rider->rider_daily_target_minutes ?: self::DEFAULT_TARGET_MINUTES;
+
+        $byDay = $rider->riderShifts()
+            ->whereBetween('clock_in_at', [$from, $to])
+            ->with('breaks')
+            ->get()
+            ->groupBy(fn (RiderShift $s) => $s->clock_in_at->toDateString());
+
+        $days = [];
+        $sumFull = $sumShort = $sumOff = $sumWorked = $sumBreak = 0;
+
+        for ($d = $from->copy(); $d->lte($to); $d->addDay()) {
+            $key = $d->toDateString();
+            $group = $byDay->get($key);
+
+            $worked = $group ? (int) $group->sum(fn (RiderShift $s) => $s->workedMinutes()) : 0;
+            $break = $group ? (int) $group->sum(fn (RiderShift $s) => $s->breakMinutes()) : 0;
+
+            $status = match (true) {
+                ! $group => 'off',
+                $worked >= $target => 'full',
+                default => 'short',
+            };
+
+            $status === 'full' ? $sumFull++ : ($status === 'short' ? $sumShort++ : $sumOff++);
+            $sumWorked += $worked;
+            $sumBreak += $break;
+
+            $days[] = [
+                'date' => $key,
+                'weekday' => $d->dayOfWeekIso,           // 1 Mon .. 7 Sun
+                'status' => $status,
+                'worked_minutes' => $worked,
+                'break_minutes' => $break,
+                'first_in' => $group?->min('clock_in_at'),
+                'last_out' => $group && ! $group->contains(fn ($s) => $s->clock_out_at === null)
+                    ? $group->max('clock_out_at')
+                    : null,
+                'shifts' => $group?->count() ?? 0,
+            ];
+        }
+
+        $activeDays = $sumFull + $sumShort;
+
+        return [
+            'from' => $from->toDateString(),
+            'to' => $to->toDateString(),
+            'target_minutes' => $target,
+            'summary' => [
+                'days_full' => $sumFull,
+                'days_short' => $sumShort,
+                'days_off' => $sumOff,
+                'total_worked_minutes' => $sumWorked,
+                'total_break_minutes' => $sumBreak,
+                'avg_worked_minutes' => $activeDays ? (int) round($sumWorked / $activeDays) : 0,
+            ],
+            'days' => array_reverse($days), // newest first
+        ];
     }
 
     private static function workedMinutesBetween(User $rider, Carbon $from, Carbon $to): int

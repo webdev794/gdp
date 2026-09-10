@@ -278,6 +278,9 @@
 .admin-rider-stats{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
 .admin-rider-stats span{flex:1 1 90px;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:11px;color:var(--muted);background:#fafbf8}
 .admin-rider-stats strong{display:block;font-size:16px;color:var(--ink);letter-spacing:-.02em}
+.admin-month-nav{display:flex;align-items:center;gap:12px;margin:10px 0}
+.admin-month-nav strong{font-size:13px}
+.admin-table tr.admin-day-off td{background:#f5f6f4;color:var(--muted)}
 .admin-review-list{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
 .admin-review-list>li{padding:10px 11px;border:1px solid var(--line);border-radius:8px;background:white}
 .admin-review-head{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}

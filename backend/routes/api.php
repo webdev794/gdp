@@ -102,6 +102,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::patch('/customers/{user}', [AdminController::class, 'updateCustomer']);
     Route::get('/riders', [AdminRiderController::class, 'index']);
     Route::get('/riders/attendance', [AdminRiderController::class, 'attendance']);
+    Route::get('/riders/{user}/attendance', [AdminRiderController::class, 'riderAttendance']);
     Route::get('/riders/{user}', [AdminRiderController::class, 'show']);
     Route::post('/riders', [AdminRiderController::class, 'store']);
     Route::patch('/riders/{user}', [AdminRiderController::class, 'update']);

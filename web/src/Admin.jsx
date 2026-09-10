@@ -113,6 +113,7 @@ const riderFormFrom = (rider) => ({
   rider_base_address: rider.rider_base_address ?? '',
   rider_base_lat: rider.rider_base_lat ?? '',
   rider_base_lng: rider.rider_base_lng ?? '',
+  daily_target_hours: rider.daily_target_minutes ? String(rider.daily_target_minutes / 60) : '',
   store_ids: (rider.stores ?? []).map((s) => s.id),
 })
 
@@ -124,6 +125,11 @@ const RIDER_STATUS = {
   off_roster: { label: '— off roster', color: '#7c857a' },
 }
 const fmtWorked = (m) => { const n = Math.max(0, Math.round(m || 0)); return n >= 60 ? `${Math.floor(n / 60)}h ${n % 60}m` : `${n}m` }
+const DAY_STATUS = {
+  full: { label: 'Full', color: '#2f6d34' },
+  short: { label: 'Short', color: '#8a6d2f' },
+  off: { label: 'Off', color: '#a0a7a0' },
+}
 
 function riderStatusChip(rider) {
   const a = rider.attendance || {}
@@ -280,6 +286,8 @@ export default function Admin({ token, onClose }) {
   const [riderForm, setRiderForm] = useState(null)
   const [riderEmail, setRiderEmail] = useState('')
   const [riderDetail, setRiderDetail] = useState(null)
+  const [riderMonth, setRiderMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
+  const [riderReport, setRiderReport] = useState(null)
   const [settings, setSettings] = useState(null)
   const [feesForm, setFeesForm] = useState(null)
   const [brandingForm, setBrandingForm] = useState(null)
@@ -534,6 +542,7 @@ export default function Admin({ token, onClose }) {
       rider_base_address: f.rider_base_address.trim() || null,
       rider_base_lat: String(f.rider_base_lat).trim() === '' ? null : Number(f.rider_base_lat),
       rider_base_lng: String(f.rider_base_lng).trim() === '' ? null : Number(f.rider_base_lng),
+      rider_daily_target_minutes: String(f.daily_target_hours).trim() === '' ? null : Math.round(Number(f.daily_target_hours) * 60),
       store_ids: f.store_ids.map(Number),
     }
     try {
@@ -966,6 +975,8 @@ export default function Admin({ token, onClose }) {
   async function openRiderDetail(id) {
     setMessage('')
     setRiderDetail({ loading: true })
+    setRiderReport(null)
+    setRiderMonth(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
     try {
       const response = await fetch(`${API_URL}/admin/riders/${id}`, { headers: authHeaders() })
       const data = await readJson(response)
@@ -973,6 +984,22 @@ export default function Admin({ token, onClose }) {
       setRiderDetail(data.data)
     } catch (error) { setRiderDetail(null); fail(error) }
   }
+
+  const loadRiderReport = useCallback((riderId, month) => {
+    const from = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}-01`
+    const end = new Date(month.getFullYear(), month.getMonth() + 1, 0)
+    const to = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`
+    Promise.resolve().then(() => setRiderReport({ loading: true }))
+    return fetch(`${API_URL}/admin/riders/${riderId}/attendance?from=${from}&to=${to}`, { headers: authHeaders() })
+      .then(readJson)
+      .then((data) => setRiderReport(data?.data ?? null))
+      .catch(() => setRiderReport(null))
+  }, [authHeaders])
+
+  useEffect(() => {
+    const id = riderDetail?.rider?.id
+    if (id) loadRiderReport(id, riderMonth)
+  }, [riderDetail?.rider?.id, riderMonth, loadRiderReport])
 
   async function toggleRider(id, isRider) {
     try {
@@ -1520,6 +1547,7 @@ export default function Admin({ token, onClose }) {
               <h3>{riderForm.name}</h3>
               <div className="admin-form-grid">
                 <label>Phone<input value={riderForm.phone} placeholder="e.g. +1 555 987 6543" onChange={(event) => setRiderForm({ ...riderForm, phone: event.target.value })} /></label>
+                <label>Full day (hours)<input type="number" step="0.5" min="0.5" max="24" value={riderForm.daily_target_hours} placeholder="8" onChange={(event) => setRiderForm({ ...riderForm, daily_target_hours: event.target.value })} /></label>
                 <label className="admin-check"><input type="checkbox" checked={riderForm.rider_is_active} onChange={(event) => setRiderForm({ ...riderForm, rider_is_active: event.target.checked })} /> On shift (available for auto-assign)</label>
               </div>
 
@@ -2328,25 +2356,39 @@ export default function Admin({ token, onClose }) {
                 </div>
 
                 <h4>Attendance</h4>
-                <p className="muted">{riderStatusChip(riderDetail.rider ?? {})} · {fmtWorked(riderDetail.rider?.attendance?.week_worked_minutes)} in the last 7 days</p>
-                {(riderDetail.attendance ?? []).length === 0
-                  ? <p className="muted">No shifts recorded in the last 14 days.</p>
-                  : (
+                <p className="muted">{riderStatusChip(riderDetail.rider ?? {})}</p>
+                <div className="admin-month-nav">
+                  <button type="button" className="act ghost" onClick={() => setRiderMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}>&lsaquo; Prev</button>
+                  <strong>{riderMonth.toLocaleDateString([], { month: 'long', year: 'numeric' })}</strong>
+                  <button type="button" className="act ghost" disabled={riderMonth.getFullYear() === new Date().getFullYear() && riderMonth.getMonth() === new Date().getMonth()} onClick={() => setRiderMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}>Next &rsaquo;</button>
+                </div>
+                {!riderReport || riderReport.loading ? <p className="admin-empty">Loading…</p> : (
+                  <>
+                    <div className="admin-rider-stats">
+                      <span><strong>{riderReport.summary.days_full}</strong> full days (&ge; {fmtWorked(riderReport.target_minutes)})</span>
+                      <span><strong>{riderReport.summary.days_short}</strong> short days</span>
+                      <span><strong>{riderReport.summary.days_off}</strong> days off</span>
+                      <span><strong>{fmtWorked(riderReport.summary.total_worked_minutes)}</strong> total worked</span>
+                      <span><strong>{fmtWorked(riderReport.summary.avg_worked_minutes)}</strong> avg / active day</span>
+                    </div>
                     <table className="admin-table">
-                      <thead><tr><th>Date</th><th>First in</th><th>Last out</th><th>Worked</th><th>Breaks</th></tr></thead>
+                      <thead><tr><th>Date</th><th></th><th>In</th><th>Out</th><th>Worked</th><th>Breaks</th></tr></thead>
                       <tbody>
-                        {(riderDetail.attendance ?? []).map((d) => (
-                          <tr key={d.date}>
-                            <td>{new Date(d.date).toLocaleDateString()}</td>
+                        {riderReport.days.map((d) => (
+                          <tr key={d.date} className={d.status === 'off' ? 'admin-day-off' : ''}>
+                            <td>{new Date(d.date).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+                            <td><span style={{ color: DAY_STATUS[d.status].color, fontWeight: 600 }}>{DAY_STATUS[d.status].label}</span></td>
                             <td>{d.first_in ? new Date(d.first_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-                            <td>{d.last_out ? new Date(d.last_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : <span className="muted">open</span>}</td>
-                            <td>{fmtWorked(d.worked_minutes)}</td>
+                            <td>{d.shifts === 0 ? '—' : d.last_out ? new Date(d.last_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : <span className="muted">open</span>}</td>
+                            <td>{d.worked_minutes ? fmtWorked(d.worked_minutes) : '—'}</td>
                             <td>{d.break_minutes ? fmtWorked(d.break_minutes) : '—'}</td>
                           </tr>
                         ))}
+                        {riderReport.days.length === 0 && <tr><td colSpan={6} className="muted">No days in range.</td></tr>}
                       </tbody>
                     </table>
-                  )}
+                  </>
+                )}
 
                 <h4>Customer reviews ({riderDetail.reviews?.length ?? 0})</h4>
                 <p className="muted">Comments are for admins only — the rider never sees them.</p>
