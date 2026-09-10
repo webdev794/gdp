@@ -1584,7 +1584,7 @@ export default function Admin({ token, onClose }) {
           </form>
 
           {riderForm && (
-            <form className="admin-form" onSubmit={saveRider}>
+            <form id="admin-rider-form" className="admin-form" onSubmit={saveRider}>
               <h3>{riderForm.name}</h3>
               <div className="admin-form-grid">
                 <label>Phone<input value={riderForm.phone} placeholder="e.g. +1 555 987 6543" onChange={(event) => setRiderForm({ ...riderForm, phone: event.target.value })} /></label>
@@ -1657,7 +1657,7 @@ export default function Admin({ token, onClose }) {
                     <td>{rider.rider_is_active ? 'Yes' : 'No'}</td>
                     <td className="admin-actions">
                       <button className="act" type="button" onClick={() => openRiderDetail(rider.id)}>Attendance &amp; stats</button>
-                      <button className="act" type="button" onClick={() => setRiderForm(riderFormFrom(rider))}>Edit</button>
+                      <button className="act" type="button" onClick={() => { setRiderForm(riderFormFrom(rider)); scrollFormIntoView('admin-rider-form') }}>Edit</button>
                       {rider.attendance?.available
                         ? <button className="act" type="button" onClick={() => { const why = window.prompt('Reason for taking this rider offline (optional):', ''); if (why !== null) patchRider(rider, { rider_available: false, rider_unavailable_reason: why || null }) }}>Set offline</button>
                         : rider.attendance?.clocked_in && <button className="act" type="button" onClick={() => patchRider(rider, { rider_available: true })}>Bring online</button>}
