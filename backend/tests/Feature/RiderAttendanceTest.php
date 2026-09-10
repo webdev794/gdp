@@ -323,4 +323,62 @@ class RiderAttendanceTest extends TestCase
         Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
         $this->getJson("/api/admin/riders/{$notRider->id}/attendance")->assertNotFound();
     }
+
+    public function test_days_before_the_rider_joined_are_not_counted_as_off(): void
+    {
+        $rider = $this->rider($this->store(), ['rider_since' => now()->subDays(3)->startOfDay()]);
+        // worked a full day two days ago
+        $rider->riderShifts()->create([
+            'clock_in_at' => now()->subDays(2)->setTime(9, 0),
+            'clock_out_at' => now()->subDays(2)->setTime(18, 0),
+            'source' => 'rider',
+        ]);
+
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+        $from = now()->subDays(8)->toDateString();
+        $res = $this->getJson("/api/admin/riders/{$rider->id}/attendance?from={$from}&to=".today()->toDateString())->assertOk();
+
+        // 8 days before "today" are in range, but the rider only joined 3 days
+        // ago — so at most 2 completed days (yesterday + 2 days ago) can be off,
+        // and one of those was worked. Days 4-8 back are "pre", not "off".
+        $this->assertSame(now()->subDays(3)->toDateString(), $res->json('data.active_from'));
+        $this->assertSame(1, $res->json('data.summary.days_full'));
+        $this->assertLessThanOrEqual(2, $res->json('data.summary.days_off'));
+        $this->assertContains('pre', array_column($res->json('data.days'), 'status'));
+        foreach ($res->json('data.days') as $day) {
+            if ($day['status'] === 'pre') {
+                $this->assertLessThan($res->json('data.active_from'), $day['date']);
+            }
+        }
+    }
+
+    public function test_today_is_not_graded_while_the_rider_is_still_clocked_in(): void
+    {
+        $rider = $this->rider($this->store(), ['rider_since' => now()->subMonth()]);
+        // clocked in 3h ago, still on the clock
+        $rider->riderShifts()->create(['clock_in_at' => now()->subHours(3), 'source' => 'rider']);
+        $rider->forceFill(['rider_available' => true])->save();
+
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+        $res = $this->getJson("/api/admin/riders/{$rider->id}/attendance")->assertOk();
+
+        $this->assertTrue($res->json('data.today.on_the_clock'));
+        $this->assertGreaterThanOrEqual(170, $res->json('data.today.worked_minutes'));
+
+        $todayRow = collect($res->json('data.days'))->firstWhere('date', today()->toDateString());
+        $this->assertSame('today', $todayRow['status']);
+        // an in-progress day is never counted short/off
+        $this->assertSame(0, $res->json('data.summary.days_short'));
+        $this->assertSame(0, $res->json('data.summary.total_worked_minutes'));
+    }
+
+    public function test_promoting_a_rider_stamps_rider_since(): void
+    {
+        $user = User::factory()->create(['email' => 'promote-me@ex.com']);
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+
+        $this->patchJson("/api/admin/customers/{$user->id}", ['is_rider' => true])->assertOk();
+
+        $this->assertNotNull($user->fresh()->rider_since);
+    }
 }

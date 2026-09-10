@@ -77,15 +77,36 @@ final class RiderAttendance
 
     /**
      * A full attendance report for one rider across an arbitrary date range
-     * (e.g. a calendar month): every day in the window is present, classified as
-     * `full` (worked >= target), `short` (worked some, under target) or `off`
-     * (no shift), plus roll-up totals. Days after today are not included.
+     * (e.g. a calendar month). Every day in the window is listed and classified:
+     *
+     *   full  — a completed day worked >= the target
+     *   short — a completed day worked something, under the target
+     *   off   — a day the rider was on the roster but didn't work at all
+     *   today — the current day while the rider is still clocked in (not graded)
+     *   pre   — before the rider joined; shown greyed, never counted
+     *
+     * Only `full` / `short` / `off` feed the summary counts; `total_worked` and
+     * the average cover completed days only, with today's partial hours reported
+     * separately.
      */
     public static function report(User $rider, Carbon $from, Carbon $to): array
     {
+        $today = today();
         $from = $from->copy()->startOfDay();
-        $to = min($to->copy()->endOfDay(), today()->copy()->endOfDay());
+        $to = min($to->copy()->endOfDay(), $today->copy()->endOfDay());
         $target = $rider->rider_daily_target_minutes ?: self::DEFAULT_TARGET_MINUTES;
+
+        // "Days off" only count once the rider actually joined. Fall back to their
+        // first-ever shift, then to the window start.
+        $firstShift = $rider->riderShifts()->min('clock_in_at');
+        $activeFrom = $rider->rider_since
+            ? $rider->rider_since->copy()->startOfDay()
+            : ($firstShift ? Carbon::parse($firstShift)->startOfDay() : $from->copy());
+        if ($activeFrom->lt($from)) {
+            $activeFrom = $from->copy();
+        }
+
+        $clockedInNow = $rider->currentShift() !== null;
 
         $byDay = $rider->riderShifts()
             ->whereBetween('clock_in_at', [$from, $to])
@@ -95,6 +116,7 @@ final class RiderAttendance
 
         $days = [];
         $sumFull = $sumShort = $sumOff = $sumWorked = $sumBreak = 0;
+        $todayWorked = 0;
 
         for ($d = $from->copy(); $d->lte($to); $d->addDay()) {
             $key = $d->toDateString();
@@ -103,15 +125,32 @@ final class RiderAttendance
             $worked = $group ? (int) $group->sum(fn (RiderShift $s) => $s->workedMinutes()) : 0;
             $break = $group ? (int) $group->sum(fn (RiderShift $s) => $s->breakMinutes()) : 0;
 
+            // Today is never graded — the day isn't over. It's shown with the
+            // hours so far and reported separately, but not counted full/short/off.
             $status = match (true) {
+                $d->lt($activeFrom) => 'pre',
+                $d->isSameDay($today) => 'today',
                 ! $group => 'off',
                 $worked >= $target => 'full',
                 default => 'short',
             };
 
-            $status === 'full' ? $sumFull++ : ($status === 'short' ? $sumShort++ : $sumOff++);
-            $sumWorked += $worked;
-            $sumBreak += $break;
+            if ($status === 'full') {
+                $sumFull++;
+            } elseif ($status === 'short') {
+                $sumShort++;
+            } elseif ($status === 'off') {
+                $sumOff++;
+            }
+
+            if (in_array($status, ['full', 'short'], true)) {
+                $sumWorked += $worked;
+                $sumBreak += $break;
+            }
+
+            if ($status === 'today') {
+                $todayWorked = $worked;
+            }
 
             $days[] = [
                 'date' => $key,
@@ -127,19 +166,24 @@ final class RiderAttendance
             ];
         }
 
-        $activeDays = $sumFull + $sumShort;
+        $completedDays = $sumFull + $sumShort;
 
         return [
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
+            'active_from' => $activeFrom->toDateString(),
             'target_minutes' => $target,
+            'today' => [
+                'worked_minutes' => $todayWorked,
+                'on_the_clock' => $clockedInNow,
+            ],
             'summary' => [
                 'days_full' => $sumFull,
                 'days_short' => $sumShort,
                 'days_off' => $sumOff,
                 'total_worked_minutes' => $sumWorked,
                 'total_break_minutes' => $sumBreak,
-                'avg_worked_minutes' => $activeDays ? (int) round($sumWorked / $activeDays) : 0,
+                'avg_worked_minutes' => $completedDays ? (int) round($sumWorked / $completedDays) : 0,
             ],
             'days' => array_reverse($days), // newest first
         ];

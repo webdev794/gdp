@@ -131,7 +131,11 @@ class AdminRiderController extends Controller
             throw ValidationException::withMessages(['email' => ['That account is an administrator.']]);
         }
 
-        $user->forceFill(['is_rider' => true, 'rider_is_active' => true])->save();
+        $user->forceFill([
+            'is_rider' => true,
+            'rider_is_active' => true,
+            'rider_since' => $user->rider_since ?? now(),
+        ])->save();
 
         return response()->json(['data' => $this->row($user->fresh()->load('stores:id,name,city'))], 201);
     }

@@ -147,6 +147,7 @@ class User extends Authenticatable
             'rider_missed_count' => 'integer',
             'rider_offers_count' => 'integer',
             'rider_daily_target_minutes' => 'integer',
+            'rider_since' => 'datetime',
             'rider_available' => 'boolean',
             'rider_last_seen_at' => 'datetime',
             'rider_base_lat' => 'float',

@@ -129,6 +129,8 @@ const DAY_STATUS = {
   full: { label: 'Full', color: '#2f6d34' },
   short: { label: 'Short', color: '#8a6d2f' },
   off: { label: 'Off', color: '#a0a7a0' },
+  today: { label: 'Today', color: '#1f5fae' },
+  pre: { label: '—', color: '#c0c6c0' },
 }
 
 function riderStatusChip(rider) {
@@ -2367,18 +2369,19 @@ export default function Admin({ token, onClose }) {
                 </div>
                 {!riderReport || riderReport.loading ? <p className="admin-empty">Loading…</p> : (
                   <>
+                    <p className="muted">Completed days only — counting from {new Date(riderReport.active_from).toLocaleDateString()}{riderReport.today?.on_the_clock ? ` · on the clock now, ${fmtWorked(riderReport.today.worked_minutes)} today` : ''}</p>
                     <div className="admin-rider-stats">
                       <span><strong>{riderReport.summary.days_full}</strong> full days (&ge; {fmtWorked(riderReport.target_minutes)})</span>
                       <span><strong>{riderReport.summary.days_short}</strong> short days</span>
                       <span><strong>{riderReport.summary.days_off}</strong> days off</span>
                       <span><strong>{fmtWorked(riderReport.summary.total_worked_minutes)}</strong> total worked</span>
-                      <span><strong>{fmtWorked(riderReport.summary.avg_worked_minutes)}</strong> avg / active day</span>
+                      <span><strong>{fmtWorked(riderReport.summary.avg_worked_minutes)}</strong> avg / completed day</span>
                     </div>
                     <table className="admin-table">
                       <thead><tr><th>Date</th><th></th><th>In</th><th>Out</th><th>Worked</th><th>Breaks</th></tr></thead>
                       <tbody>
                         {riderReport.days.map((d) => (
-                          <tr key={d.date} className={d.status === 'off' ? 'admin-day-off' : ''}>
+                          <tr key={d.date} className={(d.status === 'off' || d.status === 'pre') ? 'admin-day-off' : ''}>
                             <td>{new Date(d.date).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}</td>
                             <td><span style={{ color: DAY_STATUS[d.status].color, fontWeight: 600 }}>{DAY_STATUS[d.status].label}</span></td>
                             <td>{d.first_in ? new Date(d.first_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>

@@ -343,6 +343,7 @@ class AdminController extends Controller
         $user->forceFill([
             'is_rider' => $validated['is_rider'],
             'rider_is_active' => $validated['is_rider'],
+            'rider_since' => $validated['is_rider'] ? ($user->rider_since ?? now()) : $user->rider_since,
         ])->save();
 
         return response()->json(['data' => ['id' => $user->id, 'is_rider' => (bool) $user->is_rider]]);
