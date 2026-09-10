@@ -23,8 +23,8 @@ const STATUS_LABELS = {
 const NEXT_ACTIONS = {
   pending_payment: [['cancelled', 'Cancel']],
   confirmed: [['packing', 'Start packing'], ['cancelled', 'Cancel']],
-  packing: [['ready_for_delivery', 'Mark ready for delivery'], ['cancelled', 'Cancel']],
-  ready_for_delivery: [['out_for_delivery', 'Send out for delivery'], ['cancelled', 'Cancel']],
+  packing: [['ready_for_delivery', 'Mark ready'], ['cancelled', 'Cancel']],
+  ready_for_delivery: [['out_for_delivery', 'Send out'], ['cancelled', 'Cancel']],
   out_for_delivery: [['completed', 'Mark delivered']],
   completed: [],
   cancelled: [],
@@ -880,7 +880,7 @@ export default function Admin({ token, onClose }) {
     return (
       <>
         {codCollect && (
-          <button type="button" disabled={busyId === order.id} className="act" onClick={() => patchOrder(order, { cash_collected: true })}>Mark cash collected</button>
+          <button type="button" disabled={busyId === order.id} className="act" onClick={() => patchOrder(order, { cash_collected: true })}>Cash collected</button>
         )}
         {needsRefund && (
           order.stripe_payment_intent_id
@@ -1343,6 +1343,7 @@ export default function Admin({ token, onClose }) {
             ))}
           </div>
           {listBusy.orders && orders.length === 0 ? <Loading>Loading orders…</Loading> : orders.length === 0 ? <p className="admin-empty">No orders for this filter.</p> : (
+            <div className="admin-table-wrap">
             <table className="admin-table">
               <thead><tr><th>#</th><th>Customer</th><th>Placed</th><th>Total</th><th>Payment</th><th>Delivery</th><th>Courier</th><th>Actions</th></tr></thead>
               <tbody>
@@ -1386,6 +1387,7 @@ export default function Admin({ token, onClose }) {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
           <Pager page={ordersMeta?.current_page ?? ordersPage} pageCount={ordersMeta?.last_page ?? 1} total={ordersMeta?.total ?? orders.length} onPage={setOrdersPage} pageSize={pageSize} onPageSize={setPageSize} />
         </section>
