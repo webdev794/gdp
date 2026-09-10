@@ -128,6 +128,7 @@ const fmtWorked = (m) => { const n = Math.max(0, Math.round(m || 0)); return n >
 function riderStatusChip(rider) {
   const a = rider.attendance || {}
   const s = RIDER_STATUS[a.status] || RIDER_STATUS.off
+  const missed = (rider.declined_count ?? 0) + (rider.missed_count ?? 0)
   return (
     <>
       <span style={{ color: s.color, fontWeight: 600 }}>{s.label}</span>
@@ -135,6 +136,11 @@ function riderStatusChip(rider) {
         ? <span className="admin-note" style={{ color: '#2f6d34' }}>online now</span>
         : rider.last_seen_at && <span className="admin-note" title={`last seen ${new Date(rider.last_seen_at).toLocaleString()}`}>seen {new Date(rider.last_seen_at).toLocaleDateString()}</span>}
       {a.unavailable_reason && <span className="admin-note" title={a.unavailable_reason}>&ldquo;{a.unavailable_reason}&rdquo;</span>}
+      {rider.offers_count > 0 && (
+        <span className="admin-note" style={missed > 0 ? { color: '#a23b28' } : undefined} title={`${rider.offers_count} offers · ${rider.declined_count ?? 0} rejected · ${rider.missed_count ?? 0} missed`}>
+          {rider.acceptance_rate != null ? `${Math.round(rider.acceptance_rate * 100)}% accepted` : ''}{missed > 0 ? ` · ✗${missed}` : ''}
+        </span>
+      )}
     </>
   )
 }
@@ -2317,6 +2323,8 @@ export default function Admin({ token, onClose }) {
                   <span><strong>{riderDetail.rider?.completed_deliveries ?? 0}</strong> delivered</span>
                   <span><strong>{riderDetail.rider?.active_deliveries ?? 0}</strong> active now</span>
                   <span><strong>{riderDetail.rider?.rating_avg != null ? `★ ${riderDetail.rider.rating_avg.toFixed(1)}` : '—'}</strong> {riderDetail.rider?.rating_count ?? 0} rating{riderDetail.rider?.rating_count === 1 ? '' : 's'}</span>
+                  <span><strong>{riderDetail.rider?.acceptance_rate != null ? `${Math.round(riderDetail.rider.acceptance_rate * 100)}%` : '—'}</strong> offers accepted{riderDetail.rider?.offers_count ? ` (${riderDetail.rider.offers_count})` : ''}</span>
+                  <span><strong>{riderDetail.rider?.declined_count ?? 0} / {riderDetail.rider?.missed_count ?? 0}</strong> rejected / missed</span>
                 </div>
 
                 <h4>Attendance</h4>

@@ -106,9 +106,12 @@ class AdminOrderController extends Controller
                 // goes through — it bypasses the auto-assign exclusion).
                 $changes['rider_accepted_at'] = null;
                 $effectiveStatus = $changes['status'] ?? $order->status;
-                $changes['rider_offer_expires_at'] = $effectiveStatus === 'ready_for_delivery'
-                    ? now()->addSeconds(RiderAssignment::OFFER_TTL_SECONDS)
-                    : null;
+                if ($effectiveStatus === 'ready_for_delivery') {
+                    $changes['rider_offer_expires_at'] = now()->addSeconds(RiderAssignment::OFFER_TTL_SECONDS);
+                    User::whereKey($rider->id)->increment('rider_offers_count');
+                } else {
+                    $changes['rider_offer_expires_at'] = null;
+                }
             } elseif (! $rider) {
                 // Clearing the rider ends any pending offer.
                 $changes['rider_offer_expires_at'] = null;
@@ -123,6 +126,7 @@ class AdminOrderController extends Controller
             && $order->delivery_partner_id
             && $order->rider_accepted_at === null) {
             $changes['rider_offer_expires_at'] = now()->addSeconds(RiderAssignment::OFFER_TTL_SECONDS);
+            User::whereKey($order->delivery_partner_id)->increment('rider_offers_count');
         }
 
         // Cash collected on hand-off settles a cash-on-delivery order.

@@ -123,6 +123,8 @@ function Delta({ now, prev }) {
 function RiderStats({ stats }) {
   const stars = stats.rating_avg != null ? stats.rating_avg.toFixed(1) : '—'
   const verified = stats.verified_rate != null ? `${Math.round(stats.verified_rate * 100)}%` : '—'
+  const acceptance = stats.acceptance_rate != null ? `${Math.round(stats.acceptance_rate * 100)}%` : '—'
+  const weekHrs = stats.shift?.week_worked_minutes
   return (
     <section className="rider-stats">
       <div className="rider-stat">
@@ -138,6 +140,20 @@ function RiderStats({ stats }) {
         <span className="rider-stat-n">★ {stars}</span>
         <span className="rider-stat-l">{stats.rating_count} rating{stats.rating_count === 1 ? '' : 's'}</span>
       </div>
+      <div className="rider-stat">
+        <span className="rider-stat-n">{acceptance}</span>
+        <span className="rider-stat-l">Offers accepted{stats.offers_total ? ` · ${stats.offers_total} offered` : ''}</span>
+      </div>
+      <div className="rider-stat">
+        <span className="rider-stat-n">{stats.declined_total ?? 0} / {stats.missed_total ?? 0}</span>
+        <span className="rider-stat-l">Rejected / missed</span>
+      </div>
+      {weekHrs != null && (
+        <div className="rider-stat">
+          <span className="rider-stat-n">{fmtDur(weekHrs)}</span>
+          <span className="rider-stat-l">Hours this week</span>
+        </div>
+      )}
       <div className="rider-stat">
         <span className="rider-stat-n">{verified}</span>
         <span className="rider-stat-l">Code-verified</span>

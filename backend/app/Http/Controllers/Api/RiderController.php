@@ -193,6 +193,10 @@ class RiderController extends Controller
             'verified_rate' => $total ? round($verified / $total, 3) : null,
             'cod_collected_cents' => $codCents,
             'recent_ratings' => $recent,
+            'offers_total' => (int) $rider->rider_offers_count,
+            'declined_total' => (int) $rider->rider_declined_count,
+            'missed_total' => (int) $rider->rider_missed_count,
+            'acceptance_rate' => $rider->riderAcceptanceRate(),
             'shift' => RiderAttendance::state($rider),
             'attendance' => RiderAttendance::summary($rider, 14),
         ]]);

@@ -214,6 +214,10 @@ class AdminRiderController extends Controller
             'active_deliveries' => (int) ($rider->active_deliveries ?? 0),
             'rating_avg' => $rider->rider_rating_avg !== null ? (float) $rider->rider_rating_avg : null,
             'rating_count' => (int) $rider->rider_rating_count,
+            'offers_count' => (int) $rider->rider_offers_count,
+            'declined_count' => (int) $rider->rider_declined_count,
+            'missed_count' => (int) $rider->rider_missed_count,
+            'acceptance_rate' => $rider->riderAcceptanceRate(),
             'stores' => $rider->relationLoaded('stores')
                 ? $rider->stores->map(fn ($s) => ['id' => $s->id, 'name' => $s->name, 'city' => $s->city])->values()
                 : [],

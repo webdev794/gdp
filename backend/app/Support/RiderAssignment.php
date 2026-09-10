@@ -101,6 +101,8 @@ class RiderAssignment
             'rider_accepted_at' => null,
         ]);
 
+        User::whereKey($best['rider']->id)->increment('rider_offers_count');
+
         $best['rider']->notify(RiderAssigned::forOrder($order));
 
         return $best['rider'];

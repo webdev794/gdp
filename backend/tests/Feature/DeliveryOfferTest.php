@@ -349,6 +349,56 @@ class DeliveryOfferTest extends TestCase
         $this->assertNull($order->delivery_partner_id);
     }
 
+    public function test_offer_counters_feed_the_acceptance_rate(): void
+    {
+        $store = $this->store();
+        $a = $this->rider('A', $store, ['lat' => 40.7130, 'lng' => -74.0058]);
+        $b = $this->rider('B', $store, ['lat' => 40.7600, 'lng' => -73.9800]);
+
+        // Offer 1: A rejects -> re-offered to B, B accepts.
+        $o1 = $this->order($store);
+        RiderAssignment::assign($o1);
+        Sanctum::actingAs($a);
+        $this->postJson("/api/rider/orders/{$o1->id}/respond", ['accept' => false])->assertOk();
+        Sanctum::actingAs($b);
+        $this->postJson("/api/rider/orders/{$o1->id}/respond", ['accept' => true])->assertOk();
+
+        // Offer 2: goes straight to A (B now busy/farther), A accepts.
+        $o2 = $this->order($store);
+        RiderAssignment::assign($o2->fresh());
+        Sanctum::actingAs($a);
+        $this->postJson("/api/rider/orders/{$o2->id}/respond", ['accept' => true])->assertOk();
+
+        $a->refresh();
+        $this->assertSame(2, $a->rider_offers_count);   // offered o1 and o2
+        $this->assertSame(1, $a->rider_declined_count);
+        $this->assertSame(0, $a->rider_missed_count);
+        $this->assertSame(0.5, $a->riderAcceptanceRate());
+
+        Sanctum::actingAs($a);
+        $this->getJson('/api/rider/stats')
+            ->assertOk()
+            ->assertJsonPath('data.offers_total', 2)
+            ->assertJsonPath('data.declined_total', 1)
+            ->assertJsonPath('data.acceptance_rate', 0.5);
+    }
+
+    public function test_timeout_counts_as_a_missed_offer_in_the_rate(): void
+    {
+        $store = $this->store();
+        $a = $this->rider('A', $store, ['lat' => 40.7130, 'lng' => -74.0058]);
+        $this->rider('B', $store, ['lat' => 40.7600, 'lng' => -73.9800]);
+        $order = $this->order($store);
+        RiderAssignment::assign($order);
+        $order->forceFill(['rider_offer_expires_at' => now()->subSecond()])->save();
+        DeliveryOfferSweeper::sweep();
+
+        $a->refresh();
+        $this->assertSame(1, $a->rider_offers_count);
+        $this->assertSame(1, $a->rider_missed_count);
+        $this->assertSame(0.0, $a->riderAcceptanceRate());
+    }
+
     public function test_sweep_offers_command_runs(): void
     {
         $store = $this->store();

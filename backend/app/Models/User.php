@@ -75,6 +75,20 @@ class User extends Authenticatable
         return (bool) $this->currentShift()?->breaks->firstWhere('ended_at', null);
     }
 
+    /** Share of delivery offers this rider accepted (0..1), or null if never offered any. */
+    public function riderAcceptanceRate(): ?float
+    {
+        $offers = (int) $this->rider_offers_count;
+
+        if ($offers <= 0) {
+            return null;
+        }
+
+        $accepted = max(0, $offers - (int) $this->rider_declined_count - (int) $this->rider_missed_count);
+
+        return round($accepted / $offers, 3);
+    }
+
     /** Refresh the denormalised rider rating from the reviews. */
     public function recomputeRiderRating(): void
     {
@@ -131,6 +145,7 @@ class User extends Authenticatable
             'rider_rating_count' => 'integer',
             'rider_declined_count' => 'integer',
             'rider_missed_count' => 'integer',
+            'rider_offers_count' => 'integer',
             'rider_available' => 'boolean',
             'rider_last_seen_at' => 'datetime',
             'rider_base_lat' => 'float',
