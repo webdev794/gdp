@@ -19,6 +19,8 @@ class Order extends Model
      * are terminal.
      */
     public const DELIVERY_TRANSITIONS = [
+        // A card order whose payment was never completed can only be cancelled.
+        'pending_payment' => ['cancelled'],
         'confirmed' => ['packing', 'cancelled'],
         'packing' => ['ready_for_delivery', 'cancelled'],
         'ready_for_delivery' => ['out_for_delivery', 'cancelled'],
@@ -166,11 +168,18 @@ class Order extends Model
 
     public function canTransitionTo(string $status): bool
     {
+        if (! in_array($status, self::DELIVERY_TRANSITIONS[$this->status] ?? [], true)) {
+            return false;
+        }
+
+        // Cancelling needs no payment: it's the only move for an order whose
+        // card payment was never completed.
+        if ($status === 'cancelled') {
+            return true;
+        }
+
         // A cash-on-delivery order is collected on hand-off, so it may move
         // through the delivery states before payment_status becomes 'paid'.
-        $paymentReady = $this->payment_status === 'paid' || $this->isCashOnDelivery();
-
-        return $paymentReady
-            && in_array($status, self::DELIVERY_TRANSITIONS[$this->status] ?? [], true);
+        return $this->payment_status === 'paid' || $this->isCashOnDelivery();
     }
 }

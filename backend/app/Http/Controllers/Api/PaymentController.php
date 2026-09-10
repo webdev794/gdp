@@ -293,7 +293,11 @@ class PaymentController extends Controller
 
     private function markPaid(Order $order): void
     {
-        if ($order->payment_status === 'paid') {
+        // Don't resurrect an order that was already settled or cancelled (e.g. a
+        // stale checkout tab that pays after an admin voided the order).
+        if ($order->payment_status === 'paid'
+            || $order->status === 'cancelled'
+            || $order->payment_status === 'cancelled') {
             return;
         }
 

@@ -82,6 +82,17 @@ class StripeWebhookTest extends TestCase
         ]);
     }
 
+    public function test_late_success_does_not_resurrect_an_admin_cancelled_order(): void
+    {
+        $order = $this->order('pi_stale', 'cancelled', 'cancelled');
+
+        $this->send('evt_stale', 'payment_intent.succeeded', 'pi_stale')->assertOk();
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id, 'payment_status' => 'cancelled', 'status' => 'cancelled',
+        ]);
+    }
+
     public function test_invalid_signature_is_rejected(): void
     {
         $payload = json_encode(['id' => 'evt_x', 'type' => 'payment_intent.succeeded', 'data' => ['object' => ['id' => 'pi_x']]]);

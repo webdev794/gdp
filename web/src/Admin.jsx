@@ -21,6 +21,7 @@ const STATUS_LABELS = {
 }
 
 const NEXT_ACTIONS = {
+  pending_payment: [['cancelled', 'Cancel']],
   confirmed: [['packing', 'Start packing'], ['cancelled', 'Cancel']],
   packing: [['ready_for_delivery', 'Mark ready for delivery'], ['cancelled', 'Cancel']],
   ready_for_delivery: [['out_for_delivery', 'Send out for delivery'], ['cancelled', 'Cancel']],
@@ -271,6 +272,7 @@ export default function Admin({ token, onClose }) {
   const [categories, setCategories] = useState([])
   const [customers, setCustomers] = useState([])
   const [customerDetail, setCustomerDetail] = useState(null)
+  const [orderDetail, setOrderDetail] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
   const [productSearch, setProductSearch] = useState('')
   const [productSort, setProductSort] = useState('newest')
@@ -1317,7 +1319,7 @@ export default function Admin({ token, onClose }) {
               <tbody>
                 {orders.map((order) => (
                   <tr key={order.id}>
-                    <td>{order.id}</td>
+                    <td><button type="button" className="link" title="View order summary" onClick={() => setOrderDetail(order)}>#{order.id}</button></td>
                     <td>{order.user?.email ?? '—'}{(order.delivery_address?.phone || order.user?.phone) && <span className="admin-note">☎ {order.delivery_address?.phone || order.user?.phone}</span>}{order.delivery_instructions && <span className="admin-note" title={order.delivery_instructions}>&ldquo;{order.delivery_instructions}&rdquo;</span>}</td>
                     <td>{new Date(order.created_at).toLocaleDateString()}</td>
                     <td>{money(order.total_cents)}<span className="admin-note">{order.items?.length ?? 0} item{order.items?.length === 1 ? '' : 's'}</span></td>
@@ -2469,6 +2471,54 @@ export default function Admin({ token, onClose }) {
           </aside>
         </div>
       )}
+
+      {orderDetail && (() => {
+        const o = orders.find((x) => x.id === orderDetail.id) ?? orderDetail
+        const addr = o.delivery_address ?? {}
+        const addrLine = [addr.name, addr.line1, addr.line2, [addr.city, addr.state, addr.postal_code].filter(Boolean).join(', ')].filter(Boolean).join(' · ')
+        return (
+          <div className="admin-drawer" role="presentation" onClick={() => setOrderDetail(null)}>
+            <aside onClick={(event) => event.stopPropagation()}>
+              <button className="admin-close" type="button" onClick={() => setOrderDetail(null)}>Close</button>
+              <h3>Order #{o.id}</h3>
+              <p className="muted">{new Date(o.created_at).toLocaleString()} · <span className={`pill pill-${o.payment_status}`}>{o.payment_status}</span> · {STATUS_LABELS[o.status] ?? o.status}</p>
+              <p className="muted">{o.user?.name ? `${o.user.name} · ` : ''}{o.user?.email ?? '—'}{(addr.phone || o.user?.phone) ? ` · ☎ ${addr.phone || o.user.phone}` : ''}</p>
+
+              <h4>Items ({o.items?.length ?? 0})</h4>
+              <table className="admin-table admin-order-items">
+                <thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Total</th></tr></thead>
+                <tbody>
+                  {(o.items ?? []).map((it) => (
+                    <tr key={it.id}>
+                      <td>{it.product_name}{it.variant_label && <span className="admin-note">{it.variant_label}</span>}</td>
+                      <td>{it.quantity}</td>
+                      <td>{money(it.unit_price_cents)}</td>
+                      <td>{money(it.line_total_cents)}</td>
+                    </tr>
+                  ))}
+                  {(o.items ?? []).length === 0 && <tr><td colSpan="4" className="muted">No items recorded.</td></tr>}
+                </tbody>
+              </table>
+
+              <dl className="admin-order-totals">
+                <div><dt>Subtotal</dt><dd>{money(o.subtotal_cents)}</dd></div>
+                {o.tax_cents > 0 && <div><dt>Tax</dt><dd>{money(o.tax_cents)}</dd></div>}
+                {o.delivery_fee_cents > 0 && <div><dt>Delivery</dt><dd>{money(o.delivery_fee_cents)}</dd></div>}
+                {o.handling_fee_cents > 0 && <div><dt>Handling</dt><dd>{money(o.handling_fee_cents)}</dd></div>}
+                {o.small_cart_fee_cents > 0 && <div><dt>Small-cart fee</dt><dd>{money(o.small_cart_fee_cents)}</dd></div>}
+                {o.refunded_amount_cents > 0 && <div><dt>Refunded</dt><dd>−{money(o.refunded_amount_cents)}</dd></div>}
+                <div className="admin-order-grand"><dt>Total</dt><dd>{money(o.total_cents)}</dd></div>
+              </dl>
+
+              <h4>Delivery</h4>
+              <p className="muted">{addrLine || 'No address on file'}</p>
+              {o.delivery_instructions && <p className="muted">Note: &ldquo;{o.delivery_instructions}&rdquo;</p>}
+              <p className="muted">{o.payment_method === 'cod' ? 'Cash on delivery' : 'Card'}{(o.delivery_partner?.name || o.courier_name) ? ` · Courier: ${o.delivery_partner?.name || o.courier_name}` : ''}{o.store ? ` · Fulfilled by ${o.store.name}` : ''}</p>
+              {o.delivered_at && <p className="muted">Delivered {new Date(o.delivered_at).toLocaleString()}{o.delivery_verified === false ? ` · without code${o.delivery_note ? ` — ${o.delivery_note}` : ''}` : o.delivery_verified ? ' · code verified' : ''}</p>}
+            </aside>
+          </div>
+        )
+      })()}
 
       {riderDetail && (
         <div className="admin-drawer" role="presentation" onClick={() => setRiderDetail(null)}>

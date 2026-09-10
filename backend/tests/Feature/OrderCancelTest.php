@@ -82,6 +82,42 @@ class OrderCancelTest extends TestCase
             ->assertJsonPath('data.payment_status', 'refunded');
     }
 
+    public function test_admin_can_cancel_a_stuck_pending_payment_card_order(): void
+    {
+        $order = $this->order(User::factory()->create(), [
+            'status' => 'pending_payment', 'payment_status' => 'pending', 'payment_method' => 'card',
+        ]);
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+
+        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'cancelled'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'cancelled')
+            ->assertJsonPath('data.payment_status', 'cancelled');
+    }
+
+    public function test_a_pending_payment_order_still_cannot_jump_to_packing(): void
+    {
+        $order = $this->order(User::factory()->create(), [
+            'status' => 'pending_payment', 'payment_status' => 'pending', 'payment_method' => 'card',
+        ]);
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+
+        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'packing'])->assertStatus(422);
+    }
+
+    public function test_customer_can_cancel_their_own_abandoned_card_order(): void
+    {
+        $user = User::factory()->create();
+        $order = $this->order($user, [
+            'status' => 'pending_payment', 'payment_status' => 'pending', 'payment_method' => 'card',
+        ]);
+        Sanctum::actingAs($user);
+
+        $this->postJson("/api/orders/{$order->id}/cancel")
+            ->assertOk()
+            ->assertJsonPath('data.payment_status', 'cancelled');
+    }
+
     private function order(User $user, array $overrides): Order
     {
         return Order::create([

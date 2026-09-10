@@ -179,6 +179,9 @@ a.act{display:inline-block;text-decoration:none}
 .admin-form input[type=file]:hover::file-selector-button{background:#2e7d32;border-color:#2e7d32}
 .admin-form .admin-check,.admin-form .admin-check input,.admin-radio-row label,.admin-radio-row input{cursor:pointer}
 .admin-radio-row label:hover{color:#2e7d32}
+.link{padding:0;margin:0;border:0;background:0;color:var(--accent,#2f7d43);font:inherit;font-weight:700;cursor:pointer}
+.link:hover{text-decoration:underline}
+.admin-table td .link{letter-spacing:0}
 .act.ghost{background:white;color:#4a5145;border-color:var(--line,#ccd4c2)}
 .act.ghost:hover{background:#e2efdc;color:#1b2418;border-color:#84a678}
 .act.ghost:disabled:hover{background:white;color:#4a5145;border-color:var(--line,#ccd4c2)}
@@ -311,6 +314,15 @@ a.act{display:inline-block;text-decoration:none}
 .admin-order-list{list-style:none;margin:0;padding:0;display:grid;gap:9px}
 .admin-order-list li{background:white;border:1px solid var(--line,#e4e7df);border-radius:9px;padding:11px 13px;font-size:12px;display:grid;gap:4px}
 .admin-order-list li span{color:var(--muted,#7c857a);font:10px 'Okra',sans-serif}
+.admin-order-items{font-size:12px}
+.admin-order-items th,.admin-order-items td{padding:8px 10px}
+.admin-order-items td:nth-child(2),.admin-order-items td:nth-child(3),.admin-order-items td:nth-child(4),
+.admin-order-items th:nth-child(2),.admin-order-items th:nth-child(3),.admin-order-items th:nth-child(4){text-align:right;white-space:nowrap}
+.admin-order-items .admin-note{max-width:none}
+.admin-order-totals{margin:12px 0 0;display:grid;gap:5px;font-size:13px}
+.admin-order-totals>div{display:flex;justify-content:space-between;gap:16px;color:var(--muted,#7c857a)}
+.admin-order-totals dt,.admin-order-totals dd{margin:0}
+.admin-order-totals .admin-order-grand{margin-top:5px;padding-top:8px;border-top:1px solid var(--line,#ccd4c2);color:var(--ink,#20291f);font-weight:700;font-size:15px}
 @media(max-width:720px){.admin-table{display:block;overflow-x:auto;white-space:nowrap}}
 
 /* Standalone /admin sign-in page (before the console mounts). */

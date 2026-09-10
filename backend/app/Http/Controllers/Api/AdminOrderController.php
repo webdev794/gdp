@@ -136,10 +136,9 @@ class AdminOrderController extends Controller
             $changes['payment_status'] = 'paid';
         }
 
-        // Cancelling an unpaid cash-on-delivery order also voids its payment,
-        // mirroring the Stripe cancellation path.
+        // Cancelling an order before any money moved also voids its payment —
+        // an abandoned card checkout or an unpaid cash-on-delivery order.
         if (($changes['status'] ?? null) === 'cancelled'
-            && $order->isCashOnDelivery()
             && $order->payment_status === 'pending') {
             $changes['payment_status'] = 'cancelled';
         }

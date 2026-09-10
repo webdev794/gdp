@@ -24,6 +24,8 @@
 
 >> Delivered-order email — once an order is both paid and delivered, the customer is emailed an order summary with the itemised PDF bill attached (same document as the "download bill" button). Sent once, from card delivery, cash-on-hand-off, or an admin marking it delivered.
 
+>> Admin Orders — click an order number to open a summary drawer (items, quantities, unit and line prices, fee breakdown, delivery address and courier). A card order whose payment was abandoned can now be Cancelled from the Actions column (previously stuck with no available action); a late payment can no longer un-cancel it.
+
 ---
 
 ## Admin access
