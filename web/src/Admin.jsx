@@ -637,6 +637,15 @@ export default function Admin({ token, onClose }) {
     })
   }
 
+  // Bring a just-opened edit form into view (it renders above its list).
+  const scrollFormIntoView = (id) => {
+    requestAnimationFrame(() => {
+      const el = document.getElementById(id)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      else document.querySelector('.admin-main')?.scrollTo({ top: 0, behavior: 'smooth' })
+    })
+  }
+
   function editPage(page) {
     setPagePreview(false)
     setPageForm({
@@ -1729,12 +1738,12 @@ export default function Admin({ token, onClose }) {
         <section className="admin-panel">
           <h3 className="admin-subhead">Promo banners</h3>
           <div className="admin-toolbar">
-            <button className="act" type="button" onClick={() => setBannerForm({ ...EMPTY_BANNER })}>New banner</button>
+            <button className="act" type="button" onClick={() => { setBannerForm({ ...EMPTY_BANNER }); scrollFormIntoView('admin-banner-form') }}>New banner</button>
             <span className="muted">Set each banner&rsquo;s <strong>Placement</strong>: <strong>Hero</strong> = full-width image at the top, <strong>Strip</strong> = the 3-up row below. Add as many as you like with &ldquo;New banner&rdquo;; &ldquo;Order&rdquo; sorts them within each row.</span>
           </div>
 
           {bannerForm && (
-            <form className="admin-form" onSubmit={saveBanner}>
+            <form id="admin-banner-form" className="admin-form" onSubmit={saveBanner}>
               <h3>{bannerForm.id ? `Edit banner #${bannerForm.id}` : 'New banner'}</h3>
               <div className="admin-image-field">
                 {bannerForm.image_url
@@ -1774,7 +1783,7 @@ export default function Admin({ token, onClose }) {
                     <td>{banner.sort_order}</td>
                     <td>{banner.is_active ? 'Yes' : 'No'}</td>
                     <td className="admin-actions">
-                      <button className="act" type="button" onClick={() => setBannerForm({ id: banner.id, image_url: banner.image_url ?? '', headline: banner.headline ?? '', category_slug: banner.category_slug ?? '', link_url: banner.link_url ?? '', placement: banner.placement ?? 'strip', sort_order: banner.sort_order ?? 0, is_active: banner.is_active })}>Edit</button>
+                      <button className="act" type="button" onClick={() => { setBannerForm({ id: banner.id, image_url: banner.image_url ?? '', headline: banner.headline ?? '', category_slug: banner.category_slug ?? '', link_url: banner.link_url ?? '', placement: banner.placement ?? 'strip', sort_order: banner.sort_order ?? 0, is_active: banner.is_active }); scrollFormIntoView('admin-banner-form') }}>Edit</button>
                       <button className="act danger" type="button" onClick={() => removeBanner(banner)}>Delete</button>
                     </td>
                   </tr>
@@ -1785,12 +1794,12 @@ export default function Admin({ token, onClose }) {
 
           <h3 className="admin-subhead">Category tiles</h3>
           <div className="admin-toolbar">
-            <button className="act" type="button" onClick={() => setTileForm({ ...EMPTY_TILE })}>New tile</button>
+            <button className="act" type="button" onClick={() => { setTileForm({ ...EMPTY_TILE }); scrollFormIntoView('admin-tile-form') }}>New tile</button>
             <span className="muted">The homepage shows these in order — first three as large cards, the rest as a grid. Leave the title or image blank to use the category&rsquo;s own. With no active tiles the homepage lists every category.</span>
           </div>
 
           {tileForm && (
-            <form className="admin-form" onSubmit={saveTile}>
+            <form id="admin-tile-form" className="admin-form" onSubmit={saveTile}>
               <h3>{tileForm.id ? `Edit tile #${tileForm.id}` : 'New tile'}</h3>
               <div className="admin-image-field">
                 {tileForm.image_url
@@ -1828,7 +1837,7 @@ export default function Admin({ token, onClose }) {
                     <td>{tile.sort_order}</td>
                     <td>{tile.is_active ? 'Yes' : 'No'}</td>
                     <td className="admin-actions">
-                      <button className="act" type="button" onClick={() => setTileForm({ id: tile.id, title: tile.title ?? '', image_url: tile.image_url ?? '', category_slug: tile.category_slug ?? '', link_url: tile.link_url ?? '', sort_order: tile.sort_order ?? 0, is_active: tile.is_active })}>Edit</button>
+                      <button className="act" type="button" onClick={() => { setTileForm({ id: tile.id, title: tile.title ?? '', image_url: tile.image_url ?? '', category_slug: tile.category_slug ?? '', link_url: tile.link_url ?? '', sort_order: tile.sort_order ?? 0, is_active: tile.is_active }); scrollFormIntoView('admin-tile-form') }}>Edit</button>
                       <button className="act danger" type="button" onClick={() => removeTile(tile)}>Delete</button>
                     </td>
                   </tr>
