@@ -311,6 +311,13 @@ a.act{display:inline-block;text-decoration:none}
 .admin-month-nav strong{font-size:14px}
 .admin-table tbody tr.admin-day-off td,.admin-table tbody tr.admin-day-off:nth-child(even) td{background:#eef0ec;color:var(--muted)}
 .admin-table tbody tr.admin-day-off:hover td{background:#e7eae4}
+.admin-review-overview{margin:14px 0 4px;padding:14px;border:1px solid var(--line,#ccd4c2);border-radius:12px;background:#f6f8f4}
+.admin-review-score{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.admin-review-score>strong{font-size:34px;letter-spacing:-.03em;color:var(--ink,#1b2418)}
+.admin-review-bars{display:grid;gap:5px;margin-top:12px}
+.admin-review-bar{display:grid;grid-template-columns:28px 1fr 24px;align-items:center;gap:8px;font-size:12px;color:var(--muted,#5c6357)}
+.admin-review-bar-track{height:8px;border-radius:999px;background:#e2e7dc;overflow:hidden}
+.admin-review-bar-track>span{display:block;height:100%;background:#f5a623;border-radius:999px}
 .admin-review-list{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
 .admin-review-list>li{padding:10px 11px;border:1px solid var(--line);border-radius:8px;background:white}
 .admin-review-head{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}

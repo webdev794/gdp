@@ -976,16 +976,16 @@ export default function Admin({ token, onClose }) {
     } catch (error) { setCustomerDetail(null); fail(error) }
   }
 
-  async function openRiderDetail(id) {
+  async function openRiderDetail(id, view = 'full') {
     setMessage('')
-    setRiderDetail({ loading: true })
+    setRiderDetail({ loading: true, view })
     setRiderReport(null)
     setRiderMonth(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
     try {
       const response = await fetch(`${API_URL}/admin/riders/${id}`, { headers: authHeaders() })
       const data = await readJson(response)
       if (!response.ok) throw new Error(data.message ?? 'Could not load the rider.')
-      setRiderDetail(data.data)
+      setRiderDetail({ ...data.data, view })
     } catch (error) { setRiderDetail(null); fail(error) }
   }
 
@@ -1002,8 +1002,8 @@ export default function Admin({ token, onClose }) {
 
   useEffect(() => {
     const id = riderDetail?.rider?.id
-    if (id) loadRiderReport(id, riderMonth)
-  }, [riderDetail?.rider?.id, riderMonth, loadRiderReport])
+    if (id && riderDetail?.view !== 'reviews') loadRiderReport(id, riderMonth)
+  }, [riderDetail?.rider?.id, riderDetail?.view, riderMonth, loadRiderReport])
 
   async function toggleRider(id, isRider) {
     try {
@@ -1615,7 +1615,7 @@ export default function Admin({ token, onClose }) {
                     <td>{rider.located
                       ? <span title={rider.located.last_ping_at ? `pinged ${new Date(rider.located.last_ping_at).toLocaleString()}` : ''}>{rider.located.source === 'live' ? '🟢 live' : '📍 base'}</span>
                       : <span className="muted">no base set</span>}</td>
-                    <td><button className="act ghost" type="button" onClick={() => openRiderDetail(rider.id)}>{rider.rating_count ? `★ ${(rider.rating_avg ?? 0).toFixed(1)} (${rider.rating_count})` : 'Reviews'}</button></td>
+                    <td><button className="act ghost" type="button" onClick={() => openRiderDetail(rider.id, 'reviews')}>{rider.rating_count ? `★ ${(rider.rating_avg ?? 0).toFixed(1)} (${rider.rating_count})` : 'Reviews'}</button></td>
                     <td className={rider.active_deliveries > 0 ? 'low' : ''}>{rider.active_deliveries}</td>
                     <td>{rider.rider_is_active ? 'Yes' : 'No'}</td>
                     <td className="admin-actions">
@@ -2355,53 +2355,81 @@ export default function Admin({ token, onClose }) {
             <button className="admin-close" type="button" onClick={() => setRiderDetail(null)}>Close</button>
             {riderDetail.loading ? <p className="admin-empty">Loading…</p> : (
               <>
-                <h3>{riderDetail.rider?.name}</h3>
+                <h3>{riderDetail.rider?.name}{riderDetail.view === 'reviews' ? ' — reviews' : ''}</h3>
                 <p className="muted">{riderDetail.rider?.email} · {riderDetail.rider?.phone || 'no phone'}</p>
-                <div className="admin-rider-stats">
-                  <span><strong>{riderDetail.rider?.completed_deliveries ?? 0}</strong> delivered</span>
-                  <span><strong>{riderDetail.rider?.active_deliveries ?? 0}</strong> active now</span>
-                  <span><strong>{riderDetail.rider?.rating_avg != null ? `★ ${riderDetail.rider.rating_avg.toFixed(1)}` : '—'}</strong> {riderDetail.rider?.rating_count ?? 0} rating{riderDetail.rider?.rating_count === 1 ? '' : 's'}</span>
-                  <span><strong>{riderDetail.rider?.acceptance_rate != null ? `${Math.round(riderDetail.rider.acceptance_rate * 100)}%` : '—'}</strong> offers accepted{riderDetail.rider?.offers_count ? ` (${riderDetail.rider.offers_count})` : ''}</span>
-                  <span><strong>{riderDetail.rider?.declined_count ?? 0} / {riderDetail.rider?.missed_count ?? 0}</strong> rejected / missed</span>
-                </div>
 
-                <h4>Attendance</h4>
-                <p className="muted">{riderStatusChip(riderDetail.rider ?? {})}</p>
-                <div className="admin-month-nav">
-                  <button type="button" className="act ghost" onClick={() => setRiderMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}>&lsaquo; Prev</button>
-                  <strong>{riderMonth.toLocaleDateString([], { month: 'long', year: 'numeric' })}</strong>
-                  <button type="button" className="act ghost" disabled={riderMonth.getFullYear() === new Date().getFullYear() && riderMonth.getMonth() === new Date().getMonth()} onClick={() => setRiderMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}>Next &rsaquo;</button>
-                </div>
-                {!riderReport || riderReport.loading ? <p className="admin-empty">Loading…</p> : (
-                  <>
-                    <p className="muted">Completed days only — counting from {new Date(riderReport.active_from).toLocaleDateString()}{riderReport.today?.on_the_clock ? ` · on the clock now, ${fmtWorked(riderReport.today.worked_minutes)} today` : ''}</p>
-                    <div className="admin-rider-stats">
-                      <span><strong>{riderReport.summary.days_full}</strong> full days (&ge; {fmtWorked(riderReport.target_minutes)})</span>
-                      <span><strong>{riderReport.summary.days_short}</strong> short days</span>
-                      <span><strong>{riderReport.summary.days_off}</strong> days off</span>
-                      <span><strong>{fmtWorked(riderReport.summary.total_worked_minutes)}</strong> total worked</span>
-                      <span><strong>{fmtWorked(riderReport.summary.avg_worked_minutes)}</strong> avg / completed day</span>
+                {riderDetail.view === 'reviews' ? (
+                  <div className="admin-review-overview">
+                    <div className="admin-review-score">
+                      <strong>{riderDetail.rider?.rating_avg != null ? riderDetail.rider.rating_avg.toFixed(1) : '—'}</strong>
+                      <span>
+                        <span className="admin-review-stars">{'★'.repeat(Math.round(riderDetail.rider?.rating_avg ?? 0))}<span className="dim">{'★'.repeat(5 - Math.round(riderDetail.rider?.rating_avg ?? 0))}</span></span>
+                        <span className="muted"> {riderDetail.rider?.rating_count ?? 0} review{riderDetail.rider?.rating_count === 1 ? '' : 's'}</span>
+                      </span>
                     </div>
-                    <table className="admin-table">
-                      <thead><tr><th>Date</th><th></th><th>In</th><th>Out</th><th>Worked</th><th>Breaks</th></tr></thead>
-                      <tbody>
-                        {riderReport.days.map((d) => (
-                          <tr key={d.date} className={(d.status === 'off' || d.status === 'pre') ? 'admin-day-off' : ''}>
-                            <td>{new Date(d.date).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}</td>
-                            <td><span style={{ color: DAY_STATUS[d.status].color, fontWeight: 600 }}>{DAY_STATUS[d.status].label}</span></td>
-                            <td>{d.first_in ? new Date(d.first_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-                            <td>{d.shifts === 0 ? '—' : d.last_out ? new Date(d.last_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : <span className="muted">open</span>}</td>
-                            <td>{d.worked_minutes ? fmtWorked(d.worked_minutes) : '—'}</td>
-                            <td>{d.break_minutes ? fmtWorked(d.break_minutes) : '—'}</td>
-                          </tr>
-                        ))}
-                        {riderReport.days.length === 0 && <tr><td colSpan={6} className="muted">No days in range.</td></tr>}
-                      </tbody>
-                    </table>
+                    <div className="admin-review-bars">
+                      {[5, 4, 3, 2, 1].map((n) => {
+                        const total = riderDetail.reviews?.length ?? 0
+                        const c = (riderDetail.reviews ?? []).filter((r) => r.rating === n).length
+                        return (
+                          <div key={n} className="admin-review-bar">
+                            <span>{n}★</span>
+                            <span className="admin-review-bar-track"><span style={{ width: `${total ? (c / total) * 100 : 0}%` }} /></span>
+                            <span>{c}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="admin-rider-stats">
+                      <span><strong>{riderDetail.rider?.completed_deliveries ?? 0}</strong> delivered</span>
+                      <span><strong>{riderDetail.rider?.active_deliveries ?? 0}</strong> active now</span>
+                      <span><strong>{riderDetail.rider?.rating_avg != null ? `★ ${riderDetail.rider.rating_avg.toFixed(1)}` : '—'}</strong> {riderDetail.rider?.rating_count ?? 0} rating{riderDetail.rider?.rating_count === 1 ? '' : 's'}</span>
+                      <span><strong>{riderDetail.rider?.acceptance_rate != null ? `${Math.round(riderDetail.rider.acceptance_rate * 100)}%` : '—'}</strong> offers accepted{riderDetail.rider?.offers_count ? ` (${riderDetail.rider.offers_count})` : ''}</span>
+                      <span><strong>{riderDetail.rider?.declined_count ?? 0} / {riderDetail.rider?.missed_count ?? 0}</strong> rejected / missed</span>
+                    </div>
+
+                    <h4>Attendance</h4>
+                    <p className="muted">{riderStatusChip(riderDetail.rider ?? {})}</p>
+                    <div className="admin-month-nav">
+                      <button type="button" className="act ghost" onClick={() => setRiderMonth((m) => new Date(m.getFullYear(), m.getMonth() - 1, 1))}>&lsaquo; Prev</button>
+                      <strong>{riderMonth.toLocaleDateString([], { month: 'long', year: 'numeric' })}</strong>
+                      <button type="button" className="act ghost" disabled={riderMonth.getFullYear() === new Date().getFullYear() && riderMonth.getMonth() === new Date().getMonth()} onClick={() => setRiderMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}>Next &rsaquo;</button>
+                    </div>
+                    {!riderReport || riderReport.loading ? <p className="admin-empty">Loading…</p> : (
+                      <>
+                        <p className="muted">Completed days only — counting from {new Date(riderReport.active_from).toLocaleDateString()}{riderReport.today?.on_the_clock ? ` · on the clock now, ${fmtWorked(riderReport.today.worked_minutes)} today` : ''}</p>
+                        <div className="admin-rider-stats">
+                          <span><strong>{riderReport.summary.days_full}</strong> full days (&ge; {fmtWorked(riderReport.target_minutes)})</span>
+                          <span><strong>{riderReport.summary.days_short}</strong> short days</span>
+                          <span><strong>{riderReport.summary.days_off}</strong> days off</span>
+                          <span><strong>{fmtWorked(riderReport.summary.total_worked_minutes)}</strong> total worked</span>
+                          <span><strong>{fmtWorked(riderReport.summary.avg_worked_minutes)}</strong> avg / completed day</span>
+                        </div>
+                        <table className="admin-table">
+                          <thead><tr><th>Date</th><th></th><th>In</th><th>Out</th><th>Worked</th><th>Breaks</th></tr></thead>
+                          <tbody>
+                            {riderReport.days.map((d) => (
+                              <tr key={d.date} className={(d.status === 'off' || d.status === 'pre') ? 'admin-day-off' : ''}>
+                                <td>{new Date(d.date).toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+                                <td><span style={{ color: DAY_STATUS[d.status].color, fontWeight: 600 }}>{DAY_STATUS[d.status].label}</span></td>
+                                <td>{d.first_in ? new Date(d.first_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                                <td>{d.shifts === 0 ? '—' : d.last_out ? new Date(d.last_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : <span className="muted">open</span>}</td>
+                                <td>{d.worked_minutes ? fmtWorked(d.worked_minutes) : '—'}</td>
+                                <td>{d.break_minutes ? fmtWorked(d.break_minutes) : '—'}</td>
+                              </tr>
+                            ))}
+                            {riderReport.days.length === 0 && <tr><td colSpan={6} className="muted">No days in range.</td></tr>}
+                          </tbody>
+                        </table>
+                      </>
+                    )}
                   </>
                 )}
 
-                <h4>Customer reviews ({riderDetail.reviews?.length ?? 0})</h4>
+                <h4>{riderDetail.view === 'reviews' ? 'Recent reviews' : 'Customer reviews'} ({riderDetail.reviews?.length ?? 0})</h4>
                 <p className="muted">Comments are for admins only — the rider never sees them.</p>
                 <ul className="admin-review-list">
                   {(riderDetail.reviews ?? []).map((rv) => (
