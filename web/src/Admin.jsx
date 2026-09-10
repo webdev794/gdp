@@ -1165,19 +1165,6 @@ export default function Admin({ token, onClose }) {
           </section>
 
           <section className="admin-panel">
-            <h3 className="admin-subhead">Payments vs refunds</h3>
-            {!metrics ? <p className="admin-empty">Loading…</p> : (
-              <PieChart
-                format={money}
-                data={[
-                  { label: 'Payments', value: metrics.revenue_cents },
-                  { label: 'Refunds', value: metrics.refunded_cents ?? 0 },
-                ]}
-              />
-            )}
-          </section>
-
-          <section className="admin-panel">
             <h3 className="admin-subhead">When orders come in</h3>
             {!insights ? <p className="admin-empty">Loading…</p> : (
               <>
@@ -1194,6 +1181,8 @@ export default function Admin({ token, onClose }) {
           </section>
 
           <section className="admin-panel admin-panel-compare">
+           <div className="dash-split">
+            <div className="dash-split-main">
             <h3 className="admin-subhead">Compared to the previous period</h3>
             <div className="chart-toolbar">
               <select className="admin-select" value={comparePreset} onChange={(event) => { setCompare(null); setComparePreset(event.target.value) }} aria-label="Comparison period">
@@ -1240,6 +1229,20 @@ export default function Admin({ token, onClose }) {
                 </>
               )
             })()}
+            </div>
+            <div className="dash-split-side">
+              <h3 className="admin-subhead">Payments vs refunds</h3>
+              {!metrics ? <p className="admin-empty">Loading…</p> : (
+                <PieChart
+                  format={money}
+                  data={[
+                    { label: 'Payments', value: metrics.revenue_cents },
+                    { label: 'Refunds', value: metrics.refunded_cents ?? 0 },
+                  ]}
+                />
+              )}
+            </div>
+           </div>
           </section>
         </>
       )}
