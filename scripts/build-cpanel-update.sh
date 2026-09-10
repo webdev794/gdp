@@ -31,6 +31,7 @@ echo "==> merging built React storefront"
 cp -r "$SRC/web/dist/." "$DEST/"
 
 echo "==> front controller (single-folder layout)"
+DEPLOY_TAG=$(date +%Y%m%d%H%M%S)
 cat > "$DEST/index.php" <<'PHP'
 <?php
 
@@ -38,6 +39,19 @@ use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
+
+// One-time post-deploy self-heal (no shell needed). A cached config/route file
+// left by a previous deploy would otherwise keep the old app running. This
+// clears the compiled caches and resets OPcache exactly once per bundle, then
+// writes a marker so it never runs again.
+$deployTag = '__DEPLOY_TAG__';
+$deployMark = __DIR__.'/storage/framework/.deployed-'.$deployTag;
+if (! is_file($deployMark)) {
+    foreach (glob(__DIR__.'/bootstrap/cache/*.php') ?: [] as $stale) { @unlink($stale); }
+    foreach (glob(__DIR__.'/storage/framework/views/*.php') ?: [] as $stale) { @unlink($stale); }
+    if (function_exists('opcache_reset')) { @opcache_reset(); }
+    @file_put_contents($deployMark, $deployTag."\n");
+}
 
 if (file_exists($maintenance = __DIR__.'/storage/framework/maintenance.php')) {
     require $maintenance;
@@ -53,6 +67,7 @@ $app->usePublicPath(__DIR__);
 
 $app->handleRequest(Request::capture());
 PHP
+sed -i "s/__DEPLOY_TAG__/$DEPLOY_TAG/" "$DEST/index.php"
 
 echo "==> .htaccess"
 cat > "$DEST/.htaccess" <<'HTACCESS'
@@ -99,22 +114,23 @@ echo "==> READ_ME_FIRST.txt"
 cat > "$STAGE/READ_ME_FIRST.txt" <<'TXT'
 GROCERLY - code update bundle
 =============================
-Updated application code + built frontend. .env and database are not included
-and are not touched.
+Updated application code + built frontend. No .env, no database, no installer -
+nothing of yours is touched. Runs as-is: on the first page load after upload,
+index.php clears the old compiled caches and resets OPcache by itself (no
+Terminal needed).
 
 DEPLOY
-  1. Back up: in cPanel download public_html/gdp/ .
-  2. cPanel > File Manager > open  public_html/  , upload this zip there,
-     Extract, overwrite when asked. (It writes into  public_html/gdp/ .)
-  3. cPanel > Terminal - refresh Laravel's caches, or a cached config/route
-     file from the previous deploy keeps the OLD code running:
-         cd ~/public_html/gdp && rm -f bootstrap/cache/*.php && php artisan optimize:clear
-  4. Hard-refresh  https://testcaresortwork.co.in/gdp/  (Ctrl+Shift+R).
+  1. Back up: cPanel > File Manager, download  public_html/gdp/ .
+  2. Upload this zip into  public_html/  and Extract, overwrite when asked.
+     (Writes into  public_html/gdp/ .)
+  3. Make sure  public_html/gdp/.env  exists with your live values
+     (DB, APP_URL=https://testcaresortwork.co.in/gdp , APP_KEY, mail, Stripe).
+  4. Open  https://testcaresortwork.co.in/gdp/  and hard-refresh (Ctrl+Shift+R).
 
-Optional: in  public_html/gdp/assets/  the old  *-<hash>.js / .css  files that
-index.html no longer names are just unused bytes - delete them anytime.
+Optional cleanup: in  public_html/gdp/assets/  the old  *-<hash>.js / .css
+files no longer named in index.html are just unused bytes - delete anytime.
 
-Rollback: re-upload your public_html/gdp/ backup.
+Rollback: re-upload your  public_html/gdp/  backup.
 TXT
 
 echo "==> zipping"
