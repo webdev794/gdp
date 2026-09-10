@@ -189,27 +189,32 @@ const MD_GUIDE = [
 const dollars = (cents) => ((cents ?? 0) / 100).toFixed(2)
 const toCents = (value) => Math.max(0, Math.round(Number(value || 0) * 100))
 
-// Short two-tone chime for a new customer message. Web Audio => no asset/CSP.
+// Alert for a new customer support message. Web Audio => no asset/CSP.
+// A two-run DESCENDING tone — clearly audible, but distinct from the ASCENDING
+// new-order alert so the admin can tell them apart by ear.
 function playChime() {
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext
     if (!Ctx) return
     const ctx = new Ctx()
-    const blip = (freq, at) => {
+    const blip = (freq, at, dur = 0.2) => {
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.connect(gain); gain.connect(ctx.destination)
       osc.type = 'sine'
       osc.frequency.value = freq
       gain.gain.setValueAtTime(0.0001, ctx.currentTime + at)
-      gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + at + 0.02)
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + 0.22)
+      gain.gain.exponentialRampToValueAtTime(0.24, ctx.currentTime + at + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + dur)
       osc.start(ctx.currentTime + at)
-      osc.stop(ctx.currentTime + at + 0.24)
+      osc.stop(ctx.currentTime + at + dur + 0.02)
     }
-    blip(660, 0)
-    blip(990, 0.16)
-    setTimeout(() => ctx.close(), 800)
+    for (const base of [0, 0.85]) {
+      blip(988, base)
+      blip(740, base + 0.16)
+      blip(587, base + 0.32, 0.3)
+    }
+    setTimeout(() => ctx.close(), 1600)
   } catch { /* audio blocked — the toast still shows */ }
 }
 
