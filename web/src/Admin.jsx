@@ -1509,11 +1509,11 @@ export default function Admin({ token, onClose }) {
       {tab === 'categories' && (
         <section className="admin-panel">
           <div className="admin-toolbar">
-            <button className="act" type="button" onClick={() => setCategoryForm({ ...EMPTY_CATEGORY })}>New category</button>
+            <button className="act" type="button" onClick={() => { setCategoryForm({ ...EMPTY_CATEGORY }); scrollFormIntoView('admin-category-form') }}>New category</button>
           </div>
 
           {categoryForm && (
-            <form className="admin-form" onSubmit={saveCategory}>
+            <form id="admin-category-form" className="admin-form" onSubmit={saveCategory}>
               <h3>{categoryForm.id ? `Edit category #${categoryForm.id}` : 'New category'}</h3>
               <div className="admin-form-grid">
                 <label>Name<input required value={categoryForm.name} onChange={(event) => setCategoryForm({ ...categoryForm, name: event.target.value })} /></label>
@@ -1540,7 +1540,7 @@ export default function Admin({ token, onClose }) {
                     <td>{category.sort_order}</td>
                     <td>{category.is_active ? 'Yes' : 'No'}</td>
                     <td className="admin-actions">
-                      <button className="act" type="button" onClick={() => setCategoryForm({ id: category.id, name: category.name, slug: category.slug, sort_order: category.sort_order, is_active: category.is_active })}>Edit</button>
+                      <button className="act" type="button" onClick={() => { setCategoryForm({ id: category.id, name: category.name, slug: category.slug, sort_order: category.sort_order, is_active: category.is_active }); scrollFormIntoView('admin-category-form') }}>Edit</button>
                       <button className="act danger" type="button" onClick={() => removeCategory(category)}>Delete</button>
                     </td>
                   </tr>
