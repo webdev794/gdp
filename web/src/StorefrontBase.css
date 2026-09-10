@@ -135,6 +135,7 @@ footer span:first-child{color:var(--ink);font:800 16px 'Okra',sans-serif;letter-
 .page-content li{margin:4px 0}
 .page-content a{color:var(--green);text-decoration:underline}
 .page-content code{background:#eef1ec;padding:1px 5px;border-radius:4px;font-size:13px}
+.page-content em,.page-content i{font-synthesis:style}
 .page-content hr{border:0;border-top:1px solid var(--line);margin:20px 0}
 
 /* structured page sections — full-width layout */

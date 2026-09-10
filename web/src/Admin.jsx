@@ -171,6 +171,20 @@ const EMPTY_TILE = { title: '', image_url: '', category_slug: '', link_url: '', 
 const EMPTY_PAGE = { title: '', slug: '', banner_image: '', content: '', sections: [], footer_group: 'useful_links', show_in_footer: true, is_published: true, sort_order: 0 }
 const sectionLabel = (type) => (SECTION_TYPES.find(([value]) => value === type) ?? [type, type])[1]
 
+// Reference rows for the "Formatting guide" tab. Each `code` is fed through the
+// real renderMarkdown() so the preview always matches the storefront.
+const MD_GUIDE = [
+  ['Headings', '# Biggest heading\n## Section heading\n### Sub-heading', 'Use # to #### — one # is the biggest.'],
+  ['Bold', 'Prices are **final** at checkout.', 'Tip: a paragraph that is nothing but a bold phrase becomes a lead-in heading on the page.'],
+  ['Italic', 'Delivery is *usually* under 15 minutes.', ''],
+  ['Inline code', 'Enter the code `SAVE20` at checkout.', ''],
+  ['Link', 'Read our [returns policy](https://example.com/returns).', 'The address must start with https://, / or mailto: — anything else shows as plain text.'],
+  ['Bullet list', '- Fresh produce\n- Dairy & eggs\n- Pantry staples', 'Start each line with - or *.'],
+  ['Numbered list', '1. Add items to your cart\n2. Check out\n3. Track your rider', ''],
+  ['Divider', 'Above the line.\n\n---\n\nBelow the line.', 'Three or more dashes on their own line.'],
+  ['Paragraphs', 'First paragraph.\n\nSecond paragraph — leave a blank line between them.', ''],
+]
+
 const dollars = (cents) => ((cents ?? 0) / 100).toFixed(2)
 const toCents = (value) => Math.max(0, Math.round(Number(value || 0) * 100))
 
@@ -1108,7 +1122,7 @@ export default function Admin({ token, onClose }) {
             </button>
           ))}
 
-          {(() => { const inGroup = tab === 'pages' || tab === 'homepage' || tab === 'footer'; const open = pagesExpanded || inGroup; return <>
+          {(() => { const inGroup = tab === 'pages' || tab === 'homepage' || tab === 'footer' || tab === 'formatting'; const open = pagesExpanded || inGroup; return <>
           <button type="button" className={`nav-group-toggle${inGroup ? ' active' : ''}`} aria-expanded={open} onClick={() => setPagesExpanded((v) => !v)}>
             <span className="nav-ico" aria-hidden>{'\u{1F4C4}'}</span>
             <span className="nav-label">Pages</span>
@@ -1135,6 +1149,7 @@ export default function Admin({ token, onClose }) {
                   </div>
                 )}
               </> })()}
+              <button type="button" className={tab === 'formatting' ? 'active' : ''} onClick={() => goTab('formatting')}>Formatting guide</button>
             </div>
           )}
           </> })()}
@@ -2110,6 +2125,26 @@ export default function Admin({ token, onClose }) {
               <div className="admin-form-actions"><button className="act" type="submit">Save footer</button></div>
             </form>
           )}
+        </section>
+      )}
+
+      {tab === 'formatting' && (
+        <section className="admin-panel">
+          <h3 className="admin-subhead">Formatting guide</h3>
+          <p className="muted">Page &amp; blog <strong>body text</strong> is written in Markdown. Type the code on the left; the storefront renders what you see on the right. Anything not listed here shows as plain text.</p>
+          <table className="admin-table admin-md-guide">
+            <thead><tr><th>Element</th><th>What you type</th><th>What you get</th></tr></thead>
+            <tbody>
+              {MD_GUIDE.map(([label, code, note]) => (
+                <tr key={label}>
+                  <td className="admin-md-guide-name">{label}</td>
+                  <td><pre>{code}</pre>{note && <span className="admin-note">{note}</span>}</td>
+                  <td><div className="admin-page-preview page-content" dangerouslySetInnerHTML={{ __html: renderMarkdown(code) }} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="muted">For a richer layout — hero image, media + text, FAQ, stats, steps — add <strong>Sections</strong> in the page editor instead of writing them in the body.</p>
         </section>
       )}
 
