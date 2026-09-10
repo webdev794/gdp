@@ -17,7 +17,8 @@ cd "$SRC/backend"
 cp -a ./ "$DEST/"
 rm -rf "$DEST/.git" "$DEST/node_modules" "$DEST/tests" "$DEST/phpunit.xml" \
        "$DEST/.phpunit.result.cache" "$DEST/.phpunit.cache" "$DEST/.env" "$DEST/.env.example" \
-       "$DEST/public" "$DEST/database/database.sqlite"
+       "$DEST/public" "$DEST/database/database.sqlite" \
+       "$DEST/web_deploy"  # local deploy staging — never ship it inside the bundle
 rm -f  "$DEST/storage/logs/"*.log
 rm -rf "$DEST/storage/framework/cache/data/"* \
        "$DEST/storage/framework/sessions/"* \
