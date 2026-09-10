@@ -64,6 +64,7 @@ class RiderAssignment
         $riders = User::query()
             ->where('is_rider', true)
             ->where('rider_is_active', true)
+            ->where('rider_available', true)
             ->when($exclude, fn ($query) => $query->whereNotIn('users.id', $exclude))
             ->whereHas('stores', fn ($query) => $query->whereKey($store->id))
             ->withCount(['deliveries as active_deliveries' => fn ($query) => $query

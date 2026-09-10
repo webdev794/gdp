@@ -53,6 +53,28 @@ class User extends Authenticatable
         return $this->hasMany(RiderReview::class, 'rider_id');
     }
 
+    /** This rider's work sessions (check-in .. check-out). */
+    public function riderShifts(): HasMany
+    {
+        return $this->hasMany(RiderShift::class);
+    }
+
+    /** The rider's still-open shift (with its breaks), or null when clocked out. */
+    public function currentShift(): ?RiderShift
+    {
+        return $this->riderShifts()
+            ->whereNull('clock_out_at')
+            ->with('breaks')
+            ->latest('clock_in_at')
+            ->first();
+    }
+
+    /** True when the rider is clocked in and currently on an unfinished break. */
+    public function onBreak(): bool
+    {
+        return (bool) $this->currentShift()?->breaks->firstWhere('ended_at', null);
+    }
+
     /** Refresh the denormalised rider rating from the reviews. */
     public function recomputeRiderRating(): void
     {
@@ -109,6 +131,8 @@ class User extends Authenticatable
             'rider_rating_count' => 'integer',
             'rider_declined_count' => 'integer',
             'rider_missed_count' => 'integer',
+            'rider_available' => 'boolean',
+            'rider_last_seen_at' => 'datetime',
             'rider_base_lat' => 'float',
             'rider_base_lng' => 'float',
             'rider_last_lat' => 'float',

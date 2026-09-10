@@ -10,6 +10,13 @@
 
 .rider-error{margin:12px 18px 0;padding:10px 13px;background:#f6e3e0;color:#a23b28;font-size:12px;border-radius:8px}
 
+.rider-shiftbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:9px 18px;background:#eef2ea;border-bottom:1px solid #dbe3d6}
+.rider-shiftbar-label{font-size:12px;font-weight:700;color:#3a4a42}
+.rider-shiftbar-actions{display:flex;gap:6px;flex-wrap:wrap}
+.rider-shiftbar .rider-link{border-color:#c3cdbb;color:#3a4a42}
+.rider-shiftbar .rider-link:hover{background:#e2e8dd}
+.rider-shiftbar .rider-btn{padding:7px 14px}
+
 .rider-stats{display:flex;flex-wrap:wrap;gap:10px;padding:16px 18px 0;max-width:640px}
 .rider-stat{flex:1 1 120px;background:#fff;border:1px solid #cdd5c8;border-radius:12px;padding:12px 13px;box-shadow:0 3px 12px rgba(24,33,28,.06)}
 .rider-stat-n{display:block;font-size:20px;font-weight:800;letter-spacing:-.02em;color:#1b2417}

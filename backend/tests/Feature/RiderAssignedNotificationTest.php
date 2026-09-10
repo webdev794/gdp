@@ -62,7 +62,7 @@ class RiderAssignedNotificationTest extends TestCase
             'delivery_radius_km' => 10, 'is_active' => true,
         ]);
         $rider = User::factory()->create([
-            'is_rider' => true, 'rider_is_active' => true,
+            'is_rider' => true, 'rider_is_active' => true, 'rider_available' => true,
             'rider_base_lat' => 40.7130, 'rider_base_lng' => -74.0058,
         ]);
         $rider->stores()->attach($store->id);

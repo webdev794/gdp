@@ -115,6 +115,29 @@ const riderFormFrom = (rider) => ({
   rider_base_lng: rider.rider_base_lng ?? '',
   store_ids: (rider.stores ?? []).map((s) => s.id),
 })
+
+const RIDER_STATUS = {
+  clocked_in: { label: '🟢 On shift', color: '#2f6d34' },
+  on_break: { label: '☕ Break', color: '#8a6d2f' },
+  paused: { label: '⏸ Paused', color: '#a23b28' },
+  off: { label: '⚪ Off the clock', color: '#7c857a' },
+  off_roster: { label: '— off roster', color: '#7c857a' },
+}
+const fmtWorked = (m) => { const n = Math.max(0, Math.round(m || 0)); return n >= 60 ? `${Math.floor(n / 60)}h ${n % 60}m` : `${n}m` }
+
+function riderStatusChip(rider) {
+  const a = rider.attendance || {}
+  const s = RIDER_STATUS[a.status] || RIDER_STATUS.off
+  return (
+    <>
+      <span style={{ color: s.color, fontWeight: 600 }}>{s.label}</span>
+      {rider.online
+        ? <span className="admin-note" style={{ color: '#2f6d34' }}>online now</span>
+        : rider.last_seen_at && <span className="admin-note" title={`last seen ${new Date(rider.last_seen_at).toLocaleString()}`}>seen {new Date(rider.last_seen_at).toLocaleDateString()}</span>}
+      {a.unavailable_reason && <span className="admin-note" title={a.unavailable_reason}>&ldquo;{a.unavailable_reason}&rdquo;</span>}
+    </>
+  )
+}
 const EMPTY_BANNER = { image_url: '', headline: '', category_slug: '', link_url: '', placement: 'strip', sort_order: 0, is_active: true }
 const EMPTY_TILE = { title: '', image_url: '', category_slug: '', link_url: '', sort_order: 0, is_active: true }
 const EMPTY_PAGE = { title: '', slug: '', banner_image: '', content: '', sections: [], footer_group: 'useful_links', show_in_footer: true, is_published: true, sort_order: 0 }
@@ -482,6 +505,16 @@ export default function Admin({ token, onClose }) {
       setRiderEmail('')
       loadRiders()
       setRiderForm(riderFormFrom(data.data))
+    } catch (error) { fail(error) }
+  }
+
+  async function patchRider(rider, body) {
+    setMessage('')
+    try {
+      const response = await fetch(`${API_URL}/admin/riders/${rider.id}`, { method: 'PATCH', headers: jsonHeaders(), body: JSON.stringify(body) })
+      const data = await readJson(response)
+      if (!response.ok) throw new Error(data.message ?? 'Could not update the rider.')
+      setRiders((cur) => cur.map((r) => (r.id === rider.id ? data.data : r)))
     } catch (error) { fail(error) }
   }
 
@@ -1531,12 +1564,13 @@ export default function Admin({ token, onClose }) {
 
           {listBusy.riders && riders.length === 0 ? <p className="admin-empty">Loading riders…</p> : riders.length === 0 ? <p className="admin-empty">No riders yet. Add one by email above.</p> : (
             <table className="admin-table">
-              <thead><tr><th>Name</th><th>Phone</th><th>Stores</th><th>Location</th><th>Rating</th><th>Active jobs</th><th>On shift</th><th></th></tr></thead>
+              <thead><tr><th>Name</th><th>Phone</th><th>Status</th><th>Stores</th><th>Location</th><th>Rating</th><th>Active jobs</th><th>On shift</th><th></th></tr></thead>
               <tbody>
                 {pageSlice(riders, ridersPage).map((rider) => (
                   <tr key={rider.id}>
                     <td>{rider.name}<span className="admin-note">{rider.email}</span></td>
                     <td>{rider.phone || <span className="muted">—</span>}</td>
+                    <td>{riderStatusChip(rider)}</td>
                     <td>{(rider.stores ?? []).length
                       ? (rider.stores).map((s) => s.name).join(', ')
                       : <span className="muted">none — can&rsquo;t be auto-assigned</span>}</td>
@@ -1548,6 +1582,9 @@ export default function Admin({ token, onClose }) {
                     <td>{rider.rider_is_active ? 'Yes' : 'No'}</td>
                     <td className="admin-actions">
                       <button className="act" type="button" onClick={() => setRiderForm(riderFormFrom(rider))}>Edit</button>
+                      {rider.attendance?.available
+                        ? <button className="act" type="button" onClick={() => { const why = window.prompt('Reason for taking this rider offline (optional):', ''); if (why !== null) patchRider(rider, { rider_available: false, rider_unavailable_reason: why || null }) }}>Set offline</button>
+                        : rider.attendance?.clocked_in && <button className="act" type="button" onClick={() => patchRider(rider, { rider_available: true })}>Bring online</button>}
                       <button className="act danger" type="button" onClick={() => removeRider(rider)}>Remove</button>
                     </td>
                   </tr>
@@ -2281,6 +2318,28 @@ export default function Admin({ token, onClose }) {
                   <span><strong>{riderDetail.rider?.active_deliveries ?? 0}</strong> active now</span>
                   <span><strong>{riderDetail.rider?.rating_avg != null ? `★ ${riderDetail.rider.rating_avg.toFixed(1)}` : '—'}</strong> {riderDetail.rider?.rating_count ?? 0} rating{riderDetail.rider?.rating_count === 1 ? '' : 's'}</span>
                 </div>
+
+                <h4>Attendance</h4>
+                <p className="muted">{riderStatusChip(riderDetail.rider ?? {})} · {fmtWorked(riderDetail.rider?.attendance?.week_worked_minutes)} in the last 7 days</p>
+                {(riderDetail.attendance ?? []).length === 0
+                  ? <p className="muted">No shifts recorded in the last 14 days.</p>
+                  : (
+                    <table className="admin-table">
+                      <thead><tr><th>Date</th><th>First in</th><th>Last out</th><th>Worked</th><th>Breaks</th></tr></thead>
+                      <tbody>
+                        {(riderDetail.attendance ?? []).map((d) => (
+                          <tr key={d.date}>
+                            <td>{new Date(d.date).toLocaleDateString()}</td>
+                            <td>{d.first_in ? new Date(d.first_in).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                            <td>{d.last_out ? new Date(d.last_out).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : <span className="muted">open</span>}</td>
+                            <td>{fmtWorked(d.worked_minutes)}</td>
+                            <td>{d.break_minutes ? fmtWorked(d.break_minutes) : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+
                 <h4>Customer reviews ({riderDetail.reviews?.length ?? 0})</h4>
                 <p className="muted">Comments are for admins only — the rider never sees them.</p>
                 <ul className="admin-review-list">

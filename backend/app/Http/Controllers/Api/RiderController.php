@@ -10,6 +10,7 @@ use App\Notifications\DeliveryHandoverCode;
 use App\Notifications\RiderMessage;
 use App\Support\DeliveryOfferSweeper;
 use App\Support\RiderAssignment;
+use App\Support\RiderAttendance;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -30,7 +31,74 @@ class RiderController extends Controller
             report($e);
         }
 
-        return response()->json(['data' => $this->board($request->user())]);
+        return response()->json(['data' => $this->board($request->user())
+            + ['shift' => RiderAttendance::state($request->user())]]);
+    }
+
+    /**
+     * Attendance clock: check in, take / end a lunch break, check out. The live
+     * `rider_available` flag (which gates auto-assignment) is derived here.
+     */
+    public function shift(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'action' => ['required', Rule::in(['clock_in', 'clock_out', 'break_start', 'break_end'])],
+            'reason' => ['sometimes', 'nullable', 'string', 'max:80'],
+        ]);
+
+        $rider = $request->user();
+
+        $error = DB::transaction(function () use ($data, $rider) {
+            $shift = $rider->currentShift();
+            $openBreak = $shift?->breaks->firstWhere('ended_at', null);
+
+            switch ($data['action']) {
+                case 'clock_in':
+                    if ($shift) {
+                        return 'You are already clocked in.';
+                    }
+                    $rider->riderShifts()->create(['clock_in_at' => now(), 'source' => 'rider']);
+                    $rider->forceFill(['rider_available' => true, 'rider_unavailable_reason' => null])->save();
+                    break;
+
+                case 'clock_out':
+                    if (! $shift) {
+                        return 'You are not clocked in.';
+                    }
+                    $shift->breaks()->whereNull('ended_at')->update(['ended_at' => now()]);
+                    $shift->forceFill(['clock_out_at' => now()])->save();
+                    $rider->forceFill(['rider_available' => false, 'rider_unavailable_reason' => null])->save();
+                    break;
+
+                case 'break_start':
+                    if (! $shift) {
+                        return 'Clock in before taking a break.';
+                    }
+                    if ($openBreak) {
+                        return 'You are already on a break.';
+                    }
+                    $reason = ($data['reason'] ?? null) ?: 'Break';
+                    $shift->breaks()->create(['started_at' => now(), 'reason' => $reason]);
+                    $rider->forceFill(['rider_available' => false, 'rider_unavailable_reason' => $reason])->save();
+                    break;
+
+                case 'break_end':
+                    if (! $openBreak) {
+                        return 'You are not on a break.';
+                    }
+                    $openBreak->forceFill(['ended_at' => now()])->save();
+                    $rider->forceFill(['rider_available' => true, 'rider_unavailable_reason' => null])->save();
+                    break;
+            }
+
+            return null;
+        });
+
+        if ($error) {
+            return response()->json(['message' => $error], 422);
+        }
+
+        return response()->json(['data' => RiderAttendance::state($rider->fresh())]);
     }
 
     /**
@@ -125,6 +193,8 @@ class RiderController extends Controller
             'verified_rate' => $total ? round($verified / $total, 3) : null,
             'cod_collected_cents' => $codCents,
             'recent_ratings' => $recent,
+            'shift' => RiderAttendance::state($rider),
+            'attendance' => RiderAttendance::summary($rider, 14),
         ]]);
     }
 
@@ -205,7 +275,8 @@ class RiderController extends Controller
             return response()->json(['message' => 'This offer has moved to another rider.'], 409);
         }
 
-        return response()->json(['data' => $this->board($me)]);
+        return response()->json(['data' => $this->board($me)
+            + ['shift' => RiderAttendance::state($me->fresh())]]);
     }
 
     public function status(Request $request, Order $order): JsonResponse

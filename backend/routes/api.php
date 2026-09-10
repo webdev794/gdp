@@ -101,6 +101,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/customers/{user}', [AdminController::class, 'customer']);
     Route::patch('/customers/{user}', [AdminController::class, 'updateCustomer']);
     Route::get('/riders', [AdminRiderController::class, 'index']);
+    Route::get('/riders/attendance', [AdminRiderController::class, 'attendance']);
     Route::get('/riders/{user}', [AdminRiderController::class, 'show']);
     Route::post('/riders', [AdminRiderController::class, 'store']);
     Route::patch('/riders/{user}', [AdminRiderController::class, 'update']);
@@ -151,6 +152,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
 Route::middleware(['auth:sanctum', 'rider'])->prefix('rider')->group(function () {
     Route::get('/orders', [RiderController::class, 'orders']);
     Route::get('/stats', [RiderController::class, 'stats']);
+    Route::post('/shift', [RiderController::class, 'shift']);
     Route::post('/location', [RiderController::class, 'location']);
     Route::post('/orders/{order}/claim', [RiderController::class, 'claim']);
     Route::post('/orders/{order}/respond', [RiderController::class, 'respond']);

@@ -210,6 +210,71 @@ function AlertSettings({ open, onClose }) {
 }
 
 const fmtMMSS = (secs) => `${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`
+const fmtDur = (mins) => { const m = Math.max(0, Math.round(mins)); return m >= 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m}m` }
+const clockTime = (iso) => iso ? new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''
+
+/**
+ * Attendance clock in the rider's top bar: check in, take / end a lunch break,
+ * check out. Drives `rider_available`, so being off the clock or on a break
+ * means the system won't offer this rider a delivery.
+ */
+function ShiftBar({ shift, headers, onChange }) {
+  const [busy, setBusy] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (!shift?.on_break) return undefined
+    const tick = () => setNow(Date.now())
+    tick()
+    const t = setInterval(tick, 30000)
+    return () => clearInterval(t)
+  }, [shift?.on_break])
+
+  if (!shift || shift.status === 'off_roster') return null
+
+  async function act(action, reason) {
+    if (busy) return
+    if (action === 'clock_out' && !window.confirm('Clock out and stop receiving deliveries?')) return
+    setBusy(true)
+    try {
+      const res = await fetch(`${API_URL}/rider/shift`, {
+        method: 'POST', headers: headers(true), body: JSON.stringify({ action, reason }),
+      })
+      const body = await readJson(res)
+      if (res.ok) onChange(body.data)
+      else window.alert(body.message || 'That did not work.')
+    } catch { window.alert('Cannot reach the server.') }
+    finally { setBusy(false) }
+  }
+
+  const breakMins = shift.break_since ? (now - new Date(shift.break_since).getTime()) / 60000 : 0
+
+  let label
+  let actions
+  if (shift.status === 'on_break') {
+    label = <>☕ On break {fmtDur(breakMins)}{shift.break_reason ? ` — ${shift.break_reason}` : ''}</>
+    actions = <button type="button" className="rider-link" disabled={busy} onClick={() => act('break_end')}>End break</button>
+  } else if (shift.status === 'paused') {
+    label = <>⏸ Paused{shift.unavailable_reason ? ` — ${shift.unavailable_reason}` : ' by the store'}</>
+    actions = <button type="button" className="rider-link" disabled={busy} onClick={() => act('clock_out')}>Clock out</button>
+  } else if (shift.status === 'clocked_in') {
+    label = <>🟢 On since {clockTime(shift.clock_in_at)} · {fmtDur(shift.today_worked_minutes)} today</>
+    actions = <>
+      <button type="button" className="rider-link" disabled={busy} onClick={() => act('break_start', 'Lunch')}>Lunch break</button>
+      <button type="button" className="rider-link" disabled={busy} onClick={() => act('clock_out')}>Clock out</button>
+    </>
+  } else {
+    label = <>⚪ Off the clock{shift.week_worked_minutes ? ` · ${fmtDur(shift.week_worked_minutes)} this week` : ''}</>
+    actions = <button type="button" className="rider-btn" disabled={busy} onClick={() => act('clock_in')}>Clock in</button>
+  }
+
+  return (
+    <div className="rider-shiftbar">
+      <span className="rider-shiftbar-label">{label}</span>
+      <span className="rider-shiftbar-actions">{actions}</span>
+    </div>
+  )
+}
 
 /**
  * Blocking prompt for pending delivery offers: a live countdown plus Accept /
@@ -397,6 +462,8 @@ export default function RiderConsole({ token, onSignOut }) {
           <button type="button" className="rider-link" onClick={onSignOut}>Sign out</button>
         </div>
       </header>
+
+      <ShiftBar shift={data.shift} headers={headers} onChange={(s) => setData((d) => ({ ...d, shift: s }))} />
 
       {pendingOffers.length > 0 && (
         <OfferPrompt offers={pendingOffers} headers={headers} onResolved={applyBoard} />

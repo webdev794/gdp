@@ -30,6 +30,7 @@ class RiderAutoAssignTest extends TestCase
             'name' => $name,
             'is_rider' => true,
             'rider_is_active' => true,
+            'rider_available' => true,
             'rider_base_lat' => $base['lat'] ?? null,
             'rider_base_lng' => $base['lng'] ?? null,
         ]);
@@ -112,6 +113,16 @@ class RiderAutoAssignTest extends TestCase
         $on = $this->rider('On shift', $store, ['lat' => 40.80, 'lng' => -73.95]);
 
         $this->assertSame($on->id, RiderAssignment::assign($this->order($store))?->id);
+    }
+
+    public function test_unavailable_rider_is_skipped(): void
+    {
+        $store = $this->store();
+        $paused = $this->rider('Paused', $store, ['lat' => 40.7128, 'lng' => -74.0060]);
+        $paused->forceFill(['rider_available' => false])->save();
+        $ready = $this->rider('Ready', $store, ['lat' => 40.80, 'lng' => -73.95]);
+
+        $this->assertSame($ready->id, RiderAssignment::assign($this->order($store))?->id);
     }
 
     public function test_live_location_wins_over_base_when_fresh(): void

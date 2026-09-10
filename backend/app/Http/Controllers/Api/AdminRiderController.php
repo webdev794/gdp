@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\Geo;
+use App\Support\RiderAttendance;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 class AdminRiderController extends Controller
@@ -56,7 +58,39 @@ class AdminRiderController extends Controller
         return response()->json(['data' => [
             'rider' => $this->row($user) + ['completed_deliveries' => (int) ($user->completed_deliveries ?? 0)],
             'reviews' => $reviews,
+            'attendance' => RiderAttendance::summary($user, 14),
         ]]);
+    }
+
+    /**
+     * Roster timesheet: one block per rider, each with a day-by-day breakdown of
+     * hours worked over the requested window (default: the last 7 days).
+     */
+    public function attendance(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'from' => ['sometimes', 'date'],
+            'to' => ['sometimes', 'date'],
+        ]);
+
+        $to = isset($data['to']) ? Carbon::parse($data['to'])->endOfDay() : now();
+        $from = isset($data['from']) ? Carbon::parse($data['from'])->startOfDay() : $to->copy()->subDays(6)->startOfDay();
+        $days = max(1, (int) $from->diffInDays($to) + 1);
+
+        $riders = User::query()->where('is_rider', true)->orderBy('name')->get();
+
+        return response()->json([
+            'data' => $riders->map(function (User $rider) use ($days) {
+                $rows = RiderAttendance::summary($rider, $days);
+
+                return [
+                    'rider' => ['id' => $rider->id, 'name' => $rider->name],
+                    'total_worked_minutes' => (int) array_sum(array_column($rows, 'worked_minutes')),
+                    'days' => $rows,
+                ];
+            })->values(),
+            'meta' => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
+        ]);
     }
 
     /**
@@ -90,6 +124,10 @@ class AdminRiderController extends Controller
         $data = $request->validate([
             'phone' => ['sometimes', 'nullable', 'string', 'max:32'],
             'rider_is_active' => ['sometimes', 'boolean'],
+            // Admin force-offline / bring-online. Does NOT touch the shift ledger —
+            // it's an override on top of whatever the rider has clocked.
+            'rider_available' => ['sometimes', 'boolean'],
+            'rider_unavailable_reason' => ['sometimes', 'nullable', 'string', 'max:200'],
             'rider_base_address' => ['sometimes', 'nullable', 'string', 'max:255'],
             'rider_base_lat' => ['sometimes', 'nullable', 'numeric', 'between:-90,90'],
             'rider_base_lng' => ['sometimes', 'nullable', 'numeric', 'between:-180,180'],
@@ -98,8 +136,15 @@ class AdminRiderController extends Controller
         ]);
 
         $attributes = collect($data)->only([
-            'phone', 'rider_is_active', 'rider_base_address', 'rider_base_lat', 'rider_base_lng',
+            'phone', 'rider_is_active', 'rider_available', 'rider_unavailable_reason',
+            'rider_base_address', 'rider_base_lat', 'rider_base_lng',
         ])->all();
+
+        // Bringing a rider back online clears any stale "why" note.
+        if (($attributes['rider_available'] ?? null) === true
+            && ! array_key_exists('rider_unavailable_reason', $attributes)) {
+            $attributes['rider_unavailable_reason'] = null;
+        }
 
         // Geocode the base address when coordinates weren't supplied with it.
         if (array_key_exists('rider_base_address', $attributes)
@@ -145,12 +190,18 @@ class AdminRiderController extends Controller
     {
         $location = $rider->riderLocation();
 
+        $shift = RiderAttendance::state($rider);
+
         return [
             'id' => $rider->id,
             'name' => $rider->name,
             'email' => $rider->email,
             'phone' => $rider->phone,
             'rider_is_active' => (bool) $rider->rider_is_active,
+            'attendance' => $shift,
+            'online' => $rider->rider_last_seen_at !== null
+                && $rider->rider_last_seen_at->gt(now()->subMinutes(2)),
+            'last_seen_at' => $rider->rider_last_seen_at,
             'rider_base_address' => $rider->rider_base_address,
             'rider_base_lat' => $rider->rider_base_lat,
             'rider_base_lng' => $rider->rider_base_lng,

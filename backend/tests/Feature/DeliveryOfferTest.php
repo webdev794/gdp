@@ -27,7 +27,7 @@ class DeliveryOfferTest extends TestCase
     private function rider(string $name, Store $store, array $base): User
     {
         $rider = User::factory()->create([
-            'name' => $name, 'is_rider' => true, 'rider_is_active' => true,
+            'name' => $name, 'is_rider' => true, 'rider_is_active' => true, 'rider_available' => true,
             'rider_base_lat' => $base['lat'], 'rider_base_lng' => $base['lng'],
         ]);
         $rider->stores()->attach($store->id);
