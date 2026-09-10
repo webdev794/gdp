@@ -369,6 +369,7 @@ export default function Admin({ token, onClose }) {
   const [thread, setThread] = useState(null)
   const [threadReply, setThreadReply] = useState('')
   const [refundForm, setRefundForm] = useState({ items: [], amount: '', reason: '' })
+  const [giftIssued, setGiftIssued] = useState(null)
   const [supportBadge, setSupportBadge] = useState(0)
   const [supportToasts, setSupportToasts] = useState([])
   const [orderToasts, setOrderToasts] = useState([])
@@ -1004,6 +1005,29 @@ export default function Admin({ token, onClose }) {
       openThread(thread.id)
       loadMetrics()
       setMessage('Refund issued.')
+    } catch (error) { fail(error) } finally { setBusyId(null) }
+  }
+
+  // Store credit for a paid order (e.g. missing items on a cash delivery) — the
+  // code + password are posted into the thread by the server.
+  async function issueGiftCard() {
+    if (!thread?.order) return
+    const body = { support_thread_id: thread.id, reason: refundForm.reason.trim() || undefined }
+    if (refundForm.items.length) body.item_ids = refundForm.items
+    else if (refundForm.amount) body.amount_cents = Math.round(Number(refundForm.amount) * 100)
+    const label = refundForm.items.length
+      ? money(thread.order.items.filter((i) => refundForm.items.includes(i.id)).reduce((s, i) => s + i.line_total_cents, 0))
+      : (refundForm.amount ? `$${refundForm.amount}` : '')
+    if (!window.confirm(`Issue a ${label || 'store-credit'} gift card to the customer?`)) return
+    setBusyId(thread.id)
+    try {
+      const response = await fetch(`${API_URL}/admin/orders/${thread.order.id}/gift-card`, { method: 'POST', headers: jsonHeaders(), body: JSON.stringify(body) })
+      const data = await readJson(response)
+      if (!response.ok) throw new Error(data.message ?? 'Could not issue the gift card.')
+      setGiftIssued(data.data)
+      setRefundForm({ items: [], amount: '', reason: '' })
+      openThread(thread.id)
+      setMessage(`Gift card ${data.data.code} for ${money(data.data.amount_cents)} issued.`)
     } catch (error) { fail(error) } finally { setBusyId(null) }
   }
 
@@ -2475,11 +2499,12 @@ export default function Admin({ token, onClose }) {
               const bare = refundForm.items.length === 0 && !String(refundForm.amount).trim()
               const amountCents = refundForm.items.length ? selectedSum : Math.round(Number(refundForm.amount || 0) * 100)
               const amountOk = bare ? remaining > 0 : (amountCents > 0 && amountCents <= remaining)
+              const giftLast = giftIssued && giftIssued.order_id === o.id ? giftIssued : null
               return (
                 <div className="admin-form" style={{ marginTop: 16 }}>
                   <h4>Refund</h4>
                   <p className="muted">Paid {money(o.total_cents)} · refunded {money(o.refunded_amount_cents ?? 0)} · remaining {money(remaining)}</p>
-                  {canRefund ? (
+                  {stateOk && remaining > 0 ? (
                     <>
                       {(o.items ?? []).map((item) => (
                         <label key={item.id} className="admin-check">
@@ -2493,7 +2518,10 @@ export default function Admin({ token, onClose }) {
                       </div>
                       {refundForm.items.length > 0 && <p className="muted">Selected items: {money(selectedSum)}{selectedSum > remaining ? ' — more than the remaining balance' : ' (tax and fees are refunded separately)'}.</p>}
                       <div className="admin-form-actions">
-                        <button className="act" type="button" disabled={busyId === thread.id || !amountOk} onClick={issueRefund}>Issue refund</button>
+                        {canRefund
+                          ? <button className="act" type="button" disabled={busyId === thread.id || !amountOk} onClick={issueRefund}>Refund via Stripe</button>
+                          : <span className="muted" title={blockReason}>No card to refund — issue store credit instead.</span>}
+                        <button className="act" type="button" disabled={busyId === thread.id || !amountOk} onClick={issueGiftCard}>Issue store credit (gift card)</button>
                         {o.stripe_dashboard_url && <a className="act ghost" href={o.stripe_dashboard_url} target="_blank" rel="noreferrer">View in Stripe ↗</a>}
                       </div>
                     </>
@@ -2502,6 +2530,9 @@ export default function Admin({ token, onClose }) {
                       <p className="muted">{blockReason}</p>
                       {o.stripe_dashboard_url && <div className="admin-form-actions"><a className="act ghost" href={o.stripe_dashboard_url} target="_blank" rel="noreferrer">View in Stripe ↗</a></div>}
                     </>
+                  )}
+                  {giftLast && (
+                    <p className="admin-gift-issued">Gift card <b>{giftLast.code}</b> · password <b>{giftLast.pin}</b> · {money(giftLast.amount_cents)} — sent to the customer in this chat.</p>
                   )}
                 </div>
               )

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Cart;
+use App\Models\GiftCard;
 use App\Models\Order;
 use App\Models\Setting;
 use App\Models\Store;
@@ -13,6 +14,7 @@ use App\Support\Purchasable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -33,9 +35,28 @@ class CheckoutController extends Controller
             'delivery_instructions' => ['sometimes', 'nullable', 'string', 'max:500'],
             'payment_method' => ['sometimes', Rule::in(['card', 'cod'])],
             'phone' => ['sometimes', 'nullable', 'string', 'max:32'],
+            'gift_card_code' => ['sometimes', 'nullable', 'string', 'max:32'],
+            'gift_card_pin' => ['sometimes', 'nullable', 'string', 'max:64'],
         ]);
 
         $paymentMethod = $validated['payment_method'] ?? 'card';
+
+        // Resolve a store-credit gift card up front (must belong to this customer,
+        // right password, still has a balance); it's locked & applied in the tx.
+        $giftCard = null;
+        if (! empty($validated['gift_card_code']) && ! empty($validated['gift_card_pin'])) {
+            $giftCard = GiftCard::where('code', strtoupper(trim($validated['gift_card_code'])))
+                ->where('user_id', $request->user()->id)
+                ->first();
+
+            if (! $giftCard
+                || ! Hash::check($validated['gift_card_pin'], $giftCard->pin_hash)
+                || ! $giftCard->isSpendable()) {
+                throw ValidationException::withMessages([
+                    'gift_card_code' => ['That gift card and password don\'t match, or it has no balance left.'],
+                ]);
+            }
+        }
 
         // A phone number is optional at sign-up but required to place an order —
         // the delivery rider needs a way to reach the customer. Accept one in the
@@ -58,7 +79,7 @@ class CheckoutController extends Controller
             ]);
         }
 
-        $order = DB::transaction(function () use ($request, $validated, $paymentMethod, $phone): Order {
+        $order = DB::transaction(function () use ($request, $validated, $paymentMethod, $phone, $giftCard): Order {
             $address = isset($validated['address_id'])
                 ? $request->user()->addresses()->findOrFail($validated['address_id'])->toArray()
                 : $validated['address'];
@@ -178,6 +199,31 @@ class CheckoutController extends Controller
             ]);
             $order->items()->createMany($orderItems);
             $cart->items()->delete();
+
+            // Apply the gift card: lock the row, spend up to the order total, and
+            // keep any remainder on the card for a later order.
+            if ($giftCard) {
+                $card = GiftCard::whereKey($giftCard->id)->lockForUpdate()->first();
+                if ($card && $card->isSpendable()) {
+                    $applied = min((int) $card->balance_cents, (int) $order->total_cents);
+                    if ($applied > 0) {
+                        $card->redemptions()->create(['order_id' => $order->id, 'amount_cents' => $applied]);
+                        $card->decrement('balance_cents', $applied);
+                        if ($card->fresh()->balance_cents <= 0) {
+                            $card->update(['is_active' => false]);
+                        }
+                        $order->update([
+                            'gift_card_discount_cents' => $applied,
+                            'total_cents' => (int) $order->total_cents - $applied,
+                        ]);
+                    }
+                }
+            }
+
+            // Nothing left to pay (gift card covered it) — settle immediately.
+            if ((int) $order->total_cents <= 0) {
+                $order->update(['status' => 'confirmed', 'payment_status' => 'paid']);
+            }
 
             return $order->load('items');
         });

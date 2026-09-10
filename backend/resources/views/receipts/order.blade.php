@@ -188,6 +188,12 @@
             <td>Tax</td>
             <td class="num">{{ $money($order->tax_cents) }}</td>
         </tr>
+        @if(($order->gift_card_discount_cents ?? 0) > 0)
+        <tr>
+            <td>Gift card</td>
+            <td class="num">&minus;{{ $money($order->gift_card_discount_cents) }}</td>
+        </tr>
+        @endif
         <tr class="grand">
             <td>{{ $order->payment_method === 'cod' && $order->payment_status !== 'paid' ? 'Total due' : 'Total paid' }}</td>
             <td class="num">{{ $money($order->total_cents) }}</td>

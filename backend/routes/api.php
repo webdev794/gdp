@@ -72,6 +72,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update']);
     Route::patch('/profile/password', [ProfileController::class, 'password']);
     Route::post('/checkout', [CheckoutController::class, 'store']);
+    Route::post('/gift-cards/check', [\App\Http\Controllers\Api\GiftCardController::class, 'check']);
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{order}', [OrderController::class, 'show']);
     Route::get('/orders/{order}/receipt', [OrderController::class, 'receipt']);
@@ -111,6 +112,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/orders/{order}', [AdminOrderController::class, 'show']);
     Route::patch('/orders/{order}', [AdminOrderController::class, 'update']);
     Route::post('/orders/{order}/refund', [PaymentController::class, 'refund']);
+    Route::post('/orders/{order}/gift-card', [\App\Http\Controllers\Api\AdminGiftCardController::class, 'issue']);
 
     Route::get('/support/threads', [AdminSupportController::class, 'index']);
     Route::get('/support/threads/{thread}', [AdminSupportController::class, 'show']);

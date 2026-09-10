@@ -32,7 +32,7 @@ class Order extends Model
     protected $fillable = [
         'user_id', 'store_id', 'status', 'courier_name', 'payment_status', 'payment_method',
         'subtotal_cents', 'tax_cents', 'delivery_fee_cents', 'handling_fee_cents',
-        'small_cart_fee_cents', 'total_cents', 'delivery_address', 'delivery_instructions',
+        'small_cart_fee_cents', 'gift_card_discount_cents', 'total_cents', 'delivery_address', 'delivery_instructions',
         'stripe_payment_intent_id', 'stripe_refund_id', 'refunded_amount_cents',
         'delivery_partner_id',
         'rider_offer_expires_at', 'rider_accepted_at', 'rider_offer_declined_ids', 'rider_offer_decline_count',
@@ -54,6 +54,7 @@ class Order extends Model
             'delivery_fee_cents' => 'integer',
             'handling_fee_cents' => 'integer',
             'small_cart_fee_cents' => 'integer',
+            'gift_card_discount_cents' => 'integer',
             'total_cents' => 'integer',
             'refunded_amount_cents' => 'integer',
             'delivery_address' => 'array',
@@ -112,7 +113,14 @@ class Order extends Model
     public function deliveryPartner(): BelongsTo { return $this->belongsTo(User::class, 'delivery_partner_id'); }
     public function items(): HasMany { return $this->hasMany(OrderItem::class); }
     public function refunds(): HasMany { return $this->hasMany(OrderRefund::class); }
+    public function giftCards(): HasMany { return $this->hasMany(GiftCard::class); }
     public function riderReview(): \Illuminate\Database\Eloquent\Relations\HasOne { return $this->hasOne(RiderReview::class); }
+
+    /** Store credit already issued against this order as a gift-card refund. */
+    public function giftCardRefundedCents(): int
+    {
+        return (int) $this->giftCards()->sum('initial_cents');
+    }
 
     public function refundableRemainingCents(): int
     {
