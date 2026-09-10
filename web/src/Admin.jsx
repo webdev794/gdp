@@ -1291,21 +1291,34 @@ export default function Admin({ token, onClose }) {
                       )}
                     </td>
                     <td className="admin-actions">
-                      {order.payment_method === 'cod' && order.payment_status !== 'paid' && order.status !== 'cancelled' && (
-                        <button type="button" disabled={busyId === order.id} className="act" onClick={() => patchOrder(order, { cash_collected: true })}>Mark cash collected</button>
-                      )}
-                      {(order.payment_status === 'refund_pending' || (order.payment_status === 'paid' && order.status === 'cancelled')) && (
-                        order.stripe_payment_intent_id
-                          ? <button type="button" disabled={busyId === order.id} className="act" onClick={() => refundOrder(order)}>Refund via Stripe</button>
-                          : <button type="button" disabled={busyId === order.id} className="act" onClick={() => patchOrder(order, { refunded: true })}>Mark refunded</button>
-                      )}
-                      {order.payment_status === 'refunded' && order.stripe_dashboard_url && (
-                        <a className="act ghost" href={order.stripe_dashboard_url} target="_blank" rel="noreferrer">View in Stripe ↗</a>
-                      )}
-                      {(NEXT_ACTIONS[order.status] ?? []).length === 0 && order.payment_status === 'paid' && <span className="muted">—</span>}
-                      {(NEXT_ACTIONS[order.status] ?? []).map(([status, label]) => (
-                        <button key={status} type="button" disabled={busyId === order.id} className={status === 'cancelled' ? 'act danger' : 'act'} onClick={() => patchOrder(order, { status })}>{label}</button>
-                      ))}
+                      {(() => {
+                        const codCollect = order.payment_method === 'cod' && order.payment_status !== 'paid' && order.status !== 'cancelled'
+                        const needsRefund = order.payment_status === 'refund_pending' || (order.payment_status === 'paid' && order.status === 'cancelled')
+                        const refundedLink = order.payment_status === 'refunded' && order.stripe_dashboard_url
+                        const steps = NEXT_ACTIONS[order.status] ?? []
+                        if (!codCollect && !needsRefund && !refundedLink && steps.length === 0) {
+                          const unpaid = order.status === 'pending_payment' || (order.payment_status !== 'paid' && order.status !== 'completed' && order.status !== 'cancelled')
+                          return <span className="muted" title={unpaid ? "Nothing to do until the customer's payment goes through" : 'This order is finished'}>{unpaid ? 'awaiting payment' : '—'}</span>
+                        }
+                        return (
+                          <>
+                            {codCollect && (
+                              <button type="button" disabled={busyId === order.id} className="act" onClick={() => patchOrder(order, { cash_collected: true })}>Mark cash collected</button>
+                            )}
+                            {needsRefund && (
+                              order.stripe_payment_intent_id
+                                ? <button type="button" disabled={busyId === order.id} className="act" onClick={() => refundOrder(order)}>Refund via Stripe</button>
+                                : <button type="button" disabled={busyId === order.id} className="act" onClick={() => patchOrder(order, { refunded: true })}>Mark refunded</button>
+                            )}
+                            {refundedLink && (
+                              <a className="act ghost" href={order.stripe_dashboard_url} target="_blank" rel="noreferrer">View in Stripe ↗</a>
+                            )}
+                            {steps.map(([status, label]) => (
+                              <button key={status} type="button" disabled={busyId === order.id} className={status === 'cancelled' ? 'act danger' : 'act'} onClick={() => patchOrder(order, { status })}>{label}</button>
+                            ))}
+                          </>
+                        )
+                      })()}
                     </td>
                   </tr>
                 ))}
