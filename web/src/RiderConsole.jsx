@@ -76,7 +76,8 @@ function DeliveryCard({ order, pool, headers, onDone, onChat }) {
         {!pool && preparing && <span className="rider-wait">Waiting for the store to pack it…</span>}
         {!pool && canStart && <button className="rider-btn" type="button" disabled={working} onClick={() => simpleAct('status', { status: 'out_for_delivery' })}>Picked up — start delivery</button>}
         {!pool && order.cod_due > 0 && (canStart || canDeliver) && <button className="rider-btn" type="button" disabled={working} onClick={() => simpleAct('cash-collected')}>Cash collected</button>}
-        {!pool && canDeliver && stage === null && <button className="rider-btn primary" type="button" onClick={() => setStage('code')}>Deliver</button>}
+        {!pool && canDeliver && order.cod_due > 0 && <span className="rider-wait">Collect the cash, then you can mark it delivered.</span>}
+        {!pool && canDeliver && stage === null && !(order.cod_due > 0) && <button className="rider-btn primary" type="button" onClick={() => setStage('code')}>Deliver</button>}
       </div>
 
       {stage === 'code' && (

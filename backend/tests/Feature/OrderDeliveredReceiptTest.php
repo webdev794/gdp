@@ -89,7 +89,7 @@ class OrderDeliveredReceiptTest extends TestCase
         Notification::assertSentToTimes($customer, OrderDelivered::class, 1);
     }
 
-    public function test_cash_on_delivery_waits_for_the_cash_before_emailing(): void
+    public function test_cash_on_delivery_needs_the_cash_before_delivery_then_emails(): void
     {
         Notification::fake();
 
@@ -100,12 +100,16 @@ class OrderDeliveredReceiptTest extends TestCase
         ]);
 
         Sanctum::actingAs($rider);
-        $this->postJson("/api/rider/orders/{$order->id}/deliver", ['override' => true, 'note' => 'x'])->assertOk();
 
-        // Delivered but not paid yet — nothing sent.
+        // Can't complete a cash order until the cash is collected.
+        $this->postJson("/api/rider/orders/{$order->id}/deliver", ['override' => true, 'note' => 'x'])->assertStatus(422);
         Notification::assertNotSentTo($customer, OrderDelivered::class);
 
         $this->postJson("/api/rider/orders/{$order->id}/cash-collected")->assertOk();
+        // Paid but not delivered yet — still nothing sent.
+        Notification::assertNotSentTo($customer, OrderDelivered::class);
+
+        $this->postJson("/api/rider/orders/{$order->id}/deliver", ['override' => true, 'note' => 'x'])->assertOk();
 
         Notification::assertSentTo($customer, OrderDelivered::class);
         $this->assertNotNull($order->fresh()->receipt_emailed_at);

@@ -78,6 +78,23 @@ class CashOnDeliveryTest extends TestCase
             ->assertJsonPath('data.payment_status', 'paid');
     }
 
+    public function test_rider_must_collect_the_cash_before_marking_a_cod_order_delivered(): void
+    {
+        $rider = User::factory()->create(['is_rider' => true, 'rider_is_active' => true, 'rider_available' => true]);
+        $order = $this->codOrder(['status' => 'out_for_delivery', 'delivery_partner_id' => $rider->id]);
+        Sanctum::actingAs($rider);
+
+        $this->postJson("/api/rider/orders/{$order->id}/deliver", ['override' => true, 'note' => 'left at door'])
+            ->assertStatus(422);
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'out_for_delivery']);
+
+        $this->postJson("/api/rider/orders/{$order->id}/cash-collected")->assertOk();
+
+        $this->postJson("/api/rider/orders/{$order->id}/deliver", ['override' => true, 'note' => 'left at door'])
+            ->assertOk();
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'completed', 'payment_status' => 'paid']);
+    }
+
     public function test_cash_collected_flag_is_ignored_for_a_card_order(): void
     {
         $order = Order::create([

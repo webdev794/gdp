@@ -349,6 +349,11 @@ class RiderController extends Controller
             return response()->json(['message' => "A {$order->status} order can't be marked delivered."], 422);
         }
 
+        // Cash-on-delivery: the cash must be collected before the delivery is completed.
+        if ($order->isCashOnDelivery() && $order->payment_status !== 'paid') {
+            return response()->json(['message' => 'Mark the cash collected first, then complete the delivery.'], 422);
+        }
+
         $data = $request->validate([
             'code' => ['required_without:override', 'nullable', 'string', 'max:8'],
             'override' => ['sometimes', 'boolean'],
