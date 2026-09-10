@@ -102,22 +102,32 @@ GROCERLY - update bundle (v7)
 This bundle contains updated CODE ONLY. It has no .env and no installer, so it
 will not touch your live configuration or data.
 
-WHAT'S NEW in v7
-  - Per-store inventory, rider auto-assignment, admin pagination
-  - Web + Expo rider console: chat, picked-up, delivery OTP / override
-  - Password sign-up + change / forgot-password (email code)
-  - Rider ratings & feedback (admin-only comments) + rider dashboard stats
-  - Support-chat rating by the customer
-  - Rider "new delivery" alert: email + selectable/uploadable alarm tone
+WHAT'S NEW (latest)
+  - Rider delivery OFFERS: 60s accept/reject prompt with looping alarm;
+    reject/timeout re-offers to the next rider or drops to the pool
+  - Rider attendance: clock in / lunch break / clock out, availability that
+    gates auto-assign, unavailable-with-reason, monthly attendance report
+  - Rider metrics: rejected / missed counts + acceptance rate
+  - "Order delivered" email to the customer with the PDF bill attached
+  - Admin: order summary drawer, cancel a stuck pending-payment order,
+    Formatting guide tab, product category filter, loading spinners,
+    table / tab / spacing polish
+  - Storefront: loads the whole catalogue (not just the first page)
+  - Self-hosted Okra font; page body renders *italic*
 
-NEW DATABASE OBJECTS (already in your local DB, so your import covers them):
-  - table   rider_reviews
-  - columns users.rider_rating_avg, users.rider_rating_count
-  - columns orders.delivered_at, delivery_verified, delivery_note,
-            delivery_code, delivery_code_expires_at
-  - columns support_threads.rating, rating_comment, rated_at
-  - table   store_inventory ; columns orders.store_id ; rider_* columns on users
-            + rider_store pivot (from the v7 base)
+NEW DATABASE OBJECTS (already in your local DB, so your full import covers them):
+  - tables  rider_shifts, rider_shift_breaks, rider_reviews, store_inventory
+  - orders  rider_offer_expires_at, rider_accepted_at, rider_offer_declined_ids,
+            rider_offer_decline_count, receipt_emailed_at, store_id,
+            delivered_at, delivery_verified, delivery_note, delivery_code,
+            delivery_code_expires_at
+  - users   rider_available, rider_unavailable_reason, rider_last_seen_at,
+            rider_offers_count, rider_declined_count, rider_missed_count,
+            rider_daily_target_minutes, rider_since, rider_rating_avg,
+            rider_rating_count, + the v7-base rider_* columns
+  - support_threads  rating, rating_comment, rated_at
+  If you import the full local DB you are covered. To apply only the schema to
+  existing live data instead, run:  php artisan migrate --force
 
 STEPS
   1. Back up first: in cPanel download public_html/gdp/  and export the DB.
