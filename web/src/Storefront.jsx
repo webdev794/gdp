@@ -561,12 +561,24 @@ export default function Storefront() {
       .catch(() => { setOffline(true); setCategories(categoriesFallback) })
   }, [catalogQuery])
 
+  // The storefront filters the catalogue in memory (by category and search), so
+  // it needs every product — not just the API's first page. Walk the pages.
   useEffect(() => {
-    fetch(`${API_URL}/products${catalogQuery}`, { headers: { Accept: 'application/json' } })
-      .then((response) => { if (!response.ok) throw new Error('offline'); return responseJson(response) })
-      .then((data) => setProducts(data.data ?? []))
-      .catch(() => { setOffline(true); setProducts(fallbackProducts) })
-      .finally(() => setLoading(false))
+    let cancelled = false
+    const sep = catalogQuery ? '&' : '?'
+    const loadPage = (page, sofar) =>
+      fetch(`${API_URL}/products${catalogQuery}${sep}per_page=50&page=${page}`, { headers: { Accept: 'application/json' } })
+        .then((response) => { if (!response.ok) throw new Error('offline'); return responseJson(response) })
+        .then((data) => {
+          if (cancelled) return
+          const all = sofar.concat(data.data ?? [])
+          if (page < (data.last_page ?? 1)) return loadPage(page + 1, all)
+          setProducts(all)
+        })
+    loadPage(1, [])
+      .catch(() => { if (!cancelled) { setOffline(true); setProducts(fallbackProducts) } })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [catalogQuery])
 
   // Content pages: load the footer list once, and keep the open page in sync
