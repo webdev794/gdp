@@ -282,7 +282,7 @@ function PaymentForm({ clientSecret, onComplete, savedCards = [] }) {
       </label>
     </div>}
     {!usingSaved && <>
-      <label>Card details<CardElement options={{ style: { base: { fontSize: '16px', color: '#20291f', fontFamily: 'Manrope, sans-serif' } } }} /></label>
+      <label>Card details<CardElement options={{ style: { base: { fontSize: '16px', color: '#20291f', fontFamily: 'Okra, sans-serif' } } }} /></label>
       <label className="account-check"><input type="checkbox" checked={saveCard} onChange={(event) => setSaveCard(event.target.checked)} /> Save this card for next time</label>
     </>}
     <button className="checkout-button" type="submit" disabled={submitting || !stripe}>{submitting ? 'Processing...' : 'Pay securely'} <span>-&gt;</span></button>
@@ -314,7 +314,7 @@ function AddCardForm({ onDone, onCancel }) {
   }
 
   return <form className="payment-form" onSubmit={submit}>
-    <label>Card details<CardElement options={{ style: { base: { fontSize: '15px', color: '#20291f', fontFamily: 'Manrope, sans-serif' } } }} /></label>
+    <label>Card details<CardElement options={{ style: { base: { fontSize: '15px', color: '#20291f', fontFamily: 'Okra, sans-serif' } } }} /></label>
     <div className="checkout-links">
       <button className="checkout-button" type="submit" disabled={busy || !stripe}>{busy ? 'Saving…' : 'Save card'}</button>
       <button className="switch-auth" type="button" onClick={onCancel}>Cancel</button>
