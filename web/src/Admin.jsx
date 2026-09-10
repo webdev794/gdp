@@ -868,6 +868,35 @@ export default function Admin({ token, onClose }) {
     } catch (error) { fail(error) } finally { setBusyId(null) }
   }
 
+  // Context-sensitive buttons that move an order along the pipeline (one step at
+  // a time) plus any cash/refund step. Shared by the Orders table and the
+  // order-summary drawer. Returns null when there's nothing to do.
+  function orderActions(order) {
+    const codCollect = order.payment_method === 'cod' && order.payment_status !== 'paid' && order.status !== 'cancelled'
+    const needsRefund = order.payment_status === 'refund_pending' || (order.payment_status === 'paid' && order.status === 'cancelled')
+    const refundedLink = order.payment_status === 'refunded' && order.stripe_dashboard_url
+    const steps = NEXT_ACTIONS[order.status] ?? []
+    if (!codCollect && !needsRefund && !refundedLink && steps.length === 0) return null
+    return (
+      <>
+        {codCollect && (
+          <button type="button" disabled={busyId === order.id} className="act" onClick={() => patchOrder(order, { cash_collected: true })}>Mark cash collected</button>
+        )}
+        {needsRefund && (
+          order.stripe_payment_intent_id
+            ? <button type="button" disabled={busyId === order.id} className="act" onClick={() => refundOrder(order)}>Refund via Stripe</button>
+            : <button type="button" disabled={busyId === order.id} className="act" onClick={() => patchOrder(order, { refunded: true })}>Mark refunded</button>
+        )}
+        {refundedLink && (
+          <a className="act ghost" href={order.stripe_dashboard_url} target="_blank" rel="noreferrer">View in Stripe ↗</a>
+        )}
+        {steps.map(([status, label]) => (
+          <button key={status} type="button" disabled={busyId === order.id} className={status === 'cancelled' ? 'act danger' : 'act'} onClick={() => patchOrder(order, { status })}>{label}</button>
+        ))}
+      </>
+    )
+  }
+
   async function openThread(id) {
     setMessage('')
     setRefundForm({ items: [], amount: '', reason: '' })
@@ -1349,34 +1378,9 @@ export default function Admin({ token, onClose }) {
                       )}
                     </td>
                     <td className="admin-actions">
-                      {(() => {
-                        const codCollect = order.payment_method === 'cod' && order.payment_status !== 'paid' && order.status !== 'cancelled'
-                        const needsRefund = order.payment_status === 'refund_pending' || (order.payment_status === 'paid' && order.status === 'cancelled')
-                        const refundedLink = order.payment_status === 'refunded' && order.stripe_dashboard_url
-                        const steps = NEXT_ACTIONS[order.status] ?? []
-                        if (!codCollect && !needsRefund && !refundedLink && steps.length === 0) {
-                          const unpaid = order.status === 'pending_payment' || (order.payment_status !== 'paid' && order.status !== 'completed' && order.status !== 'cancelled')
-                          return <span className="muted" title={unpaid ? "Nothing to do until the customer's payment goes through" : 'This order is finished'}>—</span>
-                        }
-                        return (
-                          <>
-                            {codCollect && (
-                              <button type="button" disabled={busyId === order.id} className="act" onClick={() => patchOrder(order, { cash_collected: true })}>Mark cash collected</button>
-                            )}
-                            {needsRefund && (
-                              order.stripe_payment_intent_id
-                                ? <button type="button" disabled={busyId === order.id} className="act" onClick={() => refundOrder(order)}>Refund via Stripe</button>
-                                : <button type="button" disabled={busyId === order.id} className="act" onClick={() => patchOrder(order, { refunded: true })}>Mark refunded</button>
-                            )}
-                            {refundedLink && (
-                              <a className="act ghost" href={order.stripe_dashboard_url} target="_blank" rel="noreferrer">View in Stripe ↗</a>
-                            )}
-                            {steps.map(([status, label]) => (
-                              <button key={status} type="button" disabled={busyId === order.id} className={status === 'cancelled' ? 'act danger' : 'act'} onClick={() => patchOrder(order, { status })}>{label}</button>
-                            ))}
-                          </>
-                        )
-                      })()}
+                      {orderActions(order) ?? (
+                        <span className="muted" title={order.status === 'pending_payment' || (order.payment_status !== 'paid' && order.status !== 'completed' && order.status !== 'cancelled') ? "Nothing to do until the customer's payment goes through" : 'This order is finished'}>—</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -2515,6 +2519,18 @@ export default function Admin({ token, onClose }) {
               {o.delivery_instructions && <p className="muted">Note: &ldquo;{o.delivery_instructions}&rdquo;</p>}
               <p className="muted">{o.payment_method === 'cod' ? 'Cash on delivery' : 'Card'}{(o.delivery_partner?.name || o.courier_name) ? ` · Courier: ${o.delivery_partner?.name || o.courier_name}` : ''}{o.store ? ` · Fulfilled by ${o.store.name}` : ''}</p>
               {o.delivered_at && <p className="muted">Delivered {new Date(o.delivered_at).toLocaleString()}{o.delivery_verified === false ? ` · without code${o.delivery_note ? ` — ${o.delivery_note}` : ''}` : o.delivery_verified ? ' · code verified' : ''}</p>}
+
+              <h4>Move this order</h4>
+              <div className="admin-actions admin-order-actions">
+                {orderActions(o) ?? (
+                  <span className="muted">
+                    {o.status === 'completed' ? 'Delivered — nothing more to do.'
+                      : o.status === 'cancelled' ? 'This order was cancelled.'
+                        : "Waiting on the customer's payment before it can be packed."}
+                  </span>
+                )}
+              </div>
+              <p className="muted">Orders move one step at a time: confirmed → packing → ready for delivery → out for delivery → delivered. The rider marks the final “delivered” step from their app.</p>
             </aside>
           </div>
         )

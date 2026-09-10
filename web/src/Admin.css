@@ -323,6 +323,8 @@ a.act{display:inline-block;text-decoration:none}
 .admin-order-totals>div{display:flex;justify-content:space-between;gap:16px;color:var(--muted,#7c857a)}
 .admin-order-totals dt,.admin-order-totals dd{margin:0}
 .admin-order-totals .admin-order-grand{margin-top:5px;padding-top:8px;border-top:1px solid var(--line,#ccd4c2);color:var(--ink,#20291f);font-weight:700;font-size:15px}
+.admin-order-actions{margin:2px 0 10px}
+.admin-drawer .admin-order-actions+.muted{font-size:12px;line-height:1.5}
 @media(max-width:720px){.admin-table{display:block;overflow-x:auto;white-space:nowrap}}
 
 /* Standalone /admin sign-in page (before the console mounts). */
