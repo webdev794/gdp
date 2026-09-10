@@ -107,6 +107,8 @@ class User extends Authenticatable
             'rider_is_active' => 'boolean',
             'rider_rating_avg' => 'float',
             'rider_rating_count' => 'integer',
+            'rider_declined_count' => 'integer',
+            'rider_missed_count' => 'integer',
             'rider_base_lat' => 'float',
             'rider_base_lng' => 'float',
             'rider_last_lat' => 'float',

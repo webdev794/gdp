@@ -386,6 +386,13 @@ export default function Admin({ token, onClose }) {
   useEffect(() => { if (tab === 'dashboard') loadCompare() }, [tab, loadCompare])
   useEffect(() => { if (tab === 'dashboard') loadInsights() }, [tab, loadInsights])
   useEffect(() => { if (tab === 'orders') loadOrders() }, [tab, loadOrders])
+  // Keep the Orders board current so rider accept / reject / timeout shows within
+  // seconds (and each poll drives the server-side offer-timeout sweep).
+  useEffect(() => {
+    if (tab !== 'orders') return undefined
+    const t = setInterval(loadOrders, 15000)
+    return () => clearInterval(t)
+  }, [tab, loadOrders])
   useEffect(() => { if (tab === 'products') { loadProducts(); loadCategories(); loadStores() } }, [tab, loadProducts, loadCategories, loadStores])
   useEffect(() => { if (tab === 'categories') loadCategories() }, [tab, loadCategories])
   useEffect(() => { if (tab === 'customers') loadCustomers() }, [tab, loadCustomers])
@@ -1189,7 +1196,7 @@ export default function Admin({ token, onClose }) {
                     <td>{money(order.total_cents)}</td>
                     <td>{order.payment_method === 'cod' ? 'Cash on delivery' : 'Card'}</td>
                     <td><span className={`pill pill-${order.payment_status}`}>{order.payment_status}</span></td>
-                    <td>{STATUS_LABELS[order.status] ?? order.status}{order.store && <span className="admin-note" title={`Fulfilled by ${order.store.name}${order.store.city ? `, ${order.store.city}` : ''}`}>🏬 {order.store.name}</span>}{order.status === 'completed' && order.delivery_verified === true && <span className="admin-note" style={{ color: '#2f6d34' }} title={order.delivered_at ? `Confirmed ${new Date(order.delivered_at).toLocaleString()}` : ''}>✓ code verified</span>}{order.status === 'completed' && order.delivery_verified === false && <span className="admin-note" style={{ color: '#a23b28' }} title={order.delivery_note || ''}>⚠ delivered without code{order.delivery_note ? ` — ${order.delivery_note}` : ''}</span>}</td>
+                    <td>{STATUS_LABELS[order.status] ?? order.status}{order.store && <span className="admin-note" title={`Fulfilled by ${order.store.name}${order.store.city ? `, ${order.store.city}` : ''}`}>🏬 {order.store.name}</span>}{order.status === 'completed' && order.delivery_verified === true && <span className="admin-note" style={{ color: '#2f6d34' }} title={order.delivered_at ? `Confirmed ${new Date(order.delivered_at).toLocaleString()}` : ''}>✓ code verified</span>}{order.status === 'completed' && order.delivery_verified === false && <span className="admin-note" style={{ color: '#a23b28' }} title={order.delivery_note || ''}>⚠ delivered without code{order.delivery_note ? ` — ${order.delivery_note}` : ''}</span>}{order.rider_accepted_at && <span className="admin-note" style={{ color: '#2f6d34' }} title={`Accepted ${new Date(order.rider_accepted_at).toLocaleString()}`}>✓ accepted{order.delivery_partner?.name ? ` by ${order.delivery_partner.name}` : ''} · {new Date(order.rider_accepted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}{!order.rider_accepted_at && order.rider_offer_expires_at && <span className="admin-note" style={{ color: '#7a5c14' }} title={`Offer expires ${new Date(order.rider_offer_expires_at).toLocaleString()}`}>⏳ offered{order.delivery_partner?.name ? ` to ${order.delivery_partner.name}` : ''} (expires {new Date(order.rider_offer_expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})</span>}{order.rider_offer_decline_count > 0 && <span className="admin-note" style={{ color: '#a23b28' }} title="Riders who declined or missed this offer">↩ declined ×{order.rider_offer_decline_count}</span>}</td>
                     <td className="admin-courier">
                       {riders.length > 0 ? (
                         <>

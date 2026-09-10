@@ -180,6 +180,12 @@ class RiderAutoAssignTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.delivery_partner_id', $rider->id)
             ->assertJsonPath('data.courier_name', 'Auto');
+
+        // Auto-assignment is a time-boxed offer, not yet an acceptance.
+        $order->refresh();
+        $this->assertNotNull($order->rider_offer_expires_at);
+        $this->assertTrue($order->rider_offer_expires_at->isFuture());
+        $this->assertNull($order->rider_accepted_at);
     }
 
     public function test_a_rider_already_assigned_by_the_admin_is_not_overridden(): void

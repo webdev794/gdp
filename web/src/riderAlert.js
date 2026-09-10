@@ -143,3 +143,43 @@ export function previewTone(toneId) {
   if (toneId === 'custom') playCustom()
   else playPreset(toneId)
 }
+
+// ---- repeating alarm (pending delivery offer) ---------------------------------
+
+let alarmTimer = null   // setInterval id while an offer is pending
+let alarmAudio = null   // natively-looping <audio> for a custom clip, if any
+
+/**
+ * Repeat the chosen tone until stopped — used while a delivery offer is waiting
+ * for the rider to Accept/Reject. Honours the mute pref (a muted loop ticks
+ * silently; unmuting sounds within one tick). Idempotent.
+ */
+export function startRiderAlarmLoop() {
+  if (alarmTimer) return
+
+  playRiderAlert()
+
+  const { muted, toneId } = loadAlertPrefs()
+  const custom = getCustomTone()
+  if (!muted && toneId === 'custom' && custom?.dataUrl) {
+    try {
+      alarmAudio = new Audio(custom.dataUrl)
+      alarmAudio.loop = true
+      alarmAudio.volume = 1
+      alarmAudio.play().catch(() => {})
+    } catch { alarmAudio = null }
+  }
+
+  alarmTimer = setInterval(() => {
+    if (alarmAudio && !alarmAudio.paused) return   // native loop is carrying it
+    playRiderAlert()
+  }, 3000)
+}
+
+export function stopRiderAlarmLoop() {
+  if (alarmTimer) { clearInterval(alarmTimer); alarmTimer = null }
+  if (alarmAudio) {
+    try { alarmAudio.pause(); alarmAudio.currentTime = 0 } catch { /* ignore */ }
+    alarmAudio = null
+  }
+}

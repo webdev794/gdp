@@ -5,10 +5,15 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\SupportThread;
+use App\Models\User;
 use App\Notifications\DeliveryHandoverCode;
 use App\Notifications\RiderMessage;
+use App\Support\DeliveryOfferSweeper;
+use App\Support\RiderAssignment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
@@ -18,7 +23,24 @@ class RiderController extends Controller
 {
     public function orders(Request $request): JsonResponse
     {
-        $rider = $request->user();
+        // Any rider hitting their queue also drives the offer-timeout sweep.
+        try {
+            DeliveryOfferSweeper::sweep();
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return response()->json(['data' => $this->board($request->user())]);
+    }
+
+    /**
+     * The rider's delivery board: orders assigned to them (including pending
+     * offers) plus the shared first-come pool.
+     *
+     * @return array{assigned: Collection, pool: Collection}
+     */
+    private function board(User $rider): array
+    {
         $me = $rider->id;
 
         // Include orders still being packed so the rider sees what's coming;
@@ -45,12 +67,10 @@ class RiderController extends Controller
             ->latest()
             ->get();
 
-        return response()->json([
-            'data' => [
-                'assigned' => $assigned->map($this->row(...))->values(),
-                'pool' => $pool->map($this->row(...))->values(),
-            ],
-        ]);
+        return [
+            'assigned' => $assigned->map($this->row(...))->values(),
+            'pool' => $pool->map($this->row(...))->values(),
+        ];
     }
 
     /**
@@ -119,9 +139,73 @@ class RiderController extends Controller
             'delivery_partner_id' => $request->user()->id,
             'courier_name' => $request->user()->name,
             'status' => 'out_for_delivery',
+            // Pulling from the pool is a deliberate choice — no offer to accept.
+            'rider_accepted_at' => now(),
+            'rider_offer_expires_at' => null,
         ]);
 
         return response()->json(['data' => $this->row($order->fresh(['items', 'user:id,name,phone']))]);
+    }
+
+    /**
+     * Accept or reject a pending delivery offer. Rejecting (and, via the sweep,
+     * timing out) re-offers the order to the next-best rider, or drops it to the
+     * shared pool when none is eligible.
+     */
+    public function respond(Request $request, Order $order): JsonResponse
+    {
+        $data = $request->validate(['accept' => ['required', 'boolean']]);
+        $me = $request->user();
+
+        $outcome = DB::transaction(function () use ($order, $me, $data) {
+            $locked = Order::whereKey($order->id)->lockForUpdate()->first();
+
+            if (! $locked
+                || $locked->delivery_partner_id !== $me->id
+                || in_array($locked->status, ['completed', 'cancelled'], true)) {
+                return 'gone';
+            }
+
+            if ($locked->rider_accepted_at !== null) {
+                return 'accepted'; // idempotent
+            }
+
+            if ($data['accept']) {
+                // Lenient: allowed while still mine and unaccepted, even a few
+                // seconds past expiry if nothing has swept it yet.
+                $locked->forceFill([
+                    'rider_accepted_at' => now(),
+                    'rider_offer_expires_at' => null,
+                ])->save();
+
+                return 'accepted';
+            }
+
+            $declined = $locked->rider_offer_declined_ids ?? [];
+            if (! in_array($me->id, $declined, true)) {
+                $declined[] = $me->id;
+            }
+
+            $locked->forceFill([
+                'rider_offer_declined_ids' => $declined,
+                'rider_offer_decline_count' => (int) $locked->rider_offer_decline_count + 1,
+                'delivery_partner_id' => null,
+                'courier_name' => null,
+                'rider_offer_expires_at' => null,
+                'rider_accepted_at' => null,
+            ])->save();
+
+            $me->increment('rider_declined_count');
+            RiderAssignment::assign($locked->fresh(), $declined); // null -> pool
+
+            return 'rejected';
+        });
+
+        if ($outcome === 'gone') {
+            return response()->json(['message' => 'This offer has moved to another rider.'], 409);
+        }
+
+        return response()->json(['data' => $this->board($me)]);
     }
 
     public function status(Request $request, Order $order): JsonResponse
@@ -213,6 +297,7 @@ class RiderController extends Controller
             'delivery_note' => $override ? trim((string) $data['note']) : null,
             'delivery_code' => null,
             'delivery_code_expires_at' => null,
+            'rider_offer_expires_at' => null,
         ])->save();
 
         return response()->json(['data' => $this->row($order->fresh(['items', 'user:id,name,phone']))]);
@@ -358,6 +443,11 @@ class RiderController extends Controller
             'payment_status' => $order->payment_status,
             'total_cents' => (int) $order->total_cents,
             'cod_due' => $codDue,
+            'offer_pending' => $order->rider_offer_expires_at !== null
+                && $order->rider_accepted_at === null
+                && $order->status === 'ready_for_delivery',
+            'offer_expires_at' => $order->rider_offer_expires_at,
+            'accepted' => $order->rider_accepted_at !== null,
             'delivery_code_active' => $order->deliveryCodeActive(),
             'delivered_at' => $order->delivered_at,
             'delivery_verified' => $order->delivery_verified,

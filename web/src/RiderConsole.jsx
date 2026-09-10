@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { TONES, loadAlertPrefs, saveAlertPrefs, getCustomTone, saveCustomTone, clearCustomTone, playRiderAlert, previewTone } from './riderAlert'
+import { TONES, loadAlertPrefs, saveAlertPrefs, getCustomTone, saveCustomTone, clearCustomTone, previewTone, startRiderAlarmLoop, stopRiderAlarmLoop } from './riderAlert'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api'
 const STORE_URL = import.meta.env.BASE_URL || '/'
@@ -209,6 +209,76 @@ function AlertSettings({ open, onClose }) {
   )
 }
 
+const fmtMMSS = (secs) => `${String(Math.floor(secs / 60)).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`
+
+/**
+ * Blocking prompt for pending delivery offers: a live countdown plus Accept /
+ * Reject. Rejecting (or letting it lapse) re-offers the order to another rider.
+ */
+function OfferPrompt({ offers, headers, onResolved }) {
+  const [now, setNow] = useState(() => Date.now())
+  const [working, setWorking] = useState(false)
+
+  useEffect(() => {
+    const tick = () => setNow(Date.now())
+    tick()
+    const t = setInterval(tick, 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  // When any offer's countdown hits zero, pull a fresh board once rather than
+  // waiting up to 15s for the next poll — the server sweep has (or soon will)
+  // re-offer it.
+  const anyExpired = offers.some((o) => new Date(o.offer_expires_at).getTime() - now <= 0)
+  useEffect(() => {
+    if (anyExpired) onResolved()
+  }, [anyExpired, onResolved])
+
+  async function respond(id, accept) {
+    if (working) return
+    setWorking(true)
+    try {
+      const res = await fetch(`${API_URL}/rider/orders/${id}/respond`, {
+        method: 'POST', headers: headers(true), body: JSON.stringify({ accept }),
+      })
+      const body = await readJson(res)
+      onResolved(res.ok ? body.data : undefined)
+    } catch {
+      onResolved()
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  return (
+    <div className="rider-offer-overlay" role="alertdialog" aria-modal="true" aria-label="New delivery offer">
+      <div className="rider-offer-wrap">
+        {offers.map((o) => {
+          const secs = Math.max(0, Math.ceil((new Date(o.offer_expires_at).getTime() - now) / 1000))
+          return (
+            <article className="rider-offer-card" key={o.id}>
+              <h3 className="rider-offer-h">New delivery — Order #{o.id}</h3>
+              <p className="rider-offer-sub">{o.customer_name || 'Customer'}<br />{addressText(o.delivery_address)}</p>
+              <p className="rider-offer-sub">{o.items?.reduce((n, i) => n + (i.quantity || 0), 0) ?? 0} item(s){o.delivery_instructions ? ` · “${o.delivery_instructions}”` : ''}</p>
+              {o.cod_due > 0 && <p className="rider-offer-cod">Collect cash {money(o.cod_due)}</p>}
+              <div className={`rider-offer-count${secs > 10 ? ' calm' : ''}`}>{fmtMMSS(secs)}</div>
+              {secs === 0
+                ? <p className="rider-offer-wait">Re-offering to another rider…</p>
+                : (
+                  <div className="rider-offer-actions">
+                    <button type="button" className="rider-btn primary" disabled={working} onClick={() => respond(o.id, true)}>Accept</button>
+                    <button type="button" className="rider-btn reject" disabled={working} onClick={() => respond(o.id, false)}>Reject</button>
+                  </div>
+                )}
+              <button type="button" className="rider-offer-replay" onClick={() => previewTone(loadAlertPrefs().toneId)}>▶ Replay tone</button>
+            </article>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function RiderConsole({ token, onSignOut }) {
   const headers = useCallback((json) => ({
     Accept: 'application/json',
@@ -223,35 +293,34 @@ export default function RiderConsole({ token, onSignOut }) {
   const [chatOrder, setChatOrder] = useState(null)
   const [chat, setChat] = useState({ messages: [], thread_id: null })
   const [reply, setReply] = useState('')
-  const [newOrders, setNewOrders] = useState([])
   const [alertOpen, setAlertOpen] = useState(false)
   const chatLogRef = useRef(null)
-  const seenRef = useRef(null)   // Set<orderId>, null until the first poll seeds it
 
   const load = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/rider/orders`, { headers: headers() })
       const body = await readJson(res)
       if (res.ok) {
-        const next = body.data ?? { assigned: [], pool: [] }
-        setData(next)
+        setData(body.data ?? { assigned: [], pool: [] })
         setError('')
-
-        const ids = (next.assigned ?? []).map((o) => o.id)
-        if (seenRef.current === null) {
-          seenRef.current = new Set(ids)   // seed — don't alarm for what's already there
-        } else {
-          const fresh = ids.filter((id) => !seenRef.current.has(id))
-          if (fresh.length) {
-            playRiderAlert()
-            setNewOrders((cur) => [...new Set([...cur, ...fresh])])
-          }
-          // track the current queue so an order re-assigned later re-alarms
-          seenRef.current = new Set(ids)
-        }
       } else setError(body.message ?? 'Could not load your deliveries.')
     } catch { setError('Cannot reach the server.') }
   }, [headers])
+
+  // Orders assigned to me that I haven't accepted yet — drive the blocking
+  // prompt + the repeating alarm.
+  const pendingOffers = data.assigned.filter((o) => o.offer_pending)
+
+  const applyBoard = useCallback((board) => {
+    if (board) setData(board)
+    load()
+  }, [load])
+
+  useEffect(() => {
+    if (pendingOffers.length > 0) startRiderAlarmLoop()
+    else stopRiderAlarmLoop()
+    return () => stopRiderAlarmLoop()
+  }, [pendingOffers.length])
 
   const loadStats = useCallback(async () => {
     try {
@@ -329,12 +398,8 @@ export default function RiderConsole({ token, onSignOut }) {
         </div>
       </header>
 
-      {newOrders.length > 0 && (
-        <div className="rider-newbanner" role="alert">
-          <span>🛵 New delivery assigned — {newOrders.map((id) => `#${id}`).join(', ')}</span>
-          <button type="button" onClick={() => previewTone(loadAlertPrefs().toneId)} className="rider-newbanner-play" aria-label="Replay tone">▶</button>
-          <button type="button" onClick={() => setNewOrders([])}>Got it</button>
-        </div>
+      {pendingOffers.length > 0 && (
+        <OfferPrompt offers={pendingOffers} headers={headers} onResolved={applyBoard} />
       )}
 
       {error && <p className="rider-error">{error}</p>}

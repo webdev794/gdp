@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\User;
 use App\Notifications\RiderAssigned;
+use App\Support\DeliveryOfferSweeper;
 use App\Support\RiderAssignment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,6 +20,13 @@ class AdminOrderController extends Controller
             'status' => ['sometimes', 'string'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:1000'],
         ]);
+
+        // Loading the orders board also drives the offer-timeout sweep.
+        try {
+            DeliveryOfferSweeper::sweep();
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         $orders = Order::query()
             ->with(['items', 'user:id,name,email,phone', 'deliveryPartner:id,name', 'store:id,name,city'])
@@ -87,6 +95,34 @@ class AdminOrderController extends Controller
             } elseif (! array_key_exists('courier_name', $validated)) {
                 $changes['courier_name'] = null;
             }
+
+            $riderChanged = $rider && $rider->id !== $order->delivery_partner_id;
+
+            if ($riderChanged) {
+                // A hand-picked rider still gets the Accept/Reject prompt. The
+                // 60s clock only starts once the order is actually ready to go
+                // out — assigning during packing is a soft pre-assignment. The
+                // decline history is deliberately kept (the admin's pick still
+                // goes through — it bypasses the auto-assign exclusion).
+                $changes['rider_accepted_at'] = null;
+                $effectiveStatus = $changes['status'] ?? $order->status;
+                $changes['rider_offer_expires_at'] = $effectiveStatus === 'ready_for_delivery'
+                    ? now()->addSeconds(RiderAssignment::OFFER_TTL_SECONDS)
+                    : null;
+            } elseif (! $rider) {
+                // Clearing the rider ends any pending offer.
+                $changes['rider_offer_expires_at'] = null;
+                $changes['rider_accepted_at'] = null;
+            }
+        }
+
+        // Turning a soft pre-assignment into a live offer: the order becomes
+        // ready for delivery while already carrying an unaccepted rider.
+        if (! array_key_exists('delivery_partner_id', $validated)
+            && ($changes['status'] ?? null) === 'ready_for_delivery'
+            && $order->delivery_partner_id
+            && $order->rider_accepted_at === null) {
+            $changes['rider_offer_expires_at'] = now()->addSeconds(RiderAssignment::OFFER_TTL_SECONDS);
         }
 
         // Cash collected on hand-off settles a cash-on-delivery order.

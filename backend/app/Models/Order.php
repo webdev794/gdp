@@ -33,6 +33,7 @@ class Order extends Model
         'small_cart_fee_cents', 'total_cents', 'delivery_address', 'delivery_instructions',
         'stripe_payment_intent_id', 'stripe_refund_id', 'refunded_amount_cents',
         'delivery_partner_id',
+        'rider_offer_expires_at', 'rider_accepted_at', 'rider_offer_declined_ids', 'rider_offer_decline_count',
         'delivered_at', 'delivery_verified', 'delivery_note',
         'delivery_code', 'delivery_code_expires_at',
     ];
@@ -54,10 +55,20 @@ class Order extends Model
             'total_cents' => 'integer',
             'refunded_amount_cents' => 'integer',
             'delivery_address' => 'array',
+            'rider_offer_expires_at' => 'datetime',
+            'rider_accepted_at' => 'datetime',
+            'rider_offer_declined_ids' => 'array',
+            'rider_offer_decline_count' => 'integer',
             'delivered_at' => 'datetime',
             'delivery_verified' => 'boolean',
             'delivery_code_expires_at' => 'datetime',
         ];
+    }
+
+    /** True while a rider assignment is still an unaccepted, time-boxed offer. */
+    public function hasLiveOffer(): bool
+    {
+        return $this->rider_offer_expires_at !== null && $this->rider_accepted_at === null;
     }
 
     public function deliveryCodeActive(): bool

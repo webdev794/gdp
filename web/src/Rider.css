@@ -78,7 +78,17 @@
 .rider-alert-check{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600}
 .rider-alert-note{margin:0;font-size:11px;color:#5b6560;line-height:1.4}
 
-.rider-newbanner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 18px 0;padding:11px 14px;border-radius:10px;background:#fff3d6;border:1px solid #e7c66b;color:#7a5c14;font-size:13px;font-weight:700}
-.rider-newbanner span{flex:1;min-width:180px}
-.rider-newbanner button{border:1px solid #d8b451;background:#fff;border-radius:8px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;color:#7a5c14}
-.rider-newbanner-play{padding:5px 9px !important}
+/* blocking prompt for a pending delivery offer */
+.rider-offer-overlay{position:fixed;inset:0;z-index:71;background:rgba(15,20,12,.62);display:flex;align-items:center;justify-content:center;padding:14px}
+.rider-offer-wrap{width:min(440px,100%);min-width:0;max-height:100%;overflow:auto;display:grid;gap:12px}
+.rider-offer-card{min-width:0;background:#fff;border:2px solid #a23b28;border-radius:14px;padding:18px;box-shadow:0 12px 40px rgba(20,26,18,.35);display:grid;gap:10px}
+.rider-offer-h{margin:0;font-size:16px;font-weight:800;color:#1b2417}
+.rider-offer-sub{margin:0;font-size:13px;color:#3a4a42;line-height:1.4;overflow-wrap:anywhere}
+.rider-offer-cod{margin:0;font-size:13px;color:#a23b28;font-weight:700}
+.rider-offer-count{font-size:34px;font-weight:800;letter-spacing:.02em;text-align:center;color:#a23b28;font-variant-numeric:tabular-nums}
+.rider-offer-count.calm{color:#2e7d32}
+.rider-offer-actions{display:flex;gap:10px;margin-top:2px}
+.rider-offer-actions .rider-btn{flex:1;min-width:0;text-align:center}
+.rider-btn.reject{background:#a23b28;border-color:#a23b28;color:#fff}
+.rider-offer-wait{margin:0;font-size:13px;font-weight:700;color:#7a5c14;text-align:center}
+.rider-offer-replay{justify-self:center;border:1px solid #cdd5c8;background:#fff;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;color:#5b6560}

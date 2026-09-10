@@ -23,6 +23,9 @@ class RiderAssignment
     /** Deliveries that count as "still on the rider's plate". */
     private const ACTIVE_STATUSES = ['ready_for_delivery', 'out_for_delivery'];
 
+    /** How long a rider has to Accept/Reject an offer before it is re-offered. */
+    public const OFFER_TTL_SECONDS = 60;
+
     public static function isEnabled(): bool
     {
         return (bool) Setting::get('rider_auto_assign', true);
@@ -32,8 +35,16 @@ class RiderAssignment
      * Assign a rider to the order and return them, or null when auto-assignment
      * is off, the order can't be auto-assigned, or no rider is eligible (the
      * order then stays in the first-come pool).
+     *
+     * The assignment is a time-boxed *offer*: `rider_offer_expires_at` is set and
+     * `rider_accepted_at` left null until the rider accepts. Riders in
+     * `$excludeRiderIds` (plus anyone already in the order's
+     * `rider_offer_declined_ids`) are skipped, so a re-offer never lands back on
+     * a rider who passed on it.
+     *
+     * @param  array<int>  $excludeRiderIds
      */
-    public static function assign(Order $order): ?User
+    public static function assign(Order $order, array $excludeRiderIds = []): ?User
     {
         if (! self::isEnabled() || $order->delivery_partner_id || ! $order->store_id) {
             return null;
@@ -45,9 +56,15 @@ class RiderAssignment
             return null;
         }
 
+        $exclude = array_values(array_unique(array_merge(
+            $order->rider_offer_declined_ids ?? [],
+            $excludeRiderIds,
+        )));
+
         $riders = User::query()
             ->where('is_rider', true)
             ->where('rider_is_active', true)
+            ->when($exclude, fn ($query) => $query->whereNotIn('users.id', $exclude))
             ->whereHas('stores', fn ($query) => $query->whereKey($store->id))
             ->withCount(['deliveries as active_deliveries' => fn ($query) => $query
                 ->whereIn('status', self::ACTIVE_STATUSES)])
@@ -79,6 +96,8 @@ class RiderAssignment
         $order->update([
             'delivery_partner_id' => $best['rider']->id,
             'courier_name' => $best['rider']->name,
+            'rider_offer_expires_at' => now()->addSeconds(self::OFFER_TTL_SECONDS),
+            'rider_accepted_at' => null,
         ]);
 
         $best['rider']->notify(RiderAssigned::forOrder($order));
