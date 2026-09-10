@@ -148,7 +148,13 @@
 .pill-failed{background:#f6e3e0;color:#a23b28}
 .pill-cancelled{background:#efe6d8;color:#8a6d2f}
 .pill-refund_pending,.pill-refunded{background:#e7eef6;color:#2f5a8a}
-.admin-actions{display:flex;flex-wrap:wrap;gap:6px}
+/* Not display:flex — a flex <td> in a border-collapse table leaves its
+   background unpainted past the content (white gap on zebra rows). Inline-flex
+   children + margins lay out the same and let the cell paint normally. */
+.admin-actions{line-height:1}
+.admin-actions>*{display:inline-flex;vertical-align:top;margin:0 6px 6px 0}
+.admin-actions>*:last-child{margin-right:0}
+.admin-order-actions>*{margin-bottom:0}
 .admin-actions .muted{color:var(--muted,#7c857a)}
 /* Shared button — works inside .admin-actions, the pager, drawers, anywhere. */
 .act{padding:7px 12px;border:1px solid #141a12;border-radius:10px;background:#141a12;color:#f3f5ef;font:11px 'Okra',sans-serif;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;transition:background .12s ease,border-color .12s ease,color .12s ease}
