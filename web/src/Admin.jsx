@@ -213,6 +213,33 @@ function playChime() {
   } catch { /* audio blocked — the toast still shows */ }
 }
 
+// A more insistent alert for a NEW ORDER to pack — two rising three-note runs.
+function playOrderAlert() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext
+    if (!Ctx) return
+    const ctx = new Ctx()
+    const beep = (freq, at, dur = 0.18) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.type = 'triangle'
+      osc.frequency.value = freq
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime + at)
+      gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + at + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + at + dur)
+      osc.start(ctx.currentTime + at)
+      osc.stop(ctx.currentTime + at + dur + 0.02)
+    }
+    for (const base of [0, 0.9]) {
+      beep(587, base)
+      beep(784, base + 0.16)
+      beep(1047, base + 0.32, 0.3)
+    }
+    setTimeout(() => ctx.close(), 1700)
+  } catch { /* audio blocked — the toast still shows */ }
+}
+
 // Fee settings <-> a dollar/percent form the admin edits.
 function feesToForm(s) {
   return {
@@ -339,8 +366,10 @@ export default function Admin({ token, onClose }) {
   const [refundForm, setRefundForm] = useState({ items: [], amount: '', reason: '' })
   const [supportBadge, setSupportBadge] = useState(0)
   const [supportToasts, setSupportToasts] = useState([])
+  const [orderToasts, setOrderToasts] = useState([])
   const [soundMuted, setSoundMuted] = useState(() => { try { return localStorage.getItem('gdp_support_muted') === '1' } catch { return false } })
   const seenRef = useRef(null)
+  const orderSeenRef = useRef(null)
   const [busyId, setBusyId] = useState(null)
   const [message, setMessage] = useState('')
   // Per-list "fetch in flight" flags so a slow API shows "Loading…" instead of
@@ -503,6 +532,27 @@ export default function Admin({ token, onClose }) {
             ...fresh.map((t) => ({ id: t.id, text: `New message${t.order_id ? ` · order #${t.order_id}` : ''} — ${t.user?.email ?? 'customer'}` })),
             ...cur,
           ].slice(0, 4))
+        }
+      } catch { /* keep last */ }
+
+      // A new order that's paid/confirmed and waiting to be packed — alert the
+      // admin the same way (louder tone + a toast) even from another tab.
+      try {
+        const od = await readJson(await fetch(`${API_URL}/admin/orders?per_page=8`, { headers: authHeaders() }))
+        if (stopped) return
+        const toPack = (od.data ?? []).filter((o) => o.status === 'confirmed')
+        if (orderSeenRef.current === null) {
+          orderSeenRef.current = new Set(toPack.map((o) => o.id)) // seed, don't alert for existing
+        } else {
+          const fresh = toPack.filter((o) => !orderSeenRef.current.has(o.id))
+          fresh.forEach((o) => orderSeenRef.current.add(o.id))
+          if (fresh.length) {
+            if (!soundMuted) playOrderAlert()
+            setOrderToasts((cur) => [
+              ...fresh.map((o) => ({ id: o.id, text: `New order #${o.id} — ${money(o.total_cents)} · ${o.user?.email ?? 'customer'} — start packing` })),
+              ...cur,
+            ].slice(0, 4))
+          }
         }
       } catch { /* keep last */ }
     }
@@ -1134,13 +1184,18 @@ export default function Admin({ token, onClose }) {
               {TAB_LABELS[name]}{name === 'support' && supportBadge > 0 && <span className="tab-badge">{supportBadge}</span>}
             </button>
           ))}
-          <button className="admin-close soundtoggle" type="button" title={soundMuted ? 'Unmute chat sound' : 'Mute chat sound'} onClick={() => setSoundMuted((m) => { const next = !m; try { localStorage.setItem('gdp_support_muted', next ? '1' : '0') } catch { /* ignore */ } return next })}>{soundMuted ? '🔕' : '🔔'}</button>
+          <button className="admin-close soundtoggle" type="button" title={soundMuted ? 'Unmute new-order & chat sound' : 'Mute new-order & chat sound'} onClick={() => setSoundMuted((m) => { const next = !m; try { localStorage.setItem('gdp_support_muted', next ? '1' : '0') } catch { /* ignore */ } return next })}>{soundMuted ? '🔕' : '🔔'}</button>
           <button className="admin-close" type="button" onClick={onClose}>Back to store</button>
         </div>
       </header>
 
-      {supportToasts.length > 0 && (
+      {(supportToasts.length > 0 || orderToasts.length > 0) && (
         <div className="admin-toasts">
+          {orderToasts.map((t) => (
+            <button key={`o-${t.id}`} type="button" className="admin-toast admin-toast-order" onClick={() => { setOrderToasts((cur) => cur.filter((x) => x.id !== t.id)); goTab('orders') }}>
+              🛒 {t.text} <span>Open →</span>
+            </button>
+          ))}
           {supportToasts.map((t) => (
             <button key={`${t.id}-${t.text}`} type="button" className="admin-toast" onClick={() => { goTab('support'); openThread(t.id) }}>
               💬 {t.text} <span>Open →</span>
