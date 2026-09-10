@@ -159,7 +159,17 @@ a.act{display:inline-block;text-decoration:none}
 .admin-toolbar label{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted,#7c857a)}
 .admin-toolbar select{padding:8px 10px;border:1px solid var(--field,#9aa895);border-radius:9px;font:14px 'Okra',sans-serif}
 .admin-search{flex:0 1 280px;padding:10px 13px;border:1px solid var(--field,#9aa895);border-radius:10px;background:white;font:13px 'Okra',sans-serif}
-.admin-toolbar input:hover,.admin-toolbar select:hover,.admin-search:hover,.admin-select:hover{border-color:#7a8a72}
+.admin-toolbar input:hover,.admin-search:hover{border-color:#7a8a72}
+/* Native selects and file pickers are clickable — hover changes bg + text like a button. */
+.admin-form select,.admin-toolbar select,.admin-select,.admin-pager select,.admin-courier select,
+.admin-form input[type=file]{cursor:pointer}
+.admin-form select:hover,.admin-toolbar select:hover,.admin-select:hover,.admin-pager select:hover,.admin-courier select:hover{background:#e2efdc;color:#1b2418;border-color:#84a678}
+.admin-form input[type=file]{padding:5px 8px}
+.admin-form input[type=file]:hover{background:#f2f7ef;border-color:#84a678}
+.admin-form input[type=file]::file-selector-button{margin-right:10px;padding:7px 12px;border:1px solid #141a12;border-radius:8px;background:#141a12;color:#f3f5ef;font:11px 'Okra',sans-serif;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;transition:background .12s ease,border-color .12s ease}
+.admin-form input[type=file]:hover::file-selector-button{background:#2e7d32;border-color:#2e7d32}
+.admin-form .admin-check,.admin-form .admin-check input,.admin-radio-row label,.admin-radio-row input{cursor:pointer}
+.admin-radio-row label:hover{color:#2e7d32}
 .act.ghost{background:white;color:#4a5145;border-color:var(--line,#ccd4c2)}
 .act.ghost:hover{background:#e2efdc;color:#1b2418;border-color:#84a678}
 .act.ghost:disabled:hover{background:white;color:#4a5145;border-color:var(--line,#ccd4c2)}
