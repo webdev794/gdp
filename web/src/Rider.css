@@ -4,7 +4,7 @@
 
 .rider-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:13px 18px;background:#141a12;color:#f3f5ef}
 .rider-bar strong{font-size:15px;letter-spacing:-.02em}
-.rider-bar div{display:flex;gap:6px}
+.rider-bar>div{display:flex;gap:6px}
 .rider-link{padding:7px 11px;border:1px solid #3a4433;border-radius:8px;background:transparent;color:#e6ece2;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none}
 .rider-link:hover{background:#26311f}
 
