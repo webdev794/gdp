@@ -873,6 +873,7 @@ export default function Storefront() {
   async function submitCheckout(event) {
     event.preventDefault()
     setCheckoutMessage('')
+    setOrdersMessage('')
     const token = localStorage.getItem('gdp_token')
     if (!token) {
       setCheckoutOpen(false)
