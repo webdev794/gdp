@@ -1854,10 +1854,17 @@ export default function Admin({ token, onClose }) {
                 <label>Slug (optional)<input value={pageForm.slug} placeholder="auto from title" onChange={(event) => setPageForm({ ...pageForm, slug: event.target.value })} /></label>
                 <label>Footer group<input value={pageForm.footer_group} onChange={(event) => setPageForm({ ...pageForm, footer_group: event.target.value })} /></label>
                 <label>Sort order<input type="number" min="0" max="9999" value={pageForm.sort_order} onChange={(event) => setPageForm({ ...pageForm, sort_order: event.target.value })} /></label>
-                <label>Banner image URL<input value={pageForm.banner_image ?? ''} placeholder="/img/… or https://… — shown above the title" onChange={(event) => setPageForm({ ...pageForm, banner_image: event.target.value })} /></label>
                 <label className="admin-check"><input type="checkbox" checked={pageForm.show_in_footer} onChange={(event) => setPageForm({ ...pageForm, show_in_footer: event.target.checked })} /> Show in footer</label>
                 <label className="admin-check"><input type="checkbox" checked={pageForm.is_published} onChange={(event) => setPageForm({ ...pageForm, is_published: event.target.checked })} /> Published</label>
               </div>
+              <label>Banner image — shown above the title
+                <div className="admin-image-field">
+                  {pageForm.banner_image && <img src={mediaUrl(pageForm.banner_image)} alt="" className="admin-image-preview" onError={(event) => { event.currentTarget.style.display = 'none' }} />}
+                  <input value={pageForm.banner_image ?? ''} placeholder="/img/… or https://…, or upload →" onChange={(event) => setPageForm({ ...pageForm, banner_image: event.target.value })} />
+                  <input type="file" accept="image/*" disabled={imgBusy} onChange={(event) => uploadImage(event.target.files?.[0], (url) => setPageForm((form) => ({ ...form, banner_image: url })))} />
+                  {pageForm.banner_image && <button type="button" className="act ghost" onClick={() => setPageForm({ ...pageForm, banner_image: '' })}>Clear</button>}
+                </div>
+              </label>
               <div className="admin-sections">
                 <div className="admin-subhead" style={{ marginTop: 4 }}>Sections</div>
                 {(pageForm.sections ?? []).length === 0
@@ -1878,7 +1885,16 @@ export default function Admin({ token, onClose }) {
                     )}
                     {(s.type === 'hero' || s.type === 'cta') && (
                       <>
-                        {s.type === 'hero' && <label>Image URL<input value={s.image_url ?? ''} onChange={(event) => patchSection(i, { image_url: event.target.value })} placeholder="/img/… or https://…" /></label>}
+                        {s.type === 'hero' && (
+                          <label>Image
+                            <div className="admin-image-field">
+                              {s.image_url && <img src={mediaUrl(s.image_url)} alt="" className="admin-image-preview" onError={(event) => { event.currentTarget.style.display = 'none' }} />}
+                              <input value={s.image_url ?? ''} placeholder="/img/… or https://…, or upload →" onChange={(event) => patchSection(i, { image_url: event.target.value })} />
+                              <input type="file" accept="image/*" disabled={imgBusy} onChange={(event) => uploadImage(event.target.files?.[0], (url) => patchSection(i, { image_url: url }))} />
+                              {s.image_url && <button type="button" className="act ghost" onClick={() => patchSection(i, { image_url: '' })}>Clear</button>}
+                            </div>
+                          </label>
+                        )}
                         <label>Heading<input value={s.heading ?? ''} onChange={(event) => patchSection(i, { heading: event.target.value })} /></label>
                         <label>Text<textarea rows="2" value={s.text ?? ''} onChange={(event) => patchSection(i, { text: event.target.value })} /></label>
                         <div className="admin-form-grid">
@@ -1889,10 +1905,15 @@ export default function Admin({ token, onClose }) {
                     )}
                     {s.type === 'media_text' && (
                       <>
-                        <div className="admin-form-grid">
-                          <label>Image URL<input value={s.image_url ?? ''} onChange={(event) => patchSection(i, { image_url: event.target.value })} /></label>
-                          <label>Image side<select value={s.image_side ?? 'left'} onChange={(event) => patchSection(i, { image_side: event.target.value })}><option value="left">Left</option><option value="right">Right</option></select></label>
-                        </div>
+                        <label>Image
+                          <div className="admin-image-field">
+                            {s.image_url && <img src={mediaUrl(s.image_url)} alt="" className="admin-image-preview" onError={(event) => { event.currentTarget.style.display = 'none' }} />}
+                            <input value={s.image_url ?? ''} placeholder="/img/… or https://…, or upload →" onChange={(event) => patchSection(i, { image_url: event.target.value })} />
+                            <input type="file" accept="image/*" disabled={imgBusy} onChange={(event) => uploadImage(event.target.files?.[0], (url) => patchSection(i, { image_url: url }))} />
+                            {s.image_url && <button type="button" className="act ghost" onClick={() => patchSection(i, { image_url: '' })}>Clear</button>}
+                          </div>
+                        </label>
+                        <label>Image side<select value={s.image_side ?? 'left'} onChange={(event) => patchSection(i, { image_side: event.target.value })}><option value="left">Left</option><option value="right">Right</option></select></label>
                         <label>Heading<input value={s.heading ?? ''} onChange={(event) => patchSection(i, { heading: event.target.value })} /></label>
                         <label>Text (Markdown)<textarea rows="5" value={s.markdown ?? ''} onChange={(event) => patchSection(i, { markdown: event.target.value })} /></label>
                       </>
@@ -1902,7 +1923,10 @@ export default function Admin({ token, onClose }) {
                         <label>Heading<input value={s.heading ?? ''} onChange={(event) => patchSection(i, { heading: event.target.value })} /></label>
                         {(s.items ?? []).map((it, ii) => (
                           <div className="admin-feature-row admin-feature-row--quad" key={ii}>
-                            <input placeholder="Icon / image URL" value={it.image_url ?? ''} onChange={(event) => patchItem(i, ii, { image_url: event.target.value })} />
+                            <span className="admin-variant-img">
+                              <input placeholder="Icon / image URL" value={it.image_url ?? ''} onChange={(event) => patchItem(i, ii, { image_url: event.target.value })} />
+                              <input type="file" accept="image/*" disabled={imgBusy} onChange={(event) => uploadImage(event.target.files?.[0], (url) => patchItem(i, ii, { image_url: url }))} />
+                            </span>
                             <input placeholder="Title" value={it.title ?? ''} onChange={(event) => patchItem(i, ii, { title: event.target.value })} />
                             <input placeholder="Text" value={it.text ?? ''} onChange={(event) => patchItem(i, ii, { text: event.target.value })} />
                             <input placeholder="Link URL (optional)" value={it.link_url ?? ''} onChange={(event) => patchItem(i, ii, { link_url: event.target.value })} />
