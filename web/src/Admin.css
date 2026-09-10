@@ -180,8 +180,11 @@ a.act{display:inline-block;text-decoration:none}
 .admin-form{background:white;border:2px solid var(--muted,#7c857a);border-radius:12px;padding:18px;margin-bottom:16px;box-shadow:0 6px 22px rgba(24,33,28,.12)}
 .admin-form h3{margin:0 0 14px;font-size:16px;letter-spacing:-.02em}
 .admin-form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:12px}
-.admin-form label{display:grid;gap:6px;color:#4a5145;font:11px 'Okra',sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.admin-form label{display:grid;gap:6px;min-width:0;color:#4a5145;font:11px 'Okra',sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
 .admin-form input,.admin-form select,.admin-form textarea{padding:10px 11px;border:1px solid var(--field,#9aa895);border-radius:9px;background:white;font:14px 'Okra',sans-serif;color:var(--ink,#20291f);text-transform:none;letter-spacing:0}
+/* Fill the grid cell — long <select> option labels must not overflow into the next column. */
+.admin-form-grid label{min-width:0}
+.admin-form-grid input,.admin-form-grid select,.admin-form-grid textarea{width:100%;min-width:0;max-width:100%}
 /* Darker, clearer outlines on every admin form control + a visible focus ring. */
 .admin-toolbar input,.admin-toolbar select,.admin-search,.admin-select,.admin-pager select,
 .compare-custom input,.admin-variant-row input,.chat-send input,
@@ -203,8 +206,8 @@ a.act{display:inline-block;text-decoration:none}
 .admin-faq-row .act.danger{justify-self:start}
 @media(max-width:900px){.admin-feature-row--quad{grid-template-columns:1fr 1fr}}
 @media(max-width:720px){.admin-feature-row,.admin-feature-row--pair{grid-template-columns:1fr 1fr}}
-.admin-form .admin-check{flex-direction:row;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:12px}
-.admin-form .admin-check input{width:auto}
+.admin-form .admin-check{display:flex;flex-direction:row;align-items:center;gap:8px;align-self:end;padding-bottom:10px;text-transform:none;letter-spacing:0;font-size:12px}
+.admin-form .admin-check input{width:auto;flex:0 0 auto;margin:0}
 .admin-form-actions{display:flex;gap:8px}
 .admin-radio-row{display:flex;align-items:center;gap:14px;margin-bottom:12px;color:var(--muted,#7c857a);font:10px 'Okra',sans-serif;text-transform:uppercase;letter-spacing:.08em}
 .admin-radio-row>span{display:flex;gap:16px}
