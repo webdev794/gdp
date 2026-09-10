@@ -30,7 +30,7 @@ const NEXT_ACTIONS = {
 }
 
 const STATUS_FILTERS = ['all', 'confirmed', 'packing', 'ready_for_delivery', 'out_for_delivery', 'completed', 'cancelled']
-const PAGE_SIZES = [10, 20, 50, 100, 500, 1000]
+const PAGE_SIZES = [5, 10, 20, 50, 100, 500, 1000]
 
 // Rows-per-page + page nav shown under a list. `total`/`pageCount` come from the
 // server for big lists, or from the array length for small ones paged client-side.
