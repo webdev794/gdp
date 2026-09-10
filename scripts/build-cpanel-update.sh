@@ -115,22 +115,12 @@ WHAT'S NEW (latest)
   - Storefront: loads the whole catalogue (not just the first page)
   - Self-hosted Okra font; page body renders *italic*
 
-NEW DATABASE OBJECTS (already in your local DB, so your full import covers them):
-  - tables  rider_shifts, rider_shift_breaks, rider_reviews, store_inventory
-  - orders  rider_offer_expires_at, rider_accepted_at, rider_offer_declined_ids,
-            rider_offer_decline_count, receipt_emailed_at, store_id,
-            delivered_at, delivery_verified, delivery_note, delivery_code,
-            delivery_code_expires_at
-  - users   rider_available, rider_unavailable_reason, rider_last_seen_at,
-            rider_offers_count, rider_declined_count, rider_missed_count,
-            rider_daily_target_minutes, rider_since, rider_rating_avg,
-            rider_rating_count, + the v7-base rider_* columns
-  - support_threads  rating, rating_comment, rated_at
-  If you import the full local DB you are covered. To apply only the schema to
-  existing live data instead, run:  php artisan migrate --force
+DATABASE: handled separately (you import it yourself). This bundle does not
+touch it. The code does expect the current schema, so the DB you import must be
+one exported AFTER the latest local migrations were run.
 
 STEPS
-  1. Back up first: in cPanel download public_html/gdp/  and export the DB.
+  1. Back up first: in cPanel download public_html/gdp/ .
   2. cPanel > File Manager > open  public_html/
      Upload this zip INTO public_html/  and Extract  ->  overwrite when asked.
      (It writes into public_html/gdp/ ; your .env is NOT in the zip.)
@@ -140,14 +130,7 @@ STEPS
          cd ~/public_html/gdp
          rm -f bootstrap/cache/*.php
          php artisan config:clear && php artisan route:clear && php artisan cache:clear
-  5. *** BRING THE DATABASE UP TO DATE — REQUIRED ***
-     The new code reads columns/tables that older live data doesn't have
-     (rider_last_seen_at, rider_shifts, orders.receipt_emailed_at, ...); without
-     this step every /rider/* call 500s. Do ONE of:
-       a) finish importing the full local DB (it already has everything), OR
-       b) run the migrations on the existing live data:
-             cd ~/public_html/gdp && php artisan migrate --force
-  6. Hard-refresh  https://testcaresortwork.co.in/gdp/  (Ctrl+Shift+R).
+  5. Hard-refresh  https://testcaresortwork.co.in/gdp/  (Ctrl+Shift+R).
 
 Rollback: re-upload your backup of public_html/gdp/ and re-import the DB dump.
 TXT
