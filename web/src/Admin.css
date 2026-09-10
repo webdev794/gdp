@@ -157,15 +157,16 @@
 a.act{display:inline-block;text-decoration:none}
 .admin-toolbar .muted,.admin-form>.muted,.admin-table .muted{color:var(--muted,#7c857a);font-size:13px;line-height:1.5}
 .admin-form>.muted{display:block;margin:0 0 12px}
-.admin-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.admin-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
 .admin-pager{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-top:14px;font-size:13px;color:var(--muted,#7c857a)}
 .admin-pager label{display:flex;gap:6px;align-items:center}
 .admin-pager select{padding:4px 6px;border:1px solid var(--line,#e4e7df);border-radius:6px;font:12px 'Okra',sans-serif}
 .admin-pager-nav{display:flex;gap:10px;align-items:center;color:var(--ink,#20291f)}
-.admin-toolbar input{padding:9px 12px;border:1px solid var(--field,#9aa895);border-radius:9px;font:14px 'Okra',sans-serif;min-width:220px}
-.admin-toolbar label{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted,#7c857a)}
-.admin-toolbar select{padding:8px 10px;border:1px solid var(--field,#9aa895);border-radius:9px;font:14px 'Okra',sans-serif}
-.admin-search{flex:0 1 280px;padding:10px 13px;border:1px solid var(--field,#9aa895);border-radius:10px;background:white;font:13px 'Okra',sans-serif}
+.admin-toolbar input{padding:9px 12px;border:1px solid var(--field,#9aa895);border-radius:9px;font:14px 'Okra',sans-serif;min-width:150px}
+.admin-toolbar label{display:flex;gap:5px;align-items:center;font-size:13px;color:var(--muted,#7c857a)}
+/* Keep every filter on one row: controls only as wide as their text, long option labels clip with an ellipsis. */
+.admin-toolbar select{max-width:170px;padding:8px 10px;border:1px solid var(--field,#9aa895);border-radius:9px;font:14px 'Okra',sans-serif;text-overflow:ellipsis}
+.admin-search{flex:0 1 190px;min-width:140px;padding:10px 13px;border:1px solid var(--field,#9aa895);border-radius:10px;background:white;font:13px 'Okra',sans-serif}
 .admin-toolbar input:hover,.admin-search:hover{border-color:#7a8a72}
 /* Native selects and file pickers are clickable — hover changes bg + text like a button. */
 .admin-form select,.admin-toolbar select,.admin-select,.admin-pager select,.admin-courier select,
