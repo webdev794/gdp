@@ -16,8 +16,14 @@ class EnsureUserIsRider
 
         // Presence heartbeat — the rider app polls /rider/orders every 15s, so
         // this doubles as "last online". Throttled to at most one write/minute.
+        // Best-effort: a heartbeat write must never 500 the request (e.g. right
+        // after a deploy, before `php artisan migrate` has run).
         if (! $user->rider_last_seen_at || $user->rider_last_seen_at->lt(now()->subSeconds(60))) {
-            $user->forceFill(['rider_last_seen_at' => now()])->saveQuietly();
+            try {
+                $user->forceFill(['rider_last_seen_at' => now()])->saveQuietly();
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
 
         return $next($request);
