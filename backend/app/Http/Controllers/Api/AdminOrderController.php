@@ -169,6 +169,10 @@ class AdminOrderController extends Controller
             RiderAssignment::assign($order);
         }
 
+        // Marking delivered, or collecting cash on a delivered order, sends the
+        // customer their summary email with the PDF bill.
+        $order->refresh()->sendDeliveredReceiptIfReady();
+
         return response()->json(['data' => $order->fresh()->load(['items', 'user:id,name,email,phone', 'deliveryPartner:id,name', 'store:id,name,city'])]);
     }
 }

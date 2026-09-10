@@ -22,6 +22,8 @@
 
 >> Storefront catalogue — the shop now loads every product, not just the first alphabetical page (items past ~"T", such as Whole Milk, were previously never shown under their category).
 
+>> Delivered-order email — once an order is both paid and delivered, the customer is emailed an order summary with the itemised PDF bill attached (same document as the "download bill" button). Sent once, from card delivery, cash-on-hand-off, or an admin marking it delivered.
+
 ---
 
 ## Admin access

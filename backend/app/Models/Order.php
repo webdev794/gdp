@@ -35,7 +35,7 @@ class Order extends Model
         'delivery_partner_id',
         'rider_offer_expires_at', 'rider_accepted_at', 'rider_offer_declined_ids', 'rider_offer_decline_count',
         'delivered_at', 'delivery_verified', 'delivery_note',
-        'delivery_code', 'delivery_code_expires_at',
+        'delivery_code', 'delivery_code_expires_at', 'receipt_emailed_at',
     ];
 
     /** A Stripe dashboard link for support/audit; the payment page shows the refund. */
@@ -62,7 +62,34 @@ class Order extends Model
             'delivered_at' => 'datetime',
             'delivery_verified' => 'boolean',
             'delivery_code_expires_at' => 'datetime',
+            'receipt_emailed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Email the customer their order summary + PDF bill, but only once the order
+     * is both delivered and paid. Idempotent: stamps receipt_emailed_at so it
+     * never fires twice, and safe to call from every state-changing endpoint.
+     */
+    public function sendDeliveredReceiptIfReady(): void
+    {
+        if ($this->receipt_emailed_at !== null
+            || $this->status !== 'completed'
+            || $this->payment_status !== 'paid') {
+            return;
+        }
+
+        $this->loadMissing('user');
+        if (! $this->user?->email) {
+            return;
+        }
+
+        try {
+            $this->user->notify(new \App\Notifications\OrderDelivered($this));
+            $this->forceFill(['receipt_emailed_at' => now()])->saveQuietly();
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     /** True while a rider assignment is still an unaccepted, time-boxed offer. */

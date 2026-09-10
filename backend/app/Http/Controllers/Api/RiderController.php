@@ -375,6 +375,9 @@ class RiderController extends Controller
             'rider_offer_expires_at' => null,
         ])->save();
 
+        // Paid + delivered: send the customer their summary email with the PDF bill.
+        $order->sendDeliveredReceiptIfReady();
+
         return response()->json(['data' => $this->row($order->fresh(['items', 'user:id,name,phone']))]);
     }
 
@@ -417,6 +420,8 @@ class RiderController extends Controller
 
         if ($order->payment_status !== 'paid') {
             $order->update(['payment_status' => 'paid']);
+            // Cash settled after the drop-off completes the paid + delivered pair.
+            $order->sendDeliveredReceiptIfReady();
         }
 
         return response()->json(['data' => $this->row($order->fresh(['items', 'user:id,name,phone']))]);

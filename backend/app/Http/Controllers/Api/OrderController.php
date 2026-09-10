@@ -5,8 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Setting;
-use App\Support\Branding;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\OrderReceipt;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -95,16 +94,7 @@ class OrderController extends Controller
 
         // Orders placed before line-level price snapshots fall back to the
         // product's / variant's current regular price, the same way the cart does.
-        $order->load('items.product', 'items.productVariant', 'store');
-
-        $pdf = Pdf::setOption(['isFontSubsettingEnabled' => true])
-            ->loadView('receipts.order', [
-                'order' => $order,
-                'store' => $order->fulfillingStore(),
-                'branding' => Branding::current(),
-            ]);
-
-        return $pdf->download("bill-order-{$order->id}.pdf");
+        return OrderReceipt::pdf($order)->download(OrderReceipt::filename($order));
     }
 
     /**
