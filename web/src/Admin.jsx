@@ -1083,6 +1083,9 @@ export default function Admin({ token, onClose }) {
     }
     setTab(name)
     setMessage('')
+    // Any open edit form belongs to the tab you're leaving — close them all.
+    setProductForm(null); setCategoryForm(null); setStoreForm(null); setRiderForm(null)
+    setBannerForm(null); setTileForm(null); setPageForm(null)
     // On a narrow screen the sidebar overlays the content — close it after a pick.
     if (typeof window !== 'undefined' && window.matchMedia('(max-width: 860px)').matches) {
       setNavOpen(false)
@@ -1385,9 +1388,9 @@ export default function Admin({ token, onClose }) {
       {tab === 'products' && (
         <section className="admin-panel">
           <div className="admin-toolbar">
-            <input className="admin-search" value={productSearch} placeholder="Search name or SKU" onChange={(event) => { setProductSearch(event.target.value); setProductsPage(1) }} />
+            <input className="admin-search" value={productSearch} placeholder="Search name or SKU" onChange={(event) => { setProductSearch(event.target.value); setProductsPage(1); setProductForm(null) }} />
             <label>Sort
-              <select value={productSort} onChange={(event) => { setProductSort(event.target.value); setProductsPage(1) }}>
+              <select value={productSort} onChange={(event) => { setProductSort(event.target.value); setProductsPage(1); setProductForm(null) }}>
                 <option value="newest">Newest first</option>
                 <option value="oldest">Oldest first</option>
                 <option value="name">Name (A–Z)</option>
@@ -1397,7 +1400,7 @@ export default function Admin({ token, onClose }) {
             </label>
             {categories.length > 0 && (
               <label>Category
-                <select value={productCategory} onChange={(event) => { setProductCategory(event.target.value); setProductsPage(1) }}>
+                <select value={productCategory} onChange={(event) => { setProductCategory(event.target.value); setProductsPage(1); setProductForm(null) }}>
                   <option value="">All categories</option>
                   {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
@@ -1405,7 +1408,7 @@ export default function Admin({ token, onClose }) {
             )}
             {stores.length > 0 && (
               <label>Store
-                <select value={productStore} onChange={(event) => { setProductStore(event.target.value); setProductsPage(1) }}>
+                <select value={productStore} onChange={(event) => { setProductStore(event.target.value); setProductsPage(1); setProductForm(null) }}>
                   <option value="">All stores</option>
                   {stores.map((s) => <option key={s.id} value={s.id}>{s.name}{s.city ? ` — ${s.city}` : ''}</option>)}
                 </select>
