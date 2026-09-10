@@ -275,6 +275,7 @@ export default function Admin({ token, onClose }) {
   const [productSearch, setProductSearch] = useState('')
   const [productSort, setProductSort] = useState('newest')
   const [productStore, setProductStore] = useState('')
+  const [productCategory, setProductCategory] = useState('')
   // Rows per page — shared across every list, remembered per browser.
   const [pageSize, setPageSizeRaw] = useState(() => {
     const n = Number(localStorage.getItem('gdp_admin_page_size'))
@@ -389,9 +390,10 @@ export default function Admin({ token, onClose }) {
     const qs = new URLSearchParams({ page: productsPage, per_page: pageSize, sort: productSort })
     if (productSearch.trim()) qs.set('search', productSearch.trim())
     if (productStore) qs.set('store_id', productStore)
+    if (productCategory) qs.set('category_id', productCategory)
     track('products', fetch(`${API_URL}/admin/products?${qs}`, { headers: authHeaders() }).then(readJson)
       .then((data) => { setProducts(data.data ?? []); setProductsMeta(data.meta ?? null) }).catch(() => setMessage('Could not load products.')))
-  }, [authHeaders, productSearch, productSort, productStore, productsPage, pageSize, track])
+  }, [authHeaders, productSearch, productSort, productStore, productCategory, productsPage, pageSize, track])
 
   const loadCategories = useCallback(() => {
     track('categories', fetch(`${API_URL}/admin/categories`, { headers: authHeaders() }).then(readJson)
@@ -1393,6 +1395,14 @@ export default function Admin({ token, onClose }) {
                 <option value="stock_high">Stock: high to low</option>
               </select>
             </label>
+            {categories.length > 0 && (
+              <label>Category
+                <select value={productCategory} onChange={(event) => { setProductCategory(event.target.value); setProductsPage(1) }}>
+                  <option value="">All categories</option>
+                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </label>
+            )}
             {stores.length > 0 && (
               <label>Store
                 <select value={productStore} onChange={(event) => { setProductStore(event.target.value); setProductsPage(1) }}>
