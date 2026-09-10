@@ -3,15 +3,15 @@
 .admin-shell{--bg:#eef2ea;--ink:#1b2418;--line:#ccd4c2;--muted:#5c6357;--accent:#2f7d43;--field:#93a08c;--row-alt:#f3f8f1;--row-hover:#e4efdf}
 .admin-shell{position:fixed;inset:0;z-index:60;background:var(--bg,#f6f6f2);color:var(--ink,#20291f);display:flex;flex-direction:column;overflow:hidden;font-family:'Okra',sans-serif}
 .admin-bar{flex:0 0 auto;z-index:5;display:flex;align-items:center;gap:14px;padding:12px 20px;background:#141a12;color:#f3f5ef}
-.admin-menu-toggle{flex:0 0 auto;width:34px;height:34px;border:1px solid #3a4433;border-radius:8px;background:transparent;color:#f3f5ef;font-size:15px;line-height:1;cursor:pointer}
+.admin-menu-toggle{flex:0 0 auto;width:34px;height:34px;border:1px solid #3a4433;border-radius:12px;background:transparent;color:#f3f5ef;font-size:15px;line-height:1;cursor:pointer;transition:background .12s ease}
 .admin-menu-toggle:hover{background:#26311f}
 .admin-brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.02em;margin-right:auto}
 .admin-brand span{display:grid;place-items:center;width:24px;height:24px;border-radius:7px;background:#8bd08f;color:#141a12}
 .admin-bar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-.admin-top-tab{padding:9px 15px;border:1px solid #3a4433;border-radius:10px;background:transparent;color:#cdd6c8;font:11px 'Okra',sans-serif;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;transition:background .12s ease,color .12s ease}
+.admin-top-tab{padding:9px 15px;border:1px solid #3a4433;border-radius:12px;background:transparent;color:#cdd6c8;font:11px 'Okra',sans-serif;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;transition:background .12s ease,color .12s ease}
 .admin-top-tab:hover{background:#2e3b26;color:#f3f5ef}
 .admin-top-tab.active{background:#2e7d32;color:#fff;border-color:#2e7d32}
-.admin-close{padding:9px 16px;border:1px solid #3a4433;border-radius:10px;background:transparent;color:#f3f5ef;font:11px 'Okra',sans-serif;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;transition:background .12s ease}
+.admin-close{padding:9px 16px;border:1px solid #3a4433;border-radius:12px;background:transparent;color:#f3f5ef;font:11px 'Okra',sans-serif;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;transition:background .12s ease}
 .admin-close:hover{background:#2e3b26}
 
 .admin-body{flex:1 1 auto;display:flex;min-height:0;position:relative;overflow:hidden}
@@ -60,7 +60,7 @@
 
 /* dashboard charts */
 .chart-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:18px}
-.seg{display:inline-flex;border:1px solid var(--line,#e4e7df);border-radius:10px;overflow:hidden}
+.seg{display:inline-flex;border:1px solid var(--line,#e4e7df);border-radius:12px;overflow:hidden}
 .seg button{padding:8px 14px;border:0;background:white;color:var(--muted,#7c857a);font:11px 'Okra',sans-serif;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;transition:background .12s ease,color .12s ease}
 .seg button+button{border-left:1px solid var(--line,#e4e7df)}
 .seg button:hover:not(.active){background:#eef2ea;color:var(--ink,#20291f)}
@@ -77,9 +77,9 @@
 .chart-bar-label{margin-top:5px;font:9px 'Okra',sans-serif;color:var(--muted,#7c857a);white-space:nowrap;height:12px;overflow:hidden}
 
 /* period-over-period comparison */
-.admin-select{padding:8px 12px;border:1px solid var(--field,#9aa895);border-radius:10px;background:white;color:var(--ink,#20291f);font:12px 'Okra',sans-serif}
+.admin-select{padding:8px 12px;border:1px solid var(--field,#9aa895);border-radius:12px;background:white;color:var(--ink,#20291f);font:12px 'Okra',sans-serif}
 .compare-custom{display:flex;align-items:center;gap:8px}
-.compare-custom input{width:70px;padding:6px 8px;border:1px solid var(--line,#e4e7df);border-radius:8px;font-size:12px}
+.compare-custom input{width:70px;padding:7px 9px;border:1px solid var(--field,#9aa895);border-radius:10px;font-size:12px}
 .compare-head{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px}
 .compare-head strong{font-size:24px;letter-spacing:-.04em}
 .compare-measure{display:block;color:var(--muted,#7c857a);font:9px 'Okra',sans-serif;text-transform:uppercase;letter-spacing:.09em;margin-bottom:2px}
