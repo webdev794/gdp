@@ -54,6 +54,18 @@ function Pager({ page, pageCount, total, onPage, pageSize, onPageSize }) {
     </div>
   )
 }
+
+// A rotating ring of dots + label, for every "Loading…" placeholder.
+function Loading({ children }) {
+  return (
+    <p className="admin-empty admin-loading" role="status">
+      <span className="admin-spinner" aria-hidden="true">
+        {Array.from({ length: 8 }, (_, i) => <span key={i} style={{ '--i': i }} />)}
+      </span>
+      {children}
+    </p>
+  )
+}
 // Left sidebar vs top-right. Support/Settings stay top-right (used less often,
 // and Support carries the live badge next to the notification bell).
 const PRIMARY_TABS = ['dashboard', 'orders', 'products', 'categories', 'customers', 'riders', 'stores', 'branding', 'secure']
@@ -1135,7 +1147,7 @@ export default function Admin({ token, onClose }) {
       {tab === 'dashboard' && (
         <>
           <section className="admin-grid">
-            {!metrics ? <p className="admin-empty">Loading metrics...</p> : (
+            {!metrics ? <Loading>Loading metrics…</Loading> : (
               <>
                 <article className="metric accent"><span>Paid revenue</span><strong>{money(metrics.revenue_cents)}</strong></article>
                 <article className="metric"><span>Orders</span><strong>{metrics.orders_total}</strong></article>
@@ -1167,7 +1179,7 @@ export default function Admin({ token, onClose }) {
               {chart && <span className="muted chart-range">{chart.from} → {chart.to} · {chart.totals.orders} orders · {chart.totals.paid_orders} paid · {money(chart.totals.revenue_cents)}</span>}
             </div>
 
-            {!chart ? <p className="admin-empty">Loading chart…</p> : (
+            {!chart ? <Loading>Loading chart…</Loading> : (
               <>
                 <LineChart
                   series={chart.series.map((row) => ({ label: row.label, value: chartMetric === 'orders' ? row.orders : row.revenue_cents }))}
@@ -1189,7 +1201,7 @@ export default function Admin({ token, onClose }) {
 
           <section className="admin-panel">
             <h3 className="admin-subhead">When orders come in</h3>
-            {!insights ? <p className="admin-empty">Loading…</p> : (
+            {!insights ? <Loading>Loading…</Loading> : (
               <>
                 <Heatmap
                   rows={insights.activity?.rows ?? []}
@@ -1231,7 +1243,7 @@ export default function Admin({ token, onClose }) {
               </div>
             </div>
 
-            {!compare ? <p className="admin-empty">Loading comparison…</p> : (() => {
+            {!compare ? <Loading>Loading comparison…</Loading> : (() => {
               const fmt = compareMetric === 'orders' ? ((v) => v) : money
               const cur = compare.current[compareMetric]
               const prev = compare.previous[compareMetric]
@@ -1255,7 +1267,7 @@ export default function Admin({ token, onClose }) {
             </div>
             <div className="dash-split-side">
               <h3 className="admin-subhead">Payments vs refunds</h3>
-              {!metrics ? <p className="admin-empty">Loading…</p> : (
+              {!metrics ? <Loading>Loading…</Loading> : (
                 <PieChart
                   format={money}
                   data={[
@@ -1279,7 +1291,7 @@ export default function Admin({ token, onClose }) {
               </button>
             ))}
           </div>
-          {listBusy.orders && orders.length === 0 ? <p className="admin-empty">Loading orders…</p> : orders.length === 0 ? <p className="admin-empty">No orders for this filter.</p> : (
+          {listBusy.orders && orders.length === 0 ? <Loading>Loading orders…</Loading> : orders.length === 0 ? <p className="admin-empty">No orders for this filter.</p> : (
             <table className="admin-table">
               <thead><tr><th>#</th><th>Customer</th><th>Placed</th><th>Total</th><th>Payment</th><th>Delivery</th><th>Courier</th><th>Actions</th></tr></thead>
               <tbody>
@@ -1478,7 +1490,7 @@ export default function Admin({ token, onClose }) {
             </form>
           )}
 
-          {listBusy.products && products.length === 0 ? <p className="admin-empty">Loading products…</p> : products.length === 0 ? <p className="admin-empty">No products.</p> : (
+          {listBusy.products && products.length === 0 ? <Loading>Loading products…</Loading> : products.length === 0 ? <p className="admin-empty">No products.</p> : (
             <table className="admin-table">
               <thead><tr><th>Name</th><th>SKU</th><th>Category</th><th>Price</th><th>Stock</th><th>Variants</th><th>Active</th><th></th></tr></thead>
               <tbody>
@@ -1528,7 +1540,7 @@ export default function Admin({ token, onClose }) {
             </form>
           )}
 
-          {listBusy.categories && categories.length === 0 ? <p className="admin-empty">Loading categories…</p> : categories.length === 0 ? <p className="admin-empty">No categories.</p> : (
+          {listBusy.categories && categories.length === 0 ? <Loading>Loading categories…</Loading> : categories.length === 0 ? <p className="admin-empty">No categories.</p> : (
             <table className="admin-table">
               <thead><tr><th>Name</th><th>Slug</th><th>Products</th><th>Sort</th><th>Active</th><th></th></tr></thead>
               <tbody>
@@ -1554,7 +1566,7 @@ export default function Admin({ token, onClose }) {
 
       {tab === 'customers' && (
         <section className="admin-panel">
-          {listBusy.customers && customers.length === 0 ? <p className="admin-empty">Loading customers…</p> : customers.length === 0 ? <p className="admin-empty">No customers yet.</p> : (
+          {listBusy.customers && customers.length === 0 ? <Loading>Loading customers…</Loading> : customers.length === 0 ? <p className="admin-empty">No customers yet.</p> : (
             <table className="admin-table">
               <thead><tr><th>Name</th><th>Email</th><th>Orders</th><th>Paid spend</th><th>Joined</th><th></th></tr></thead>
               <tbody>
@@ -1637,7 +1649,7 @@ export default function Admin({ token, onClose }) {
             </form>
           )}
 
-          {listBusy.riders && riders.length === 0 ? <p className="admin-empty">Loading riders…</p> : riders.length === 0 ? <p className="admin-empty">No riders yet. Add one by email above.</p> : (
+          {listBusy.riders && riders.length === 0 ? <Loading>Loading riders…</Loading> : riders.length === 0 ? <p className="admin-empty">No riders yet. Add one by email above.</p> : (
             <table className="admin-table">
               <thead><tr><th>Name</th><th>Phone</th><th>Status</th><th>Stores</th><th>Location</th><th>Rating</th><th>Active jobs</th><th>On shift</th><th></th></tr></thead>
               <tbody>
@@ -1708,7 +1720,7 @@ export default function Admin({ token, onClose }) {
             </form>
           )}
 
-          {listBusy.stores && stores.length === 0 ? <p className="admin-empty">Loading stores…</p> : stores.length === 0 ? <p className="admin-empty">No stores yet. Add one to switch on delivery-area checks.</p> : (
+          {listBusy.stores && stores.length === 0 ? <Loading>Loading stores…</Loading> : stores.length === 0 ? <p className="admin-empty">No stores yet. Add one to switch on delivery-area checks.</p> : (
             <table className="admin-table">
               <thead><tr><th>Name</th><th>Address</th><th>Radius</th><th>Location</th><th>Active</th><th></th></tr></thead>
               <tbody>
@@ -2059,7 +2071,7 @@ export default function Admin({ token, onClose }) {
 
       {tab === 'footer' && (
         <section className="admin-panel">
-          {!footerForm ? <p className="admin-empty">Loading…</p> : (
+          {!footerForm ? <Loading>Loading…</Loading> : (
             <form className="admin-form" onSubmit={saveFooter}>
               <h3>Footer</h3>
               <p className="muted">The storefront footer. &ldquo;Useful Links&rdquo; also lists your published content pages; the links below are added after them.</p>
@@ -2103,7 +2115,7 @@ export default function Admin({ token, onClose }) {
 
       {tab === 'branding' && (
         <section className="admin-panel">
-          {!brandingForm ? <p className="admin-empty">Loading…</p> : (
+          {!brandingForm ? <Loading>Loading…</Loading> : (
             <form className="admin-form" onSubmit={saveBranding}>
               <h3>Store settings</h3>
               <p className="muted">Branding for the storefront. Current values are pre-filled; changes apply after the shopper reloads.</p>
@@ -2238,7 +2250,7 @@ export default function Admin({ token, onClose }) {
 
       {tab === 'settings' && (
         <section className="admin-panel">
-          {!settings || !feesForm ? <p className="admin-empty">Loading settings…</p> : (
+          {!settings || !feesForm ? <Loading>Loading settings…</Loading> : (
             <>
               <div className="admin-form">
                 <h3>Payment</h3>
@@ -2386,7 +2398,7 @@ export default function Admin({ token, onClose }) {
         <div className="admin-drawer" role="presentation" onClick={() => setCustomerDetail(null)}>
           <aside onClick={(event) => event.stopPropagation()}>
             <button className="admin-close" type="button" onClick={() => setCustomerDetail(null)}>Close</button>
-            {customerDetail.loading ? <p className="admin-empty">Loading…</p> : (
+            {customerDetail.loading ? <Loading>Loading…</Loading> : (
               <>
                 <h3>{customerDetail.name}</h3>
                 <p className="muted">{customerDetail.email} · {customerDetail.phone || 'no phone'} · joined {new Date(customerDetail.joined_at).toLocaleDateString()}</p>
@@ -2414,7 +2426,7 @@ export default function Admin({ token, onClose }) {
         <div className="admin-drawer" role="presentation" onClick={() => setRiderDetail(null)}>
           <aside onClick={(event) => event.stopPropagation()}>
             <button className="admin-close" type="button" onClick={() => setRiderDetail(null)}>Close</button>
-            {riderDetail.loading ? <p className="admin-empty">Loading…</p> : (
+            {riderDetail.loading ? <Loading>Loading…</Loading> : (
               <>
                 <h3>{riderDetail.rider?.name}{riderDetail.view === 'reviews' ? ' — reviews' : ''}</h3>
                 <p className="muted">{riderDetail.rider?.email} · {riderDetail.rider?.phone || 'no phone'}</p>
@@ -2459,7 +2471,7 @@ export default function Admin({ token, onClose }) {
                       <strong>{riderMonth.toLocaleDateString([], { month: 'long', year: 'numeric' })}</strong>
                       <button type="button" className="act ghost" disabled={riderMonth.getFullYear() === new Date().getFullYear() && riderMonth.getMonth() === new Date().getMonth()} onClick={() => setRiderMonth((m) => new Date(m.getFullYear(), m.getMonth() + 1, 1))}>Next &rsaquo;</button>
                     </div>
-                    {!riderReport || riderReport.loading ? <p className="admin-empty">Loading…</p> : (
+                    {!riderReport || riderReport.loading ? <Loading>Loading…</Loading> : (
                       <>
                         <p className="muted">Completed days only — counting from {new Date(riderReport.active_from).toLocaleDateString()}{riderReport.today?.on_the_clock ? ` · on the clock now, ${fmtWorked(riderReport.today.worked_minutes)} today` : ''}</p>
                         <div className="admin-rider-stats">
