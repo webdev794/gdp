@@ -89,7 +89,7 @@ const PRODUCT_EMOJI = [
 function productEmoji(name = '') { return (PRODUCT_EMOJI.find(([re]) => re.test(name)) ?? [null, '\u{1F6D2}'])[1] }
 
 
-const CANCELLABLE_STAGES = ['confirmed', 'packing', 'ready_for_delivery']
+const CANCELLABLE_STAGES = ['pending_payment', 'confirmed', 'packing', 'ready_for_delivery']
 
 const ISSUE_TYPES = [
   ['item_missing', 'Item missing'],
