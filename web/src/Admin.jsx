@@ -1255,17 +1255,15 @@ export default function Admin({ token, onClose }) {
           </div>
           {listBusy.orders && orders.length === 0 ? <p className="admin-empty">Loading orders…</p> : orders.length === 0 ? <p className="admin-empty">No orders for this filter.</p> : (
             <table className="admin-table">
-              <thead><tr><th>#</th><th>Customer</th><th>Placed</th><th>Items</th><th>Total</th><th>Method</th><th>Payment</th><th>Delivery</th><th>Courier</th><th>Actions</th></tr></thead>
+              <thead><tr><th>#</th><th>Customer</th><th>Placed</th><th>Total</th><th>Payment</th><th>Delivery</th><th>Courier</th><th>Actions</th></tr></thead>
               <tbody>
                 {orders.map((order) => (
                   <tr key={order.id}>
                     <td>{order.id}</td>
                     <td>{order.user?.email ?? '—'}{(order.delivery_address?.phone || order.user?.phone) && <span className="admin-note">☎ {order.delivery_address?.phone || order.user?.phone}</span>}{order.delivery_instructions && <span className="admin-note" title={order.delivery_instructions}>&ldquo;{order.delivery_instructions}&rdquo;</span>}</td>
                     <td>{new Date(order.created_at).toLocaleDateString()}</td>
-                    <td>{order.items?.length ?? 0}</td>
-                    <td>{money(order.total_cents)}</td>
-                    <td>{order.payment_method === 'cod' ? 'Cash on delivery' : 'Card'}</td>
-                    <td><span className={`pill pill-${order.payment_status}`}>{order.payment_status}</span></td>
+                    <td>{money(order.total_cents)}<span className="admin-note">{order.items?.length ?? 0} item{order.items?.length === 1 ? '' : 's'}</span></td>
+                    <td><span className={`pill pill-${order.payment_status}`}>{order.payment_status}</span><span className="admin-note">{order.payment_method === 'cod' ? 'Cash on delivery' : 'Card'}</span></td>
                     <td>{STATUS_LABELS[order.status] ?? order.status}{order.store && <span className="admin-note" title={`Fulfilled by ${order.store.name}${order.store.city ? `, ${order.store.city}` : ''}`}>🏬 {order.store.name}</span>}{order.status === 'completed' && order.delivery_verified === true && <span className="admin-note" style={{ color: '#2f6d34' }} title={order.delivered_at ? `Confirmed ${new Date(order.delivered_at).toLocaleString()}` : ''}>✓ code verified</span>}{order.status === 'completed' && order.delivery_verified === false && <span className="admin-note" style={{ color: '#a23b28' }} title={order.delivery_note || ''}>⚠ delivered without code{order.delivery_note ? ` — ${order.delivery_note}` : ''}</span>}{order.rider_accepted_at && <span className="admin-note" style={{ color: '#2f6d34' }} title={`Accepted ${new Date(order.rider_accepted_at).toLocaleString()}`}>✓ accepted{order.delivery_partner?.name ? ` by ${order.delivery_partner.name}` : ''} · {new Date(order.rider_accepted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}{!order.rider_accepted_at && order.rider_offer_expires_at && <span className="admin-note" style={{ color: '#7a5c14' }} title={`Offer expires ${new Date(order.rider_offer_expires_at).toLocaleString()}`}>⏳ offered{order.delivery_partner?.name ? ` to ${order.delivery_partner.name}` : ''} (expires {new Date(order.rider_offer_expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})</span>}{order.rider_offer_decline_count > 0 && <span className="admin-note" style={{ color: '#a23b28' }} title="Riders who declined or missed this offer">↩ declined ×{order.rider_offer_decline_count}</span>}</td>
                     <td className="admin-courier">
                       {riders.length > 0 ? (
@@ -1298,7 +1296,7 @@ export default function Admin({ token, onClose }) {
                         const steps = NEXT_ACTIONS[order.status] ?? []
                         if (!codCollect && !needsRefund && !refundedLink && steps.length === 0) {
                           const unpaid = order.status === 'pending_payment' || (order.payment_status !== 'paid' && order.status !== 'completed' && order.status !== 'cancelled')
-                          return <span className="muted" title={unpaid ? "Nothing to do until the customer's payment goes through" : 'This order is finished'}>{unpaid ? 'awaiting payment' : '—'}</span>
+                          return <span className="muted" title={unpaid ? "Nothing to do until the customer's payment goes through" : 'This order is finished'}>—</span>
                         }
                         return (
                           <>
