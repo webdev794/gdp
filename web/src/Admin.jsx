@@ -1374,11 +1374,11 @@ export default function Admin({ token, onClose }) {
                 </select>
               </label>
             )}
-            <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ ...EMPTY_PRODUCT, category_id: categories[0]?.id ?? '' }) }}>New product</button>
+            <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ ...EMPTY_PRODUCT, category_id: categories[0]?.id ?? '' }); scrollFormIntoView('admin-product-form') }}>New product</button>
           </div>
 
           {productForm && (
-            <form className="admin-form" onSubmit={saveProduct}>
+            <form id="admin-product-form" className="admin-form" onSubmit={saveProduct}>
               <h3>{productForm.id ? `Edit product #${productForm.id}` : 'New product'}</h3>
               <div className="admin-form-grid">
                 <label>Category
@@ -1494,7 +1494,7 @@ export default function Admin({ token, onClose }) {
                     <td>{packs || '—'}</td>
                     <td>{product.is_active ? 'Yes' : 'No'}</td>
                     <td className="admin-actions">
-                      <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ id: product.id, category_id: product.category_id, name: product.name, sku: product.sku, price: (product.price_cents / 100).toFixed(2), compare_at: dollarsOrBlank(product.compare_at_price_cents), inventory_quantity: product.inventory_quantity, description: product.description ?? '', image_url: product.image_url ?? '', is_active: product.is_active, per_store_stock: (product.store_inventory ?? []).length > 0, store_stock: storeStockFrom(product), variants: variantRowsFrom(product) }) }}>Edit</button>
+                      <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ id: product.id, category_id: product.category_id, name: product.name, sku: product.sku, price: (product.price_cents / 100).toFixed(2), compare_at: dollarsOrBlank(product.compare_at_price_cents), inventory_quantity: product.inventory_quantity, description: product.description ?? '', image_url: product.image_url ?? '', is_active: product.is_active, per_store_stock: (product.store_inventory ?? []).length > 0, store_stock: storeStockFrom(product), variants: variantRowsFrom(product) }); scrollFormIntoView('admin-product-form') }}>Edit</button>
                       <button className="act danger" type="button" onClick={() => removeProduct(product)}>Delete</button>
                     </td>
                   </tr>
@@ -1675,12 +1675,12 @@ export default function Admin({ token, onClose }) {
       {tab === 'stores' && (
         <section className="admin-panel">
           <div className="admin-toolbar">
-            <button className="act" type="button" onClick={() => setStoreForm({ ...EMPTY_STORE })}>New store</button>
+            <button className="act" type="button" onClick={() => { setStoreForm({ ...EMPTY_STORE }); scrollFormIntoView('admin-store-form') }}>New store</button>
             <span className="muted">Customers outside every active store&rsquo;s radius can browse but can&rsquo;t check out.</span>
           </div>
 
           {storeForm && (
-            <form className="admin-form" onSubmit={saveStore}>
+            <form id="admin-store-form" className="admin-form" onSubmit={saveStore}>
               <h3>{storeForm.id ? `Edit store #${storeForm.id}` : 'New store'}</h3>
               <div className="admin-form-grid">
                 <label>Name<input value={storeForm.name} placeholder="Main Store" onChange={(event) => setStoreForm({ ...storeForm, name: event.target.value })} /></label>
@@ -1722,7 +1722,7 @@ export default function Admin({ token, onClose }) {
                       : <span className="muted">not located — add coordinates</span>}</td>
                     <td>{store.is_active ? 'Yes' : 'No'}</td>
                     <td className="admin-actions">
-                      <button className="act" type="button" onClick={() => setStoreForm({ id: store.id, name: store.name ?? '', line1: store.line1 ?? '', line2: store.line2 ?? '', city: store.city ?? '', state: store.state ?? '', postal_code: store.postal_code ?? '', latitude: store.latitude ?? '', longitude: store.longitude ?? '', delivery_radius_km: store.delivery_radius_km ?? 5, is_active: store.is_active })}>Edit</button>
+                      <button className="act" type="button" onClick={() => { setStoreForm({ id: store.id, name: store.name ?? '', line1: store.line1 ?? '', line2: store.line2 ?? '', city: store.city ?? '', state: store.state ?? '', postal_code: store.postal_code ?? '', latitude: store.latitude ?? '', longitude: store.longitude ?? '', delivery_radius_km: store.delivery_radius_km ?? 5, is_active: store.is_active }); scrollFormIntoView('admin-store-form') }}>Edit</button>
                       <button className="act danger" type="button" onClick={() => removeStore(store)}>Delete</button>
                     </td>
                   </tr>
