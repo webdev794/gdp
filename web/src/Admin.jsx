@@ -630,6 +630,13 @@ export default function Admin({ token, onClose }) {
     } catch (error) { fail(error) }
   }
 
+  const scrollAdminTop = () => {
+    requestAnimationFrame(() => {
+      document.querySelector('.admin-main')?.scrollTo({ top: 0, behavior: 'smooth' })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    })
+  }
+
   function editPage(page) {
     setPagePreview(false)
     setPageForm({
@@ -639,6 +646,13 @@ export default function Admin({ token, onClose }) {
       footer_group: page.footer_group ?? 'useful_links', show_in_footer: page.show_in_footer,
       is_published: page.is_published, sort_order: page.sort_order ?? 0,
     })
+    scrollAdminTop()
+  }
+
+  function newPage(extra = {}) {
+    setPagePreview(false)
+    setPageForm({ ...EMPTY_PAGE, ...extra })
+    scrollAdminTop()
   }
 
   async function savePage(event) {
@@ -1087,7 +1101,7 @@ export default function Admin({ token, onClose }) {
               {pages.filter((p) => p.footer_group !== 'blog').map((p) => (
                 <button key={p.id} type="button" className={tab === 'pages' && pageForm?.id === p.id ? 'active' : ''} onClick={() => { goTab('pages'); editPage(p) }}>{p.title}</button>
               ))}
-              <button type="button" className="nav-sub-add" onClick={() => { goTab('pages'); setPagePreview(false); setPageForm({ ...EMPTY_PAGE }) }}>+ New page</button>
+              <button type="button" className="nav-sub-add" onClick={() => { goTab('pages'); newPage() }}>+ New page</button>
               {(() => { const blogPages = pages.filter((p) => p.footer_group === 'blog'); const blogOpen = blogsExpanded || (tab === 'pages' && pageForm?.footer_group === 'blog'); return <>
                 <button type="button" className="nav-subgroup-toggle" aria-expanded={blogOpen} onClick={() => setBlogsExpanded((v) => !v)}>Blogs<span className="nav-caret" aria-hidden>{blogOpen ? '▾' : '▸'}</span></button>
                 {blogOpen && (
@@ -1096,7 +1110,7 @@ export default function Admin({ token, onClose }) {
                     {blogPages.map((p) => (
                       <button key={p.id} type="button" className={tab === 'pages' && pageForm?.id === p.id ? 'active' : ''} onClick={() => { goTab('pages'); editPage(p) }}>{p.title}</button>
                     ))}
-                    <button type="button" className="nav-sub-add" onClick={() => { goTab('pages'); setPagePreview(false); setPageForm({ ...EMPTY_PAGE, footer_group: 'blog', show_in_footer: false }) }}>+ New blog post</button>
+                    <button type="button" className="nav-sub-add" onClick={() => { goTab('pages'); newPage({ footer_group: 'blog', show_in_footer: false }) }}>+ New blog post</button>
                   </div>
                 )}
               </> })()}
@@ -1828,7 +1842,7 @@ export default function Admin({ token, onClose }) {
       {tab === 'pages' && (
         <section className="admin-panel">
           <div className="admin-toolbar">
-            <button className="act" type="button" onClick={() => { setPagePreview(false); setPageForm({ ...EMPTY_PAGE }) }}>New page</button>
+            <button className="act" type="button" onClick={() => newPage()}>New page</button>
             <span className="muted">Content pages linked from the storefront footer. Content is Markdown (## heading, **bold**, - list, [text](url)).</span>
           </div>
 
