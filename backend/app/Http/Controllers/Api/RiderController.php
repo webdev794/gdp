@@ -192,6 +192,7 @@ class RiderController extends Controller
             'rating_count' => (int) $rider->rider_rating_count,
             'verified_rate' => $total ? round($verified / $total, 3) : null,
             'cod_collected_cents' => $codCents,
+            'cod_holding_cents' => $rider->codHoldingCents(),
             'recent_ratings' => $recent,
             'offers_total' => (int) $rider->rider_offers_count,
             'declined_total' => (int) $rider->rider_declined_count,

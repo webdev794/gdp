@@ -1159,6 +1159,21 @@ export default function Admin({ token, onClose }) {
     } catch (error) { setRiderDetail(null); fail(error) }
   }
 
+  // Admin confirms the rider has handed back the cash they've collected on
+  // COD orders — clears their holding balance immediately, everywhere it shows.
+  async function settleRiderCash(rider) {
+    if (!window.confirm(`Confirm ${rider.name} has returned ${money(rider.cash_holding_cents)} in cash?`)) return
+    setBusyId(rider.id)
+    try {
+      const response = await fetch(`${API_URL}/admin/riders/${rider.id}/cash-settle`, { method: 'POST', headers: authHeaders() })
+      const data = await readJson(response)
+      if (!response.ok) throw new Error(data.message ?? 'Could not confirm the cash returned.')
+      setRiderDetail((current) => (current?.rider?.id === rider.id ? { ...current, rider: { ...current.rider, cash_holding_cents: 0 } } : current))
+      setRiders((current) => current.map((r) => (r.id === rider.id ? { ...r, cash_holding_cents: 0 } : r)))
+      setMessage(`${rider.name} — ${money(data.data.settled_cents)} confirmed returned.`)
+    } catch (error) { fail(error) } finally { setBusyId(null) }
+  }
+
   const loadRiderReport = useCallback((riderId, month) => {
     const from = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}-01`
     const end = new Date(month.getFullYear(), month.getMonth() + 1, 0)
@@ -2699,6 +2714,13 @@ export default function Admin({ token, onClose }) {
                       <span><strong>{riderDetail.rider?.acceptance_rate != null ? `${Math.round(riderDetail.rider.acceptance_rate * 100)}%` : '—'}</strong> offers accepted{riderDetail.rider?.offers_count ? ` (${riderDetail.rider.offers_count})` : ''}</span>
                       <span><strong>{riderDetail.rider?.declined_count ?? 0} / {riderDetail.rider?.missed_count ?? 0}</strong> rejected / missed</span>
                     </div>
+
+                    {riderDetail.rider?.cash_holding_cents > 0 && (
+                      <p className="admin-cash-holding">
+                        Holding <b>{money(riderDetail.rider.cash_holding_cents)}</b> in cash from COD deliveries.
+                        <button type="button" className="act" disabled={busyId === riderDetail.rider.id} onClick={() => settleRiderCash(riderDetail.rider)}>Confirm cash returned</button>
+                      </p>
+                    )}
 
                     <h4>Attendance</h4>
                     <p className="muted">{riderStatusChip(riderDetail.rider ?? {})}</p>

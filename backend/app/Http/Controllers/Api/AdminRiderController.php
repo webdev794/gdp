@@ -209,6 +209,24 @@ class AdminRiderController extends Controller
     }
 
     /**
+     * Confirm the rider has physically handed back all the cash they're
+     * currently holding from cash-on-delivery orders. Clears their holding
+     * balance immediately (on the admin list and the rider's own dashboard).
+     */
+    public function settleCash(User $user): JsonResponse
+    {
+        abort_unless($user->is_rider, 404);
+
+        $settled = $user->settleCodCash();
+
+        if ($settled <= 0) {
+            return response()->json(['message' => 'This rider has no cash on hand to settle.'], 422);
+        }
+
+        return response()->json(['data' => ['settled_cents' => $settled, 'holding_cents' => 0]]);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function row(User $rider): array
@@ -244,6 +262,7 @@ class AdminRiderController extends Controller
             'declined_count' => (int) $rider->rider_declined_count,
             'missed_count' => (int) $rider->rider_missed_count,
             'acceptance_rate' => $rider->riderAcceptanceRate(),
+            'cash_holding_cents' => $rider->codHoldingCents(),
             'stores' => $rider->relationLoaded('stores')
                 ? $rider->stores->map(fn ($s) => ['id' => $s->id, 'name' => $s->name, 'city' => $s->city])->values()
                 : [],

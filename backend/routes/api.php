@@ -108,6 +108,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/riders', [AdminRiderController::class, 'store']);
     Route::patch('/riders/{user}', [AdminRiderController::class, 'update']);
     Route::delete('/riders/{user}', [AdminRiderController::class, 'destroy']);
+    Route::post('/riders/{user}/cash-settle', [AdminRiderController::class, 'settleCash']);
     Route::get('/orders', [AdminOrderController::class, 'index']);
     Route::get('/orders/{order}', [AdminOrderController::class, 'show']);
     Route::patch('/orders/{order}', [AdminOrderController::class, 'update']);

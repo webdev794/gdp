@@ -99,6 +99,35 @@ class User extends Authenticatable
         ])->save();
     }
 
+    /**
+     * Cash this rider is currently holding: collected on a COD order but not
+     * yet confirmed handed back to the store. Independent of delivery status.
+     */
+    public function codHoldingCents(): int
+    {
+        return (int) $this->deliveries()
+            ->where('payment_method', 'cod')
+            ->where('payment_status', 'paid')
+            ->whereNull('cash_settled_at')
+            ->sum('total_cents');
+    }
+
+    /** Admin confirms the rider handed back everything they're currently holding. */
+    public function settleCodCash(): int
+    {
+        $orders = $this->deliveries()
+            ->where('payment_method', 'cod')
+            ->where('payment_status', 'paid')
+            ->whereNull('cash_settled_at')
+            ->get(['id', 'total_cents']);
+
+        $total = (int) $orders->sum('total_cents');
+
+        $this->deliveries()->whereIn('id', $orders->pluck('id'))->update(['cash_settled_at' => now()]);
+
+        return $total;
+    }
+
     /** Stores this rider serves (auto-assignment only considers these). */
     public function stores(): BelongsToMany
     {

@@ -165,6 +165,12 @@ function RiderStats({ stats }) {
           <span className="rider-stat-l">Cash collected</span>
         </div>
       )}
+      {stats.cod_holding_cents > 0 && (
+        <div className="rider-stat rider-stat-warn">
+          <span className="rider-stat-n">{money(stats.cod_holding_cents)}</span>
+          <span className="rider-stat-l">Cash to return to store</span>
+        </div>
+      )}
     </section>
   )
 }

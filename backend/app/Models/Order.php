@@ -36,7 +36,7 @@ class Order extends Model
         'stripe_payment_intent_id', 'stripe_refund_id', 'refunded_amount_cents',
         'delivery_partner_id',
         'rider_offer_expires_at', 'rider_accepted_at', 'rider_offer_declined_ids', 'rider_offer_decline_count',
-        'delivered_at', 'delivery_verified', 'delivery_note',
+        'delivered_at', 'cash_settled_at', 'delivery_verified', 'delivery_note',
         'delivery_code', 'delivery_code_expires_at', 'receipt_emailed_at',
     ];
 
@@ -63,6 +63,7 @@ class Order extends Model
             'rider_offer_declined_ids' => 'array',
             'rider_offer_decline_count' => 'integer',
             'delivered_at' => 'datetime',
+            'cash_settled_at' => 'datetime',
             'delivery_verified' => 'boolean',
             'delivery_code_expires_at' => 'datetime',
             'receipt_emailed_at' => 'datetime',

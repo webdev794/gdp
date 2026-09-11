@@ -19,6 +19,8 @@
 
 .rider-stats{display:flex;flex-wrap:wrap;gap:10px;padding:16px 18px 0;max-width:640px}
 .rider-stat{flex:1 1 120px;background:#fff;border:1px solid #cdd5c8;border-radius:12px;padding:12px 13px;box-shadow:0 3px 12px rgba(24,33,28,.06)}
+.rider-stat-warn{background:#fbe4a8;border-color:#e9c96f}
+.rider-stat-warn .rider-stat-n,.rider-stat-warn .rider-stat-l{color:#6b4f12}
 .rider-stat-n{display:block;font-size:20px;font-weight:800;letter-spacing:-.02em;color:#1b2417}
 .rider-stat-l{display:block;margin-top:2px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#6b7770}
 .rider-stat-delta{display:block;margin-top:5px;font-size:11px;font-style:normal;font-weight:700}

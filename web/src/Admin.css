@@ -369,6 +369,7 @@ a.act{display:inline-block;text-decoration:none}
 .admin-gate-back:hover{color:#20291f}
 
 .admin-rider-stats{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.admin-cash-holding{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 14px;padding:10px 12px;border:1px solid #e9c96f;border-radius:8px;background:#fbe4a8;color:#6b4f12;font-size:13px}
 .admin-rider-stats span{flex:1 1 96px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:12px;color:var(--muted);background:#f6f8f4}
 .admin-rider-stats strong{display:block;font-size:18px;color:var(--ink);letter-spacing:-.02em}
 .admin-month-nav{display:flex;align-items:center;gap:12px;margin:12px 0}
