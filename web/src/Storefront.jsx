@@ -1176,6 +1176,20 @@ export default function Storefront() {
     } catch (error) { setSupportMsg(error.message) } finally { setSupportBusy(false) }
   }
 
+  // Lets the customer wrap up a conversation on their side — leaves a note
+  // for the admin reading the thread later, then closes the widget.
+  async function endChat() {
+    if (typeof supportView !== 'object' || !supportView) return
+    setSupportBusy(true)
+    try {
+      const response = await authPost(`/support/threads/${supportView.id}/messages`, { body: 'Client ended chat.' })
+      const data = await responseJson(response)
+      if (!response.ok) throw new Error(data.message ?? 'Could not end the chat.')
+      loadThreads()
+      setSupportView(null)
+    } catch (error) { setSupportMsg(error.message) } finally { setSupportBusy(false) }
+  }
+
   // Unread = a thread whose latest message is from staff (incl. the delivery
   // rider) and the customer hasn't opened it since. "Seen" timestamps per thread
   // live in localStorage.
@@ -1701,6 +1715,7 @@ export default function Storefront() {
           <ChatRating key={supportView.id} thread={supportView} onSaved={(t) => { setSupportView(t); loadThreads() }} />
         )}
         <div className="chat-send"><input placeholder="Type a message" value={supportReply} onChange={(event) => setSupportReply(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') sendSupportReply() }} /><button type="button" disabled={supportBusy || !supportReply.trim()} onClick={sendSupportReply}>Send</button></div>
+        <button className="end-chat-button" type="button" disabled={supportBusy} onClick={endChat}>End Chat</button>
         <button className="switch-auth" type="button" onClick={() => { setSupportView('list'); loadThreads() }}>All conversations</button>
       </>}
       {supportMsg && <p className="auth-message">{supportMsg}</p>}

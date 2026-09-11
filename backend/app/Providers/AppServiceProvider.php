@@ -14,7 +14,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // barryvdh/laravel-dompdf defaults to base_path('public') for its asset
+        // base path. The cPanel bundle deploys app + web root as one folder
+        // (public/ is deleted, index.php calls usePublicPath(__DIR__)) — so
+        // that default no longer exists on disk and dompdf's realpath() check
+        // throws "Cannot resolve public path". public_path() always reflects
+        // whatever usePublicPath() set, so it stays correct in both layouts.
+        config(['dompdf.public_path' => public_path()]);
     }
 
     /**

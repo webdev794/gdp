@@ -680,7 +680,6 @@ export default function Admin({ token, onClose }) {
         // One-shot ring when a genuinely new item shows up — not a permanent
         // loop for as long as anything is outstanding.
         const keys = new Set([
-          ...(data.awaiting_packing ?? []).map((o) => `pack-${o.order_id}`),
           ...(data.refused_cod ?? []).map((o) => `refused-${o.order_id}`),
           ...(data.cash_overdue ?? []).map((c) => `cash-${c.rider_id}`),
           ...(data.negative_feedback ?? []).map((f) => `fb-${f.source}-${f.order_id}-${f.at}`),
@@ -1100,7 +1099,7 @@ export default function Admin({ token, onClose }) {
           <span className="admin-note" style={{ color: '#6b4f12' }} title={giftCards.map((g) => `${g.code} — ${money(g.initial_cents)}${g.reason ? ` (${g.reason})` : ''}${g.issued_by?.name ? ` — by ${g.issued_by.name}` : ''}`).join('\n')}>🎁 gift card issued{giftCards.length > 1 ? ` ×${giftCards.length}` : ''}</span>
         )}
         {needsItemReturn && (
-          <button type="button" disabled={busyId === order.id} className="act warn" title={order.cancel_reason || ''} onClick={() => patchOrder(order, { items_returned: true })}>Items returned to store</button>
+          <button type="button" disabled={busyId === order.id} className="act warn" title={order.cancel_reason || ''} onClick={() => { if (window.confirm('Confirm the rider has brought these items back to the store?')) patchOrder(order, { items_returned: true }) }}>Items returned? Click to confirm</button>
         )}
         {itemsReturned && (
           <span className="admin-note" style={{ color: '#2f6d34' }} title={`Confirmed ${new Date(order.items_returned_at).toLocaleString()}`}>✓ items returned</span>
@@ -1121,6 +1120,16 @@ export default function Admin({ token, onClose }) {
       const data = await readJson(await fetch(`${API_URL}/admin/orders/${id}`, { headers: authHeaders() }))
       setOrderDetail(data.data)
     } catch (error) { fail(error) }
+  }
+
+  // A new order is a fleeting "go handle this," not something to inspect in
+  // place — send the admin to the Orders list (filtered to unpacked) rather
+  // than popping the edit drawer.
+  const goToOrder = () => {
+    setSpeakerOpen(false)
+    setStatusFilter('confirmed')
+    setOrdersPage(1)
+    goTab('orders')
   }
 
   async function openThread(id) {
@@ -1152,6 +1161,20 @@ export default function Admin({ token, onClose }) {
       const response = await fetch(`${API_URL}/admin/support/threads/${thread.id}`, { method: 'PATCH', headers: jsonHeaders(), body: JSON.stringify({ status }) })
       const data = await readJson(response)
       if (!response.ok) throw new Error(data.message ?? 'Could not update.')
+      setThread(data.data)
+      loadThreads()
+    } catch (error) { fail(error) }
+  }
+
+  // A thread opened without picking a specific order (general support) still
+  // needs one attached before it can carry a refund / gift card — lets the
+  // admin pick from that customer's own recent orders.
+  async function linkThreadOrder(orderId) {
+    if (!thread || !orderId) return
+    try {
+      const response = await fetch(`${API_URL}/admin/support/threads/${thread.id}`, { method: 'PATCH', headers: jsonHeaders(), body: JSON.stringify({ order_id: Number(orderId) }) })
+      const data = await readJson(response)
+      if (!response.ok) throw new Error(data.message ?? 'Could not attach that order.')
       setThread(data.data)
       loadThreads()
     } catch (error) { fail(error) }
@@ -1484,16 +1507,20 @@ export default function Admin({ token, onClose }) {
   const visibleNegativeFeedback = (notifications.negative_feedback ?? []).filter((f) => !dismissedNotifs.has(fbKey(f)))
   const visibleFinancialActivity = (notifications.financial_activity ?? []).filter((a) => !dismissedNotifs.has(finKey(a)))
 
-  // Totals beyond the fetched sample can't be individually dismissed, but at
-  // least subtract whatever was dismissed within the sample we did fetch.
+  // A busy week can produce more negative-feedback/financial-activity events
+  // than the fetched sample (10) — anything beyond that sample was never
+  // fetched, so it can't be individually dismissed. Counting it in the badge
+  // anyway meant the badge (and this panel) could never reach zero once that
+  // backlog built up, which looked exactly like a dismissed item "coming
+  // back." The badge only ever counts what's actually fetched and dismissable;
+  // "+N more this week" (rendered separately, below) covers the rest.
   const negativeFeedbackHidden = (notifications.negative_feedback ?? []).length - visibleNegativeFeedback.length
   const financialActivityHidden = (notifications.financial_activity ?? []).length - visibleFinancialActivity.length
 
-  const notificationCount = visibleAwaitingPacking.length
-    + visibleRefusedCod.length
+  const notificationCount = visibleRefusedCod.length
     + visibleCashOverdue.length
-    + Math.max(0, (notifications.negative_feedback_total ?? notifications.negative_feedback?.length ?? 0) - negativeFeedbackHidden)
-    + Math.max(0, (notifications.financial_activity_total ?? notifications.financial_activity?.length ?? 0) - financialActivityHidden)
+    + visibleNegativeFeedback.length
+    + visibleFinancialActivity.length
 
   const toggleNav = () => setNavOpen((open) => {
     const next = !open
@@ -1541,22 +1568,6 @@ export default function Admin({ token, onClose }) {
                 <h4>Needs attention</h4>
                 {notificationCount === 0 ? <p className="muted">Nothing outstanding.</p> : (
                   <>
-                    {visibleAwaitingPacking.length > 0 && (
-                      <section>
-                        <h5>New orders to pack</h5>
-                        {visibleAwaitingPacking.slice(0, BELL_ITEM_CAP).map((o) => (
-                          <div className="admin-bell-row" key={packKey(o)}>
-                            <button type="button" className="admin-bell-item" onClick={() => openOrderById(o.order_id)}>
-                              🆕 Order #{o.order_id} — {money(o.total_cents)}{o.customer ? ` — ${o.customer}` : ''}
-                            </button>
-                            <button type="button" className="admin-bell-x" title="Dismiss" onClick={(event) => { event.stopPropagation(); dismissNotif(packKey(o)) }}>×</button>
-                          </div>
-                        ))}
-                        {visibleAwaitingPacking.length > BELL_ITEM_CAP && (
-                          <button type="button" className="admin-bell-more" onClick={() => { setBellOpen(false); goTab('orders') }}>+{visibleAwaitingPacking.length - BELL_ITEM_CAP} more — see Orders</button>
-                        )}
-                      </section>
-                    )}
                     {visibleRefusedCod.length > 0 && (
                       <section>
                         <h5>Customer refused C.O.D.</h5>
@@ -1645,12 +1656,12 @@ export default function Admin({ token, onClose }) {
                       <section>
                         <h5>New orders to pack</h5>
                         {visibleAwaitingPacking.slice(0, BELL_ITEM_CAP).map((o) => (
-                          <button key={packKey(o)} type="button" className="admin-bell-item" onClick={() => { setSpeakerOpen(false); openOrderById(o.order_id) }}>
+                          <button key={packKey(o)} type="button" className="admin-bell-item" onClick={goToOrder}>
                             🆕 Order #{o.order_id} — {money(o.total_cents)}{o.customer ? ` — ${o.customer}` : ''}
                           </button>
                         ))}
                         {visibleAwaitingPacking.length > BELL_ITEM_CAP && (
-                          <button type="button" className="admin-bell-more" onClick={() => { setSpeakerOpen(false); goTab('orders') }}>+{visibleAwaitingPacking.length - BELL_ITEM_CAP} more — see Orders</button>
+                          <button type="button" className="admin-bell-more" onClick={goToOrder}>+{visibleAwaitingPacking.length - BELL_ITEM_CAP} more — see Orders</button>
                         )}
                       </section>
                     )}
@@ -1679,19 +1690,28 @@ export default function Admin({ token, onClose }) {
       {(supportToasts.length > 0 || orderToasts.length > 0 || ratingToasts.length > 0) && (
         <div className="admin-toasts">
           {orderToasts.map((t) => (
-            <button key={`o-${t.id}`} type="button" className="admin-toast admin-toast-order" onClick={() => { setOrderToasts((cur) => cur.filter((x) => x.id !== t.id)); goTab('orders') }}>
-              🛒 {t.text} <span>Open →</span>
-            </button>
+            <div key={`o-${t.id}`} className="admin-toast admin-toast-order">
+              <button type="button" className="admin-toast-body" onClick={() => { setOrderToasts((cur) => cur.filter((x) => x.id !== t.id)); goTab('orders') }}>
+                🛒 {t.text} <span>Open →</span>
+              </button>
+              <button type="button" className="admin-bell-x" title="Dismiss" onClick={() => setOrderToasts((cur) => cur.filter((x) => x.id !== t.id))}>×</button>
+            </div>
           ))}
           {supportToasts.map((t) => (
-            <button key={`${t.id}-${t.text}`} type="button" className="admin-toast" onClick={() => { goTab('support'); openThread(t.id) }}>
-              💬 {t.text} <span>Open →</span>
-            </button>
+            <div key={`${t.id}-${t.text}`} className="admin-toast">
+              <button type="button" className="admin-toast-body" onClick={() => { goTab('support'); openThread(t.id) }}>
+                💬 {t.text} <span>Open →</span>
+              </button>
+              <button type="button" className="admin-bell-x" title="Dismiss" onClick={() => setSupportToasts((cur) => cur.filter((x) => x.id !== t.id))}>×</button>
+            </div>
           ))}
           {ratingToasts.map((t) => (
-            <button key={t.id} type="button" className={`admin-toast admin-toast-rating ${t.tone}`} onClick={() => { setRatingToasts((cur) => cur.filter((x) => x.id !== t.id)); if (t.orderId) openOrderById(t.orderId) }}>
-              {t.text}
-            </button>
+            <div key={t.id} className={`admin-toast admin-toast-rating ${t.tone}`}>
+              <button type="button" className="admin-toast-body" onClick={() => { setRatingToasts((cur) => cur.filter((x) => x.id !== t.id)); if (t.orderId) openOrderById(t.orderId) }}>
+                {t.text}
+              </button>
+              <button type="button" className="admin-bell-x" title="Dismiss" onClick={() => setRatingToasts((cur) => cur.filter((x) => x.id !== t.id))}>×</button>
+            </div>
           ))}
         </div>
       )}
@@ -2981,6 +3001,19 @@ export default function Admin({ token, onClose }) {
                     Apply {card.code} — {money(card.balance_cents)} balance
                   </button>
                 ))}
+              </div>
+            )}
+
+            {!thread.order && (thread.user?.orders ?? []).length > 0 && (
+              <div className="admin-form" style={{ marginTop: 16 }}>
+                <h4>Attach an order</h4>
+                <p className="muted">This chat wasn&rsquo;t opened against a specific order — pick one of {thread.user?.email ?? 'this customer'}&rsquo;s orders to unlock refunds &amp; gift cards.</p>
+                <select defaultValue="" onChange={(event) => { if (event.target.value) linkThreadOrder(event.target.value) }}>
+                  <option value="" disabled>Choose an order…</option>
+                  {thread.user.orders.map((o) => (
+                    <option key={o.id} value={o.id}>#{o.id} — {money(o.total_cents)} — {STATUS_LABELS[o.status] ?? o.status} — {new Date(o.created_at).toLocaleDateString()}</option>
+                  ))}
+                </select>
               </div>
             )}
 

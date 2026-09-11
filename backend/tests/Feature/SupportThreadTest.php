@@ -102,6 +102,35 @@ class SupportThreadTest extends TestCase
             ->assertJsonPath('data.status', 'resolved');
     }
 
+    public function test_admin_can_attach_an_order_to_a_thread_opened_without_one(): void
+    {
+        $user = User::factory()->create();
+        $order = $this->order($user);
+        $thread = SupportThread::create(['user_id' => $user->id, 'issue_type' => 'other', 'status' => 'open']);
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+
+        $this->getJson("/api/admin/support/threads/{$thread->id}")
+            ->assertOk()
+            ->assertJsonPath('data.order', null)
+            ->assertJsonPath('data.user.orders.0.id', $order->id);
+
+        $this->patchJson("/api/admin/support/threads/{$thread->id}", ['order_id' => $order->id])
+            ->assertOk()
+            ->assertJsonPath('data.order_id', $order->id)
+            ->assertJsonPath('data.order.id', $order->id);
+    }
+
+    public function test_admin_cannot_attach_another_customers_order_to_a_thread(): void
+    {
+        $user = User::factory()->create();
+        $otherOrder = $this->order(User::factory()->create());
+        $thread = SupportThread::create(['user_id' => $user->id, 'issue_type' => 'other', 'status' => 'open']);
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+
+        $this->patchJson("/api/admin/support/threads/{$thread->id}", ['order_id' => $otherOrder->id])
+            ->assertStatus(422);
+    }
+
     public function test_an_internal_note_is_hidden_from_the_customer_but_visible_to_admin(): void
     {
         $user = User::factory()->create();

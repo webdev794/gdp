@@ -48,6 +48,10 @@ class AdminSupportController extends Controller
         return [
             'messages', 'user:id,name,email',
             'user.giftCards' => fn ($q) => $q->where('is_active', true)->where('balance_cents', '>', 0),
+            // Recent orders for this customer, so a thread opened without one
+            // attached (e.g. from general support) can still be linked to the
+            // right order — unlocking the refund / gift-card panel.
+            'user.orders' => fn ($q) => $q->select('id', 'user_id', 'status', 'total_cents', 'created_at')->latest()->limit(20),
             'order.items', 'order.refunds', 'order.giftCards', 'order.giftCards.issuedBy:id,name',
         ];
     }
@@ -70,12 +74,28 @@ class AdminSupportController extends Controller
 
     public function update(Request $request, SupportThread $thread): JsonResponse
     {
-        $validated = $request->validate(['status' => ['required', Rule::in(['open', 'resolved'])]]);
+        $validated = $request->validate([
+            'status' => ['sometimes', Rule::in(['open', 'resolved'])],
+            // Lets the admin attach an order to a thread the customer opened
+            // without picking one (e.g. a general "item missing" chat) — must
+            // be one of that same customer's own orders.
+            'order_id' => ['sometimes', 'nullable', 'integer', Rule::exists('orders', 'id')->where('user_id', $thread->user_id)],
+        ]);
 
-        $thread->forceFill([
-            'status' => $validated['status'],
-            'resolved_at' => $validated['status'] === 'resolved' ? now() : null,
-        ])->save();
+        if (! array_key_exists('status', $validated) && ! array_key_exists('order_id', $validated)) {
+            return response()->json(['message' => 'Provide a status change or an order to attach.'], 422);
+        }
+
+        if (array_key_exists('status', $validated)) {
+            $thread->status = $validated['status'];
+            $thread->resolved_at = $validated['status'] === 'resolved' ? now() : null;
+        }
+
+        if (array_key_exists('order_id', $validated)) {
+            $thread->order_id = $validated['order_id'];
+        }
+
+        $thread->save();
 
         return response()->json(['data' => $thread->fresh($this->threadRelations())]);
     }
