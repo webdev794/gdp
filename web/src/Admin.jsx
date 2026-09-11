@@ -1008,48 +1008,123 @@ export default function Admin({ token, onClose }) {
     } catch (error) { fail(error) }
   }
 
-  async function issueRefund() {
-    if (!thread?.order) return
-    const body = { support_thread_id: thread.id, reason: refundForm.reason.trim() || undefined }
+  // Pull the fresh order (refunds, gift cards, …) into whichever list/drawer is
+  // showing it, so an action taken from the Support tab shows up on Orders too.
+  async function refreshOrderInList(orderId) {
+    try {
+      const response = await fetch(`${API_URL}/admin/orders/${orderId}`, { headers: authHeaders() })
+      const data = await readJson(response)
+      if (response.ok) setOrders((current) => current.map((o) => (o.id === orderId ? { ...o, ...data.data } : o)))
+    } catch { /* the next Orders poll will catch up */ }
+  }
+
+  // order/threadId: threadId is set when issuing from a Support conversation
+  // (the code + password are posted into it); null when issuing straight from
+  // the Orders tab's order-summary drawer.
+  async function issueRefund(order, threadId) {
+    if (!order) return
+    const body = { reason: refundForm.reason.trim() || undefined }
+    if (threadId) body.support_thread_id = threadId
     if (refundForm.items.length) body.item_ids = refundForm.items
     else if (refundForm.amount) body.amount_cents = Math.round(Number(refundForm.amount) * 100)
     const label = refundForm.items.length
-      ? money(thread.order.items.filter((i) => refundForm.items.includes(i.id)).reduce((s, i) => s + i.line_total_cents, 0))
-      : (refundForm.amount ? `$${refundForm.amount}` : money(thread.order.total_cents - (thread.order.refunded_amount_cents ?? 0)))
+      ? money(order.items.filter((i) => refundForm.items.includes(i.id)).reduce((s, i) => s + i.line_total_cents, 0))
+      : (refundForm.amount ? `$${refundForm.amount}` : money(order.total_cents - (order.refunded_amount_cents ?? 0)))
     if (!window.confirm(`Refund ${label} to the customer via Stripe?`)) return
-    setBusyId(thread.id)
+    setBusyId(threadId ?? order.id)
     try {
-      const response = await fetch(`${API_URL}/admin/orders/${thread.order.id}/refund`, { method: 'POST', headers: jsonHeaders(), body: JSON.stringify(body) })
+      const response = await fetch(`${API_URL}/admin/orders/${order.id}/refund`, { method: 'POST', headers: jsonHeaders(), body: JSON.stringify(body) })
       const data = await readJson(response)
       if (!response.ok) throw new Error(data.message ?? 'Refund failed.')
       setRefundForm({ items: [], amount: '', reason: '' })
-      openThread(thread.id)
+      if (threadId) openThread(threadId)
+      refreshOrderInList(order.id)
       loadMetrics()
       setMessage('Refund issued.')
     } catch (error) { fail(error) } finally { setBusyId(null) }
   }
 
-  // Store credit for a paid order (e.g. missing items on a cash delivery) — the
-  // code + password are posted into the thread by the server.
-  async function issueGiftCard() {
-    if (!thread?.order) return
-    const body = { support_thread_id: thread.id, reason: refundForm.reason.trim() || undefined }
+  // Store credit for a paid order (e.g. missing items on a cash delivery). The
+  // code + password go into the thread's chat when issued from Support; from
+  // the Orders drawer they're shown here for the admin to relay themselves.
+  async function issueGiftCard(order, threadId) {
+    if (!order) return
+    const body = { reason: refundForm.reason.trim() || undefined }
+    if (threadId) body.support_thread_id = threadId
     if (refundForm.items.length) body.item_ids = refundForm.items
     else if (refundForm.amount) body.amount_cents = Math.round(Number(refundForm.amount) * 100)
     const label = refundForm.items.length
-      ? money(thread.order.items.filter((i) => refundForm.items.includes(i.id)).reduce((s, i) => s + i.line_total_cents, 0))
+      ? money(order.items.filter((i) => refundForm.items.includes(i.id)).reduce((s, i) => s + i.line_total_cents, 0))
       : (refundForm.amount ? `$${refundForm.amount}` : '')
     if (!window.confirm(`Issue a ${label || 'store-credit'} gift card to the customer?`)) return
-    setBusyId(thread.id)
+    setBusyId(threadId ?? order.id)
     try {
-      const response = await fetch(`${API_URL}/admin/orders/${thread.order.id}/gift-card`, { method: 'POST', headers: jsonHeaders(), body: JSON.stringify(body) })
+      const response = await fetch(`${API_URL}/admin/orders/${order.id}/gift-card`, { method: 'POST', headers: jsonHeaders(), body: JSON.stringify(body) })
       const data = await readJson(response)
       if (!response.ok) throw new Error(data.message ?? 'Could not issue the gift card.')
       setGiftIssued(data.data)
       setRefundForm({ items: [], amount: '', reason: '' })
-      openThread(thread.id)
+      if (threadId) openThread(threadId)
+      refreshOrderInList(order.id)
       setMessage(`Gift card ${data.data.code} for ${money(data.data.amount_cents)} issued.`)
     } catch (error) { fail(error) } finally { setBusyId(null) }
+  }
+
+  // Item-picker + Refund/Issue-store-credit form, shared by the Support thread
+  // drawer (threadId set) and the order-summary drawer (threadId null).
+  function renderRefundPanel(o, threadId) {
+    const remaining = Math.max(0, o.total_cents - (o.refunded_amount_cents ?? 0))
+    const stateOk = ['paid', 'partially_refunded', 'refund_pending'].includes(o.payment_status)
+    const canRefund = !!o.stripe_payment_intent_id && stateOk && remaining > 0
+    const blockReason = !canRefund && (
+      remaining <= 0 || o.payment_status === 'refunded'
+        ? 'This order is fully refunded.'
+        : !o.stripe_payment_intent_id
+          ? 'No online payment to refund (cash on delivery) — issue store credit instead.'
+          : 'This order is not in a refundable state.'
+    )
+    const selectedSum = (o.items ?? []).filter((i) => refundForm.items.includes(i.id)).reduce((s, i) => s + i.line_total_cents, 0)
+    const bare = refundForm.items.length === 0 && !String(refundForm.amount).trim()
+    const amountCents = refundForm.items.length ? selectedSum : Math.round(Number(refundForm.amount || 0) * 100)
+    const amountOk = bare ? remaining > 0 : (amountCents > 0 && amountCents <= remaining)
+    const giftLast = giftIssued && giftIssued.order_id === o.id ? giftIssued : null
+    const busyKey = threadId ?? o.id
+    return (
+      <div className="admin-form" style={{ marginTop: 16 }}>
+        <h4>Refund</h4>
+        <p className="muted">Paid {money(o.total_cents)} · refunded {money(o.refunded_amount_cents ?? 0)} · remaining {money(remaining)}</p>
+        {stateOk && remaining > 0 ? (
+          <>
+            {(o.items ?? []).map((item) => (
+              <label key={item.id} className="admin-check">
+                <input type="checkbox" checked={refundForm.items.includes(item.id)} onChange={(event) => setRefundForm((f) => ({ ...f, items: event.target.checked ? [...f.items, item.id] : f.items.filter((x) => x !== item.id) }))} />
+                {item.product_name}{item.variant_label ? ` · ${item.variant_label}` : ''} × {item.quantity} — {money(item.line_total_cents)}
+              </label>
+            ))}
+            <div className="admin-form-grid" style={{ marginTop: 10 }}>
+              <label>Or amount ($)<input type="number" min="0" step="0.01" disabled={refundForm.items.length > 0} value={refundForm.amount} onChange={(event) => setRefundForm({ ...refundForm, amount: event.target.value })} /></label>
+              <label>Reason<input value={refundForm.reason} onChange={(event) => setRefundForm({ ...refundForm, reason: event.target.value })} /></label>
+            </div>
+            {refundForm.items.length > 0 && <p className="muted">Selected items: {money(selectedSum)}{selectedSum > remaining ? ' — more than the remaining balance' : ' (tax and fees are refunded separately)'}.</p>}
+            <div className="admin-form-actions">
+              {canRefund
+                ? <button className="act" type="button" disabled={busyId === busyKey || !amountOk} onClick={() => issueRefund(o, threadId)}>Refund via Stripe</button>
+                : <span className="muted" title={blockReason}>No card to refund — issue store credit instead.</span>}
+              <button className="act" type="button" disabled={busyId === busyKey || !amountOk} onClick={() => issueGiftCard(o, threadId)}>Issue store credit (gift card)</button>
+              {o.stripe_dashboard_url && <a className="act ghost" href={o.stripe_dashboard_url} target="_blank" rel="noreferrer">View in Stripe ↗</a>}
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="muted">{blockReason}</p>
+            {o.stripe_dashboard_url && <div className="admin-form-actions"><a className="act ghost" href={o.stripe_dashboard_url} target="_blank" rel="noreferrer">View in Stripe ↗</a></div>}
+          </>
+        )}
+        {giftLast && (
+          <p className="admin-gift-issued">Gift card <b>{giftLast.code}</b> · password <b>{giftLast.pin}</b> · {money(giftLast.amount_cents)}{threadId ? ' — sent to the customer in this chat.' : ' — share this with the customer.'}</p>
+        )}
+      </div>
+    )
   }
 
   async function saveProduct(event) {
@@ -2519,60 +2594,7 @@ export default function Admin({ token, onClose }) {
               <button type="button" disabled={!threadReply.trim()} onClick={replyThread}>Send</button>
             </div>
 
-            {thread.order && (() => {
-              const o = thread.order
-              const remaining = Math.max(0, o.total_cents - (o.refunded_amount_cents ?? 0))
-              const stateOk = ['paid', 'partially_refunded', 'refund_pending'].includes(o.payment_status)
-              const canRefund = !!o.stripe_payment_intent_id && stateOk && remaining > 0
-              const blockReason = !canRefund && (
-                remaining <= 0 || o.payment_status === 'refunded'
-                  ? 'This order is fully refunded.'
-                  : !o.stripe_payment_intent_id
-                    ? 'No online payment to refund (cash on delivery). Use “Mark refunded” on the Orders tab.'
-                    : 'This order is not in a refundable state.'
-              )
-              const selectedSum = (o.items ?? []).filter((i) => refundForm.items.includes(i.id)).reduce((s, i) => s + i.line_total_cents, 0)
-              const bare = refundForm.items.length === 0 && !String(refundForm.amount).trim()
-              const amountCents = refundForm.items.length ? selectedSum : Math.round(Number(refundForm.amount || 0) * 100)
-              const amountOk = bare ? remaining > 0 : (amountCents > 0 && amountCents <= remaining)
-              const giftLast = giftIssued && giftIssued.order_id === o.id ? giftIssued : null
-              return (
-                <div className="admin-form" style={{ marginTop: 16 }}>
-                  <h4>Refund</h4>
-                  <p className="muted">Paid {money(o.total_cents)} · refunded {money(o.refunded_amount_cents ?? 0)} · remaining {money(remaining)}</p>
-                  {stateOk && remaining > 0 ? (
-                    <>
-                      {(o.items ?? []).map((item) => (
-                        <label key={item.id} className="admin-check">
-                          <input type="checkbox" checked={refundForm.items.includes(item.id)} onChange={(event) => setRefundForm((f) => ({ ...f, items: event.target.checked ? [...f.items, item.id] : f.items.filter((x) => x !== item.id) }))} />
-                          {item.product_name}{item.variant_label ? ` · ${item.variant_label}` : ''} × {item.quantity} — {money(item.line_total_cents)}
-                        </label>
-                      ))}
-                      <div className="admin-form-grid" style={{ marginTop: 10 }}>
-                        <label>Or amount ($)<input type="number" min="0" step="0.01" disabled={refundForm.items.length > 0} value={refundForm.amount} onChange={(event) => setRefundForm({ ...refundForm, amount: event.target.value })} /></label>
-                        <label>Reason<input value={refundForm.reason} onChange={(event) => setRefundForm({ ...refundForm, reason: event.target.value })} /></label>
-                      </div>
-                      {refundForm.items.length > 0 && <p className="muted">Selected items: {money(selectedSum)}{selectedSum > remaining ? ' — more than the remaining balance' : ' (tax and fees are refunded separately)'}.</p>}
-                      <div className="admin-form-actions">
-                        {canRefund
-                          ? <button className="act" type="button" disabled={busyId === thread.id || !amountOk} onClick={issueRefund}>Refund via Stripe</button>
-                          : <span className="muted" title={blockReason}>No card to refund — issue store credit instead.</span>}
-                        <button className="act" type="button" disabled={busyId === thread.id || !amountOk} onClick={issueGiftCard}>Issue store credit (gift card)</button>
-                        {o.stripe_dashboard_url && <a className="act ghost" href={o.stripe_dashboard_url} target="_blank" rel="noreferrer">View in Stripe ↗</a>}
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <p className="muted">{blockReason}</p>
-                      {o.stripe_dashboard_url && <div className="admin-form-actions"><a className="act ghost" href={o.stripe_dashboard_url} target="_blank" rel="noreferrer">View in Stripe ↗</a></div>}
-                    </>
-                  )}
-                  {giftLast && (
-                    <p className="admin-gift-issued">Gift card <b>{giftLast.code}</b> · password <b>{giftLast.pin}</b> · {money(giftLast.amount_cents)} — sent to the customer in this chat.</p>
-                  )}
-                </div>
-              )
-            })()}
+            {thread.order && renderRefundPanel(thread.order, thread.id)}
           </aside>
         </div>
       )}
@@ -2688,6 +2710,8 @@ export default function Admin({ token, onClose }) {
                 )}
               </div>
               <p className="muted">Orders move one step at a time: confirmed → packing → ready for delivery → out for delivery → delivered. The rider marks the final “delivered” step from their app.</p>
+
+              {renderRefundPanel(o, null)}
             </aside>
           </div>
         )
