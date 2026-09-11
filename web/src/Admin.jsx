@@ -10,6 +10,15 @@ const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api'
 
 const money = (cents) => `$${((cents ?? 0) / 100).toFixed(2)}`
 
+// Worst customer rating tied to an order — the rider/delivery review and any
+// chat (support thread) rating — so the row can flag it for the admin to check.
+function orderFeedbackTone(order) {
+  const ratings = [order.rider_review?.rating, ...(order.support_threads ?? []).map((t) => t.rating)].filter((r) => r != null)
+  if (!ratings.length) return null
+  const worst = Math.min(...ratings)
+  return worst <= 2 ? 'negative' : worst === 3 ? 'medium' : 'positive'
+}
+
 const STATUS_LABELS = {
   pending_payment: 'Awaiting payment',
   confirmed: 'Confirmed',
@@ -1431,14 +1440,14 @@ export default function Admin({ token, onClose }) {
             <table className="admin-table">
               <thead><tr><th>#</th><th>Customer</th><th>Placed</th><th>Total</th><th>Payment</th><th>Delivery</th><th>Courier</th><th>Actions</th></tr></thead>
               <tbody>
-                {orders.map((order) => (
+                {orders.map((order) => { const feedback = orderFeedbackTone(order); return (
                   <tr key={order.id}>
                     <td><button type="button" className="link" title="View order summary" onClick={() => setOrderDetail(order)}>#{order.id}</button></td>
                     <td>{order.user?.email ?? '—'}{(order.delivery_address?.phone || order.user?.phone) && <span className="admin-note">☎ {order.delivery_address?.phone || order.user?.phone}</span>}{order.delivery_instructions && <span className="admin-note" title={order.delivery_instructions}>&ldquo;{order.delivery_instructions}&rdquo;</span>}</td>
                     <td>{new Date(order.created_at).toLocaleDateString()}</td>
                     <td>{money(order.total_cents)}<span className="admin-note">{order.items?.length ?? 0} item{order.items?.length === 1 ? '' : 's'}</span></td>
-                    <td><span className={`pill pill-${order.payment_status}`}>{order.payment_status}</span><span className="admin-note">{order.payment_method === 'cod' ? 'Cash on delivery' : 'Card'}</span></td>
-                    <td>{STATUS_LABELS[order.status] ?? order.status}{order.store && <span className="admin-note" title={`Fulfilled by ${order.store.name}${order.store.city ? `, ${order.store.city}` : ''}`}>🏬 {order.store.name}</span>}{order.status === 'completed' && order.delivery_verified === true && <span className="admin-note" style={{ color: '#2f6d34' }} title={order.delivered_at ? `Confirmed ${new Date(order.delivered_at).toLocaleString()}` : ''}>✓ code verified</span>}{order.status === 'completed' && order.delivery_verified === false && <span className="admin-note" style={{ color: '#a23b28' }} title={order.delivery_note || ''}>⚠ delivered without code{order.delivery_note ? ` — ${order.delivery_note}` : ''}</span>}{order.rider_accepted_at && <span className="admin-note" style={{ color: '#2f6d34' }} title={`Accepted ${new Date(order.rider_accepted_at).toLocaleString()}`}>✓ accepted{order.delivery_partner?.name ? ` by ${order.delivery_partner.name}` : ''} · {new Date(order.rider_accepted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}{!order.rider_accepted_at && order.rider_offer_expires_at && <span className="admin-note" style={{ color: '#7a5c14' }} title={`Offer expires ${new Date(order.rider_offer_expires_at).toLocaleString()}`}>⏳ offered{order.delivery_partner?.name ? ` to ${order.delivery_partner.name}` : ''} (expires {new Date(order.rider_offer_expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})</span>}{order.rider_offer_decline_count > 0 && <span className="admin-note" style={{ color: '#a23b28' }} title="Riders who declined or missed this offer">↩ declined ×{order.rider_offer_decline_count}</span>}</td>
+                    <td><span className={`pill pill-${order.payment_status}`}>{order.payment_status}</span><span className="admin-note">{order.payment_method === 'cod' ? 'C.O.D.' : 'Card'}</span></td>
+                    <td className={feedback ? `admin-td-fb-${feedback}` : undefined} title={feedback ? `${feedback} feedback on this order — open it to see why` : undefined}>{STATUS_LABELS[order.status] ?? order.status}{order.store && <span className="admin-note" title={`Fulfilled by ${order.store.name}${order.store.city ? `, ${order.store.city}` : ''}`}>🏬 {order.store.name}</span>}{order.status === 'completed' && order.delivery_verified === true && <span className="admin-note" style={{ color: '#2f6d34' }} title={order.delivered_at ? `Confirmed ${new Date(order.delivered_at).toLocaleString()}` : ''}>✓ code verified</span>}{!order.rider_accepted_at && order.rider_offer_expires_at && <span className="admin-note" style={{ color: '#7a5c14' }} title={`Offered${order.delivery_partner?.name ? ` to ${order.delivery_partner.name}` : ''}, expires ${new Date(order.rider_offer_expires_at).toLocaleString()}`}>⏳ offer sent</span>}{order.rider_offer_decline_count > 0 && order.status !== 'completed' && <span className="admin-note" style={{ color: '#a23b28' }} title="Riders who declined or missed this offer">↩ declined ×{order.rider_offer_decline_count}</span>}</td>
                     <td className="admin-courier">
                       {riders.length > 0 ? (
                         <>
@@ -1468,7 +1477,7 @@ export default function Admin({ token, onClose }) {
                       )}
                     </td>
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
             </div>
@@ -2610,8 +2619,28 @@ export default function Admin({ token, onClose }) {
               <h4>Delivery</h4>
               <p className="muted">{addrLine || 'No address on file'}</p>
               {o.delivery_instructions && <p className="muted">Note: &ldquo;{o.delivery_instructions}&rdquo;</p>}
-              <p className="muted">{o.payment_method === 'cod' ? 'Cash on delivery' : 'Card'}{(o.delivery_partner?.name || o.courier_name) ? ` · Courier: ${o.delivery_partner?.name || o.courier_name}` : ''}{o.store ? ` · Fulfilled by ${o.store.name}` : ''}</p>
+              <p className="muted">{o.payment_method === 'cod' ? 'Cash on delivery (C.O.D.)' : 'Card'}{(o.delivery_partner?.name || o.courier_name) ? ` · Courier: ${o.delivery_partner?.name || o.courier_name}` : ''}{o.store ? ` · Fulfilled by ${o.store.name}` : ''}</p>
+              {o.rider_accepted_at && <p className="muted">Accepted{o.delivery_partner?.name ? ` by ${o.delivery_partner.name}` : ''} · {new Date(o.rider_accepted_at).toLocaleString()}</p>}
+              {!o.rider_accepted_at && o.rider_offer_expires_at && <p className="muted">Offered{o.delivery_partner?.name ? ` to ${o.delivery_partner.name}` : ''}, expires {new Date(o.rider_offer_expires_at).toLocaleString()}</p>}
+              {o.rider_offer_decline_count > 0 && <p className="muted">Declined or missed by {o.rider_offer_decline_count} rider{o.rider_offer_decline_count === 1 ? '' : 's'} before this assignment.</p>}
               {o.delivered_at && <p className="muted">Delivered {new Date(o.delivered_at).toLocaleString()}{o.delivery_verified === false ? ` · without code${o.delivery_note ? ` — ${o.delivery_note}` : ''}` : o.delivery_verified ? ' · code verified' : ''}</p>}
+              {(() => {
+                const reviews = [
+                  o.rider_review && { key: 'delivery', label: 'Delivery rating', rating: o.rider_review.rating, comment: o.rider_review.comment },
+                  ...(o.support_threads ?? []).filter((t) => t.rating != null).map((t) => ({ key: `chat-${t.id}`, label: 'Chat rating', rating: t.rating, comment: t.rating_comment })),
+                ].filter(Boolean)
+                if (!reviews.length) return null
+                const worst = Math.min(...reviews.map((r) => r.rating))
+                const tone = worst <= 2 ? 'negative' : worst === 3 ? 'medium' : 'positive'
+                return (
+                  <div className={`admin-feedback-box admin-feedback-${tone}`}>
+                    <h4>Feedback{tone === 'negative' ? ' — check this' : ''}</h4>
+                    {reviews.map((r) => (
+                      <p key={r.key}>{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)} {r.label}{r.comment ? ` — “${r.comment}”` : ''}</p>
+                    ))}
+                  </div>
+                )
+              })()}
 
               <h4>Move this order</h4>
               <div className="admin-actions admin-order-actions">

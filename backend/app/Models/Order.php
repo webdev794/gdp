@@ -115,6 +115,7 @@ class Order extends Model
     public function refunds(): HasMany { return $this->hasMany(OrderRefund::class); }
     public function giftCards(): HasMany { return $this->hasMany(GiftCard::class); }
     public function riderReview(): \Illuminate\Database\Eloquent\Relations\HasOne { return $this->hasOne(RiderReview::class); }
+    public function supportThreads(): HasMany { return $this->hasMany(SupportThread::class); }
 
     /** Store credit already issued against this order as a gift-card refund. */
     public function giftCardRefundedCents(): int

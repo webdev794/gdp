@@ -29,7 +29,11 @@ class AdminOrderController extends Controller
         }
 
         $orders = Order::query()
-            ->with(['items', 'user:id,name,email,phone', 'deliveryPartner:id,name', 'store:id,name,city'])
+            ->with([
+                'items', 'user:id,name,email,phone', 'deliveryPartner:id,name', 'store:id,name,city',
+                'riderReview:id,order_id,rating,comment,source',
+                'supportThreads:id,order_id,rating,rating_comment',
+            ])
             ->when($validated['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->latest()
             ->paginate($validated['per_page'] ?? 10);
@@ -47,7 +51,11 @@ class AdminOrderController extends Controller
 
     public function show(Order $order): JsonResponse
     {
-        return response()->json(['data' => $order->load(['items', 'user:id,name,email,phone', 'store:id,name,city'])]);
+        return response()->json(['data' => $order->load([
+            'items', 'user:id,name,email,phone', 'store:id,name,city',
+            'riderReview:id,order_id,rating,comment,source',
+            'supportThreads:id,order_id,rating,rating_comment',
+        ])]);
     }
 
     public function update(Request $request, Order $order): JsonResponse
@@ -172,6 +180,10 @@ class AdminOrderController extends Controller
         // customer their summary email with the PDF bill.
         $order->refresh()->sendDeliveredReceiptIfReady();
 
-        return response()->json(['data' => $order->fresh()->load(['items', 'user:id,name,email,phone', 'deliveryPartner:id,name', 'store:id,name,city'])]);
+        return response()->json(['data' => $order->fresh()->load([
+            'items', 'user:id,name,email,phone', 'deliveryPartner:id,name', 'store:id,name,city',
+            'riderReview:id,order_id,rating,comment,source',
+            'supportThreads:id,order_id,rating,rating_comment',
+        ])]);
     }
 }
