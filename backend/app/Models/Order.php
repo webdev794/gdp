@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use App\Notifications\OrderDelivered;
 use App\Support\Geo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Order extends Model
 {
@@ -30,13 +32,13 @@ class Order extends Model
     ];
 
     protected $fillable = [
-        'user_id', 'store_id', 'status', 'courier_name', 'payment_status', 'payment_method',
+        'user_id', 'store_id', 'status', 'cancelled_by', 'cancel_reason', 'courier_name', 'payment_status', 'payment_method',
         'subtotal_cents', 'tax_cents', 'delivery_fee_cents', 'handling_fee_cents',
         'small_cart_fee_cents', 'gift_card_discount_cents', 'total_cents', 'delivery_address', 'delivery_instructions',
         'stripe_payment_intent_id', 'stripe_refund_id', 'refunded_amount_cents',
         'delivery_partner_id',
         'rider_offer_expires_at', 'rider_accepted_at', 'rider_offer_declined_ids', 'rider_offer_decline_count',
-        'delivered_at', 'cash_settled_at', 'delivery_verified', 'delivery_note',
+        'delivered_at', 'cash_settled_at', 'cash_collected_at', 'items_returned_at', 'delivery_verified', 'delivery_note',
         'delivery_code', 'delivery_code_expires_at', 'receipt_emailed_at',
     ];
 
@@ -64,6 +66,8 @@ class Order extends Model
             'rider_offer_decline_count' => 'integer',
             'delivered_at' => 'datetime',
             'cash_settled_at' => 'datetime',
+            'cash_collected_at' => 'datetime',
+            'items_returned_at' => 'datetime',
             'delivery_verified' => 'boolean',
             'delivery_code_expires_at' => 'datetime',
             'receipt_emailed_at' => 'datetime',
@@ -89,7 +93,7 @@ class Order extends Model
         }
 
         try {
-            $this->user->notify(new \App\Notifications\OrderDelivered($this));
+            $this->user->notify(new OrderDelivered($this));
             $this->forceFill(['receipt_emailed_at' => now()])->saveQuietly();
         } catch (\Throwable $e) {
             report($e);
@@ -109,14 +113,94 @@ class Order extends Model
             && $this->delivery_code_expires_at->isFuture();
     }
 
-    public function user(): BelongsTo { return $this->belongsTo(User::class); }
-    public function store(): BelongsTo { return $this->belongsTo(Store::class); }
-    public function deliveryPartner(): BelongsTo { return $this->belongsTo(User::class, 'delivery_partner_id'); }
-    public function items(): HasMany { return $this->hasMany(OrderItem::class); }
-    public function refunds(): HasMany { return $this->hasMany(OrderRefund::class); }
-    public function giftCards(): HasMany { return $this->hasMany(GiftCard::class); }
-    public function riderReview(): \Illuminate\Database\Eloquent\Relations\HasOne { return $this->hasOne(RiderReview::class); }
-    public function supportThreads(): HasMany { return $this->hasMany(SupportThread::class); }
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function store(): BelongsTo
+    {
+        return $this->belongsTo(Store::class);
+    }
+
+    public function deliveryPartner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'delivery_partner_id');
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(OrderRefund::class);
+    }
+
+    public function giftCards(): HasMany
+    {
+        return $this->hasMany(GiftCard::class);
+    }
+
+    /** Gift-card spend applied to this order at checkout (not cards issued for it). */
+    public function giftCardRedemptions(): HasMany
+    {
+        return $this->hasMany(GiftCardRedemption::class);
+    }
+
+    /**
+     * Cancelling an order voids any gift-card balance it spent at checkout —
+     * the card is credited back and the redemption marked reversed, so it
+     * can't be restored twice.
+     */
+    public function restoreGiftCardRedemptions(): void
+    {
+        $this->giftCardRedemptions()->whereNull('reversed_at')->get()->each(function (GiftCardRedemption $redemption) {
+            $card = GiftCard::whereKey($redemption->gift_card_id)->lockForUpdate()->first();
+            if (! $card) {
+                return;
+            }
+
+            $card->increment('balance_cents', $redemption->amount_cents);
+            if (! $card->is_active && $card->fresh()->balance_cents > 0) {
+                $card->update(['is_active' => true]);
+            }
+            $redemption->update(['reversed_at' => now()]);
+        });
+    }
+
+    /**
+     * True when a gift card covered the entire order — no Stripe charge or
+     * COD cash ever changed hands, so restoring the gift card balance on
+     * cancellation already is the full refund; nothing for an admin to action.
+     */
+    public function wasFullyCoveredByGiftCard(): bool
+    {
+        return $this->gift_card_discount_cents > 0 && $this->total_cents <= 0;
+    }
+
+    /**
+     * A rider cancelled this at the door (customer refused to pay) — the
+     * bagged items never made it to the customer, so they're still with the
+     * rider until the store confirms they came back.
+     */
+    public function needsItemReturn(): bool
+    {
+        return $this->status === 'cancelled'
+            && $this->cancelled_by === 'rider'
+            && $this->items_returned_at === null;
+    }
+
+    public function riderReview(): HasOne
+    {
+        return $this->hasOne(RiderReview::class);
+    }
+
+    public function supportThreads(): HasMany
+    {
+        return $this->hasMany(SupportThread::class);
+    }
 
     /** Store credit already issued against this order as a gift-card refund. */
     public function giftCardRefundedCents(): int

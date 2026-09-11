@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\StripeEvent;
+use App\Models\SupportThread;
+use App\Models\User;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -113,8 +115,16 @@ class PaymentController extends Controller
             return response()->json(['message' => 'This order is already fully refunded.'], 422);
         }
 
+        // Every item on the order is being returned — the full remaining
+        // balance (tax, delivery, handling included), not just the items'
+        // combined price.
+        $allItemsSelected = ! empty($validated['item_ids'])
+            && count($validated['item_ids']) === $order->items()->count()
+            && $order->items()->whereIn('id', $validated['item_ids'])->count() === $order->items()->count();
+
         $amount = match (true) {
             isset($validated['amount_cents']) => (int) $validated['amount_cents'],
+            $allItemsSelected => $remaining,
             ! empty($validated['item_ids']) => (int) $order->items()->whereIn('id', $validated['item_ids'])->sum('line_total_cents'),
             default => $remaining,
         };
@@ -163,9 +173,13 @@ class PaymentController extends Controller
         ]);
 
         if (! empty($validated['support_thread_id'])) {
-            $note = 'Refund of $'.$this->dollars($amount).' issued'
-                .(! empty($validated['reason']) ? " — {$validated['reason']}." : '.');
-            \App\Models\SupportThread::find($validated['support_thread_id'])?->post(null, $note, isStaff: true, system: true);
+            $thread = SupportThread::find($validated['support_thread_id']);
+            $thread?->post(null, 'Refund of $'.$this->dollars($amount).' issued.', isStaff: true, system: true);
+            // The admin's reason is for later staff reference only — it never
+            // reaches the customer's own view of this conversation.
+            if (! empty($validated['reason'])) {
+                $thread?->post(null, "Refund reason: {$validated['reason']}", isStaff: true, system: true, internal: true);
+            }
         }
 
         Log::info('Order refunded via Stripe', ['order_id' => $order->id, 'amount' => $amount, 'refund' => $refund->id]);
@@ -179,7 +193,7 @@ class PaymentController extends Controller
     }
 
     /** Get-or-create the Stripe Customer for a user, so a card can be saved. */
-    private function customerId(\App\Models\User $user, StripeClient $stripe): string
+    private function customerId(User $user, StripeClient $stripe): string
     {
         if ($user->stripe_customer_id) {
             return $user->stripe_customer_id;

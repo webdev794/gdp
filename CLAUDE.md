@@ -8,7 +8,7 @@ Guidance for Claude Code when working in this repository.
 
 <!-- Add your standing instructions below. They are read at the start of every session. -->
 
--
+- Keep replies short — one line where possible, no long explanations unless asked.
 -
 -
 

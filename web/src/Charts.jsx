@@ -67,31 +67,48 @@ export function Delta({ current, previous }) {
   return <span className={`delta ${dir}`}>{pct > 0 ? '▲' : '▼'} {Math.abs(pct)}%</span>
 }
 
-// Line graph over evenly-spaced buckets. series: [{ label, value }]
-export function LineChart({ series, format = (v) => v }) {
-  const rows = series ?? []
-  if (rows.length < 2) return <p className="chart-empty">Not enough data yet.</p>
+// Trend graph over evenly-spaced buckets, one or more lines at once. Each
+// line is scaled to its own max (independent axes) so very different
+// magnitudes — an order count next to a dollar amount — both stay readable.
+// lines: [{ key, label, color, format?: fn(value)->string, points: [{ label, value }] }]
+export function LineChart({ lines }) {
+  const active = (lines ?? []).filter((line) => (line.points ?? []).length >= 2)
+  if (!active.length) return <p className="chart-empty">Not enough data yet.</p>
 
-  const max = Math.max(1, ...rows.map((r) => r.value))
   const W = 300
   const H = 120
   const padY = 8
+  const rows = active[0].points
   const stepX = W / (rows.length - 1)
-  const points = rows.map((r, i) => [i * stepX, padY + (H - padY * 2) * (1 - r.value / max)])
-  const line = points.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ')
+
+  const built = active.map((line) => {
+    const format = line.format ?? ((v) => v)
+    const max = Math.max(1, ...line.points.map((p) => p.value))
+    const coords = line.points.map((p, i) => [i * stepX, padY + (H - padY * 2) * (1 - p.value / max)])
+    const d = coords.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ')
+
+    return { ...line, format, max, coords, d }
+  })
+
   const showEvery = rows.length > 12 ? Math.ceil(rows.length / 8) : 1
 
   return (
     <div className="chart-line">
-      <div className="chart-bars-max">{format(max)}</div>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Trend">
-        <path className="line-area" d={`${line} L${W} ${H} L0 ${H} Z`} />
-        <path className="line-stroke" d={line} />
-        {points.map(([x, y], i) => (
-          <circle key={i} cx={x} cy={y} r="2" className="line-dot">
-            <title>{`${rows[i].label}: ${format(rows[i].value)}`}</title>
-          </circle>
+      <div className="chart-line-legend">
+        {built.map((line) => (
+          <span className="chart-line-legend-item" key={line.key}>
+            <i style={{ background: line.color }} /> {line.label} <b>{line.format(line.max)}</b>
+          </span>
         ))}
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Trend">
+        {built.length === 1 && <path className="line-area" d={`${built[0].d} L${W} ${H} L0 ${H} Z`} />}
+        {built.map((line) => <path key={line.key} d={line.d} fill="none" stroke={line.color} strokeWidth="2" />)}
+        {built.map((line) => line.coords.map(([x, y], i) => (
+          <circle key={`${line.key}-${i}`} cx={x} cy={y} r="2" fill={line.color}>
+            <title>{`${line.label} · ${line.points[i].label}: ${line.format(line.points[i].value)}`}</title>
+          </circle>
+        )))}
       </svg>
       <div className="chart-line-x">
         {rows.map((r, i) => <span key={r.label + i}>{i % showEvery === 0 ? r.label : ''}</span>)}

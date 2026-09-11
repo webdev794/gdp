@@ -30,6 +30,11 @@
 .rider-section{padding:16px 18px 4px;max-width:640px}
 .rider-section h2{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#5b6560}
 
+.rider-returns{margin:16px 18px 0;max-width:640px;background:#fbe4a8;border:1px solid #e9c96f;border-radius:12px;padding:13px 15px;color:#6b4f12}
+.rider-returns strong{display:block;font-size:13px}
+.rider-returns ul{margin:8px 0;padding-left:18px;font-size:13px}
+.rider-returns p{margin:6px 0 0;font-size:12px;line-height:1.4}
+
 .rider-card{background:#fff;border:1px solid #cdd5c8;border-radius:13px;padding:14px 15px;margin-bottom:12px;box-shadow:0 3px 12px rgba(24,33,28,.06)}
 .rider-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .rider-card-top strong{font-size:15px}

@@ -95,6 +95,96 @@ class CashOnDeliveryTest extends TestCase
         $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'completed', 'payment_status' => 'paid']);
     }
 
+    public function test_rider_can_report_a_customer_refusing_to_pay_cod(): void
+    {
+        $rider = User::factory()->create(['is_rider' => true, 'rider_is_active' => true, 'rider_available' => true]);
+        $order = $this->codOrder(['status' => 'out_for_delivery', 'delivery_partner_id' => $rider->id]);
+        Sanctum::actingAs($rider);
+
+        $this->postJson("/api/rider/orders/{$order->id}/payment-refused", ['note' => 'Said the price was wrong and drove off'])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'cancelled');
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id, 'status' => 'cancelled', 'payment_status' => 'cancelled',
+            'cancelled_by' => 'rider', 'cancel_reason' => 'Said the price was wrong and drove off',
+        ]);
+    }
+
+    public function test_reporting_a_refusal_requires_a_note(): void
+    {
+        $rider = User::factory()->create(['is_rider' => true, 'rider_is_active' => true, 'rider_available' => true]);
+        $order = $this->codOrder(['status' => 'out_for_delivery', 'delivery_partner_id' => $rider->id]);
+        Sanctum::actingAs($rider);
+
+        $this->postJson("/api/rider/orders/{$order->id}/payment-refused", [])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('note');
+    }
+
+    public function test_a_refusal_cannot_be_reported_before_out_for_delivery(): void
+    {
+        $rider = User::factory()->create(['is_rider' => true, 'rider_is_active' => true, 'rider_available' => true]);
+        $order = $this->codOrder(['status' => 'ready_for_delivery', 'delivery_partner_id' => $rider->id]);
+        Sanctum::actingAs($rider);
+
+        $this->postJson("/api/rider/orders/{$order->id}/payment-refused", ['note' => 'too early'])
+            ->assertStatus(422);
+    }
+
+    public function test_a_refusal_cannot_be_reported_once_cash_is_already_collected(): void
+    {
+        $rider = User::factory()->create(['is_rider' => true, 'rider_is_active' => true, 'rider_available' => true]);
+        $order = $this->codOrder(['status' => 'out_for_delivery', 'delivery_partner_id' => $rider->id, 'payment_status' => 'paid']);
+        Sanctum::actingAs($rider);
+
+        $this->postJson("/api/rider/orders/{$order->id}/payment-refused", ['note' => 'too late'])
+            ->assertStatus(422);
+    }
+
+    public function test_a_rider_cannot_report_a_refusal_on_someone_elses_order(): void
+    {
+        $rider = User::factory()->create(['is_rider' => true, 'rider_is_active' => true, 'rider_available' => true]);
+        $other = User::factory()->create(['is_rider' => true, 'rider_is_active' => true, 'rider_available' => true]);
+        $order = $this->codOrder(['status' => 'out_for_delivery', 'delivery_partner_id' => $other->id]);
+        Sanctum::actingAs($rider);
+
+        $this->postJson("/api/rider/orders/{$order->id}/payment-refused", ['note' => 'not mine'])
+            ->assertStatus(404);
+    }
+
+    public function test_a_refused_delivery_shows_up_as_a_pending_return_until_the_admin_confirms_it(): void
+    {
+        $rider = User::factory()->create(['is_rider' => true, 'rider_is_active' => true, 'rider_available' => true]);
+        $order = $this->codOrder(['status' => 'out_for_delivery', 'delivery_partner_id' => $rider->id]);
+        Sanctum::actingAs($rider);
+
+        $this->postJson("/api/rider/orders/{$order->id}/payment-refused", ['note' => 'refused at door'])->assertOk();
+
+        $this->getJson('/api/rider/orders')->assertOk()
+            ->assertJsonPath('data.pending_returns.0.id', $order->id)
+            ->assertJsonPath('data.pending_returns.0.reason', 'refused at door');
+
+        Sanctum::actingAs($this->admin());
+        $this->patchJson("/api/admin/orders/{$order->id}", ['items_returned' => true])
+            ->assertOk()
+            ->assertJsonPath('data.items_returned_at', fn ($v) => $v !== null);
+
+        Sanctum::actingAs($rider);
+        $this->getJson('/api/rider/orders')->assertOk()
+            ->assertJsonCount(0, 'data.pending_returns');
+    }
+
+    public function test_items_returned_flag_is_ignored_unless_the_order_needs_it(): void
+    {
+        $order = $this->codOrder(['status' => 'confirmed']);
+        Sanctum::actingAs($this->admin());
+
+        $this->patchJson("/api/admin/orders/{$order->id}", ['items_returned' => true])
+            ->assertOk()
+            ->assertJsonPath('data.items_returned_at', null);
+    }
+
     public function test_cash_collected_flag_is_ignored_for_a_card_order(): void
     {
         $order = Order::create([

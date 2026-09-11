@@ -103,9 +103,10 @@ class RiderController extends Controller
 
     /**
      * The rider's delivery board: orders assigned to them (including pending
-     * offers) plus the shared first-come pool.
+     * offers), the shared first-come pool, and any cancelled-at-the-door
+     * orders whose items are still owed back to the store.
      *
-     * @return array{assigned: Collection, pool: Collection}
+     * @return array{assigned: Collection, pool: Collection, pending_returns: Collection}
      */
     private function board(User $rider): array
     {
@@ -135,9 +136,22 @@ class RiderController extends Controller
             ->latest()
             ->get();
 
+        // Orders cancelled at the door (customer refused to pay) — the bagged
+        // items are still with the rider until the store confirms they're back.
+        $pendingReturns = Order::query()
+            ->where('delivery_partner_id', $me)
+            ->where('status', 'cancelled')
+            ->where('cancelled_by', 'rider')
+            ->whereNull('items_returned_at')
+            ->latest()
+            ->get(['id', 'cancel_reason', 'updated_at'])
+            ->map(fn (Order $o) => ['id' => $o->id, 'reason' => $o->cancel_reason, 'at' => $o->updated_at])
+            ->values();
+
         return [
             'assigned' => $assigned->map($this->row(...))->values(),
             'pool' => $pool->map($this->row(...))->values(),
+            'pending_returns' => $pendingReturns,
         ];
     }
 
@@ -169,11 +183,14 @@ class RiderController extends Controller
 
         $total = (clone $delivered)->count();
         $verified = (clone $delivered)->where('delivery_verified', true)->count();
+        // Cash still in the rider's hand — zeroes out the moment an admin
+        // confirms it's been handed back to the store.
         $codCents = (int) Order::query()
             ->where('delivery_partner_id', $me)
             ->where('status', 'completed')
             ->where('payment_method', 'cod')
             ->where('payment_status', 'paid')
+            ->whereNull('cash_settled_at')
             ->sum('total_cents');
 
         $recent = $rider->riderReviews()
@@ -425,10 +442,42 @@ class RiderController extends Controller
         }
 
         if ($order->payment_status !== 'paid') {
-            $order->update(['payment_status' => 'paid']);
+            $order->update(['payment_status' => 'paid', 'cash_collected_at' => now()]);
             // Cash settled after the drop-off completes the paid + delivered pair.
             $order->sendDeliveredReceiptIfReady();
         }
+
+        return response()->json(['data' => $this->row($order->fresh(['items', 'user:id,name,phone']))]);
+    }
+
+    /**
+     * The customer refuses to pay for a cash-on-delivery order at the door.
+     * There's no "collect it anyway" path — the rider reports it, the order is
+     * cancelled on the spot, and any gift-card spend is credited back.
+     */
+    public function paymentRefused(Request $request, Order $order): JsonResponse
+    {
+        $this->assertMine($request, $order);
+
+        if (! $order->isCashOnDelivery() || $order->payment_status === 'paid') {
+            return response()->json(['message' => 'This order is not awaiting cash on delivery.'], 422);
+        }
+
+        if ($order->status !== 'out_for_delivery') {
+            return response()->json(['message' => 'This order is not out for delivery.'], 422);
+        }
+
+        $data = $request->validate([
+            'note' => ['required', 'string', 'max:300'],
+        ]);
+
+        $order->update([
+            'status' => 'cancelled',
+            'payment_status' => 'cancelled',
+            'cancelled_by' => 'rider',
+            'cancel_reason' => trim($data['note']),
+        ]);
+        $order->restoreGiftCardRedemptions();
 
         return response()->json(['data' => $this->row($order->fresh(['items', 'user:id,name,phone']))]);
     }

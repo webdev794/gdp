@@ -22,7 +22,7 @@ function DeliveryCard({ order, pool, headers, onDone, onChat }) {
   const canDeliver = order.status === 'out_for_delivery'
   const preparing = order.status === 'confirmed' || order.status === 'packing'
 
-  const [stage, setStage] = useState(null)   // null | 'code' | 'override'
+  const [stage, setStage] = useState(null)   // null | 'code' | 'override' | 'refused'
   const [sentTo, setSentTo] = useState('')
   const [code, setCode] = useState('')
   const [note, setNote] = useState('')
@@ -51,6 +51,7 @@ function DeliveryCard({ order, pool, headers, onDone, onChat }) {
   }
   const confirmWithCode = async () => { try { await post('deliver', { code: code.trim() }); onDone() } catch { /* err shown */ } }
   const confirmOverride = async () => { try { await post('deliver', { override: true, note: note.trim() }); onDone() } catch { /* err shown */ } }
+  const confirmRefused = async () => { try { await post('payment-refused', { note: note.trim() }); onDone() } catch { /* err shown */ } }
 
   return (
     <article className="rider-card">
@@ -76,6 +77,7 @@ function DeliveryCard({ order, pool, headers, onDone, onChat }) {
         {!pool && preparing && <span className="rider-wait">Waiting for the store to pack it…</span>}
         {!pool && canStart && <button className="rider-btn" type="button" disabled={working} onClick={() => simpleAct('status', { status: 'out_for_delivery' })}>Picked up — start delivery</button>}
         {!pool && order.cod_due > 0 && (canStart || canDeliver) && <button className="rider-btn" type="button" disabled={working} onClick={() => simpleAct('cash-collected')}>Cash collected</button>}
+        {!pool && canDeliver && order.cod_due > 0 && stage === null && <button className="rider-btn ghost" type="button" onClick={() => setStage('refused')}>Customer refused to pay</button>}
         {!pool && canDeliver && order.cod_due > 0 && <span className="rider-wait">Collect the cash, then you can mark it delivered.</span>}
         {!pool && canDeliver && stage === null && !(order.cod_due > 0) && <button className="rider-btn primary" type="button" onClick={() => setStage('code')}>Deliver</button>}
       </div>
@@ -108,6 +110,19 @@ function DeliveryCard({ order, pool, headers, onDone, onChat }) {
           <div className="rider-deliver-row">
             <button className="rider-btn primary" type="button" disabled={working || note.trim().length < 5} onClick={confirmOverride}>Mark delivered</button>
             <button className="rider-link-btn" type="button" onClick={() => { setStage('code'); setErr('') }}>Back to code</button>
+          </div>
+        </div>
+      )}
+
+      {stage === 'refused' && (
+        <div className="rider-deliver">
+          <p className="rider-deliver-h">Customer refused to pay</p>
+          <p className="rider-deliver-sent">This cancels the order on the spot and notifies the store. Say what happened.</p>
+          <textarea rows={3} placeholder="What the customer said / why they refused" value={note} onChange={(e) => setNote(e.target.value)} />
+          {err && <p className="rider-deliver-err">{err}</p>}
+          <div className="rider-deliver-row">
+            <button className="rider-btn reject" type="button" disabled={working || note.trim().length < 5} onClick={confirmRefused}>Cancel order</button>
+            <button className="rider-link-btn" type="button" onClick={() => { setStage(null); setErr(''); setNote('') }}>Back</button>
           </div>
         </div>
       )}
@@ -374,7 +389,7 @@ export default function RiderConsole({ token, onSignOut }) {
     ...(json ? { 'Content-Type': 'application/json' } : {}),
   }), [token])
 
-  const [data, setData] = useState({ assigned: [], pool: [] })
+  const [data, setData] = useState({ assigned: [], pool: [], pending_returns: [] })
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -389,7 +404,7 @@ export default function RiderConsole({ token, onSignOut }) {
       const res = await fetch(`${API_URL}/rider/orders`, { headers: headers() })
       const body = await readJson(res)
       if (res.ok) {
-        setData(body.data ?? { assigned: [], pool: [] })
+        setData(body.data ?? { assigned: [], pool: [], pending_returns: [] })
         setError('')
       } else setError(body.message ?? 'Could not load your deliveries.')
     } catch { setError('Cannot reach the server.') }
@@ -495,6 +510,18 @@ export default function RiderConsole({ token, onSignOut }) {
       {error && <p className="rider-error">{error}</p>}
 
       {stats && <RiderStats stats={stats} />}
+
+      {(data.pending_returns ?? []).length > 0 && (
+        <div className="rider-returns">
+          <strong>Return items to the store</strong>
+          <ul>
+            {data.pending_returns.map((r) => (
+              <li key={r.id}>Order #{r.id}{r.reason ? ` — ${r.reason}` : ''}</li>
+            ))}
+          </ul>
+          <p>The customer refused to pay — bring these items back to the store. This clears once the store confirms they're back.</p>
+        </div>
+      )}
 
       <section className="rider-section">
         <h2>My deliveries ({data.assigned.length})</h2>

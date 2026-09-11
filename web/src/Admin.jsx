@@ -8,7 +8,35 @@ import './Admin.css'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api'
 
+// So the dashboard's day/week/hour buckets line up with the admin's own
+// clock instead of the server's (which runs in UTC) — e.g. "orders today"
+// means today where the admin is sitting, not today in UTC.
+const ADMIN_TZ = (() => {
+  try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' } catch { return 'UTC' }
+})()
+
 const money = (cents) => `$${((cents ?? 0) / 100).toFixed(2)}`
+
+// Cap each notification-bell section so a busy week (dozens of refunds, say)
+// doesn't turn the dropdown into a wall of rows — the rest is a "+N more" line.
+const BELL_ITEM_CAP = 5
+
+// The three selectable lines on the Orders trend chart, in the fixed order
+// they're always drawn (independent of toggle click order).
+const CHART_LINES = [
+  { key: 'orders', label: 'Orders', color: '#3f7d43', format: (v) => v },
+  { key: 'revenue_cents', label: 'Revenue', color: '#1f5fae', format: money },
+  { key: 'refunded_cents', label: 'Refunds', color: '#a23b28', format: money },
+]
+
+// A rider still holding cash collected on a day other than today (not returned
+// same-day) — the Riders table flags this in red.
+function cashHoldingOverdue(sinceIso) {
+  if (!sinceIso) return false
+  const since = new Date(sinceIso)
+  const now = new Date()
+  return since.getFullYear() !== now.getFullYear() || since.getMonth() !== now.getMonth() || since.getDate() !== now.getDate()
+}
 
 // Worst customer rating tied to an order — the rider/delivery review and any
 // chat (support thread) rating — so the row can flag it for the admin to check.
@@ -293,6 +321,17 @@ async function readJson(response) {
   return JSON.parse(text.slice(start))
 }
 
+// Like readJson, but rejects on a non-2xx response instead of silently
+// resolving with an error body — so a failed request shows up in .catch()
+// instead of leaving a "Loading…" placeholder up forever.
+async function fetchJson(url, options) {
+  const response = await fetch(url, options)
+  const data = await readJson(response)
+  if (!response.ok) throw new Error(data.message ?? 'Request failed.')
+
+  return data
+}
+
 export default function Admin({ token, onClose }) {
   const [tab, setTab] = useState('dashboard')
   const [navOpen, setNavOpen] = useState(() => {
@@ -301,9 +340,9 @@ export default function Admin({ token, onClose }) {
   const [metrics, setMetrics] = useState(null)
   const [chart, setChart] = useState(null)
   const [chartBucket, setChartBucket] = useState('day')
-  const [chartMetric, setChartMetric] = useState('orders') // 'orders' | 'revenue_cents'
+  const [chartMetrics, setChartMetrics] = useState(['orders']) // any non-empty subset of CHART_LINES keys
   const [compare, setCompare] = useState(null)
-  const [comparePreset, setComparePreset] = useState('month')
+  const [comparePreset, setComparePreset] = useState('day')
   const [compareDays, setCompareDays] = useState(7)
   const [compareDaysDraft, setCompareDaysDraft] = useState('7')
   const [compareMetric, setCompareMetric] = useState('orders') // 'orders' | 'revenue_cents'
@@ -359,6 +398,7 @@ export default function Admin({ token, onClose }) {
   const [riders, setRiders] = useState([])
   const [riderForm, setRiderForm] = useState(null)
   const [riderEmail, setRiderEmail] = useState('')
+  const [riderHireStoreId, setRiderHireStoreId] = useState('')
   const [riderDetail, setRiderDetail] = useState(null)
   const [riderMonth, setRiderMonth] = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
   const [riderReport, setRiderReport] = useState(null)
@@ -380,11 +420,29 @@ export default function Admin({ token, onClose }) {
   const [refundForm, setRefundForm] = useState({ items: [], amount: '', reason: '' })
   const [giftIssued, setGiftIssued] = useState(null)
   const [supportBadge, setSupportBadge] = useState(0)
+  const [pendingThreads, setPendingThreads] = useState([])
   const [supportToasts, setSupportToasts] = useState([])
   const [orderToasts, setOrderToasts] = useState([])
+  const [ratingToasts, setRatingToasts] = useState([])
+  const [speakerOpen, setSpeakerOpen] = useState(false)
+  const [notifications, setNotifications] = useState({ awaiting_packing: [], refused_cod: [], cash_overdue: [], negative_feedback: [], negative_feedback_total: 0, financial_activity: [], financial_activity_total: 0, recent_ratings: [] })
+  const [bellOpen, setBellOpen] = useState(false)
+  const [dismissedNotifs, setDismissedNotifs] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('gdp_dismissed_notifs') ?? '[]')) } catch { return new Set() }
+  })
+  const dismissNotif = (key) => setDismissedNotifs((prev) => {
+    const next = new Set(prev)
+    next.add(key)
+    try { localStorage.setItem('gdp_dismissed_notifs', JSON.stringify([...next])) } catch { /* private mode */ }
+    return next
+  })
   const [soundMuted, setSoundMuted] = useState(() => { try { return localStorage.getItem('gdp_support_muted') === '1' } catch { return false } })
   const seenRef = useRef(null)
   const orderSeenRef = useRef(null)
+  const refusedSeenRef = useRef(null)
+  const notifSeenRef = useRef(null)
+  const ratingSeenRef = useRef(null)
+  const [bellShaking, setBellShaking] = useState(false)
   const [busyId, setBusyId] = useState(null)
   const [message, setMessage] = useState('')
   // Per-list "fetch in flight" flags so a slow API shows "Loading…" instead of
@@ -408,18 +466,18 @@ export default function Admin({ token, onClose }) {
   }, [authHeaders])
 
   const loadChart = useCallback(() => {
-    fetch(`${API_URL}/admin/metrics/timeseries?bucket=${chartBucket}`, { headers: authHeaders() }).then(readJson)
+    fetchJson(`${API_URL}/admin/metrics/timeseries?bucket=${chartBucket}&tz=${encodeURIComponent(ADMIN_TZ)}`, { headers: authHeaders() })
       .then((data) => setChart(data.data)).catch(() => setMessage('Could not load the orders chart.'))
   }, [authHeaders, chartBucket])
 
   const loadCompare = useCallback(() => {
     const query = comparePreset === 'custom' ? `preset=custom&days=${compareDays}` : `preset=${comparePreset}`
-    fetch(`${API_URL}/admin/metrics/compare?${query}`, { headers: authHeaders() }).then(readJson)
+    fetchJson(`${API_URL}/admin/metrics/compare?${query}&tz=${encodeURIComponent(ADMIN_TZ)}`, { headers: authHeaders() })
       .then((data) => setCompare(data.data)).catch(() => setMessage('Could not load period comparisons.'))
   }, [authHeaders, comparePreset, compareDays])
 
   const loadInsights = useCallback(() => {
-    fetch(`${API_URL}/admin/metrics/insights`, { headers: authHeaders() }).then(readJson)
+    fetchJson(`${API_URL}/admin/metrics/insights?tz=${encodeURIComponent(ADMIN_TZ)}`, { headers: authHeaders() })
       .then((data) => setInsights(data.data)).catch(() => setMessage('Could not load dashboard insights.'))
   }, [authHeaders])
 
@@ -537,6 +595,7 @@ export default function Admin({ token, onClose }) {
         if (stopped) return
         const pending = (data.data ?? []).filter((t) => t.needs_reply)
         setSupportBadge(pending.length)
+        setPendingThreads(pending)
         const map = Object.fromEntries(pending.map((t) => [t.id, t.last_message_at]))
         if (seenRef.current === null) { seenRef.current = map; return } // seed, don't chime on first load
         const fresh = pending.filter((t) => seenRef.current[t.id] !== t.last_message_at)
@@ -567,6 +626,74 @@ export default function Admin({ token, onClose }) {
               ...fresh.map((o) => ({ id: o.id, text: `New order #${o.id} — ${money(o.total_cents)} · ${o.user?.email ?? 'customer'} — start packing` })),
               ...cur,
             ].slice(0, 4))
+          }
+        }
+
+        // A rider reported the customer refused to pay for a COD delivery —
+        // the order is auto-cancelled; alert the admin to follow up.
+        const refused = (od.data ?? []).filter((o) => o.status === 'cancelled' && o.cancelled_by === 'rider')
+        if (refusedSeenRef.current === null) {
+          refusedSeenRef.current = new Set(refused.map((o) => o.id)) // seed, don't alert for existing
+        } else {
+          const freshRefused = refused.filter((o) => !refusedSeenRef.current.has(o.id))
+          freshRefused.forEach((o) => refusedSeenRef.current.add(o.id))
+          if (freshRefused.length) {
+            if (!soundMuted) playOrderAlert()
+            setOrderToasts((cur) => [
+              ...freshRefused.map((o) => ({ id: `refused-${o.id}`, text: `Order #${o.id} cancelled — customer refused to pay${o.cancel_reason ? `: ${o.cancel_reason}` : ''}` })),
+              ...cur,
+            ].slice(0, 4))
+          }
+        }
+      } catch { /* keep last */ }
+
+      // Standing issues for the notification bell: new orders to pack,
+      // refused C.O.D., overdue rider cash, negative feedback, refunds/gift cards.
+      try {
+        const nd = await readJson(await fetch(`${API_URL}/admin/notifications`, { headers: authHeaders() }))
+        if (stopped) return
+        const data = nd.data ?? { awaiting_packing: [], refused_cod: [], cash_overdue: [], negative_feedback: [], negative_feedback_total: 0, financial_activity: [], financial_activity_total: 0, recent_ratings: [] }
+        setNotifications(data)
+
+        // Every new rating — good or bad — gets a brief toast that fades on
+        // its own; it's "here's what just happened," not something to track.
+        const ratingKey = (r) => `rate-${r.source}-${r.order_id}-${r.at}`
+        const ratingKeys = new Set((data.recent_ratings ?? []).map(ratingKey))
+        if (ratingSeenRef.current === null) {
+          ratingSeenRef.current = ratingKeys // seed, don't toast for what's already there
+        } else {
+          const freshRatings = (data.recent_ratings ?? []).filter((r) => !ratingSeenRef.current.has(ratingKey(r)))
+          ratingSeenRef.current = ratingKeys
+          freshRatings.forEach((r) => {
+            const id = ratingKey(r)
+            const tone = r.rating <= 2 ? 'bad' : r.rating === 3 ? 'mid' : 'good'
+            const stars = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating)
+            const who = r.source === 'chat' ? 'Chat rating' : 'Delivery rating'
+            setRatingToasts((cur) => [
+              ...cur,
+              { id, tone, text: `${stars} ${who}${r.order_id ? ` — order #${r.order_id}` : ''}${r.comment ? ` — “${r.comment}”` : ''}`, orderId: r.order_id },
+            ].slice(-4))
+            setTimeout(() => setRatingToasts((cur) => cur.filter((t) => t.id !== id)), 6000)
+          })
+        }
+
+        // One-shot ring when a genuinely new item shows up — not a permanent
+        // loop for as long as anything is outstanding.
+        const keys = new Set([
+          ...(data.awaiting_packing ?? []).map((o) => `pack-${o.order_id}`),
+          ...(data.refused_cod ?? []).map((o) => `refused-${o.order_id}`),
+          ...(data.cash_overdue ?? []).map((c) => `cash-${c.rider_id}`),
+          ...(data.negative_feedback ?? []).map((f) => `fb-${f.source}-${f.order_id}-${f.at}`),
+          ...(data.financial_activity ?? []).map((a) => `fin-${a.type}-${a.order_id}-${a.at}`),
+        ])
+        if (notifSeenRef.current === null) {
+          notifSeenRef.current = keys // seed, don't ring for what's already there
+        } else {
+          const isNew = [...keys].some((k) => !notifSeenRef.current.has(k))
+          notifSeenRef.current = keys
+          if (isNew) {
+            setBellShaking(true)
+            setTimeout(() => setBellShaking(false), 1000)
           }
         }
       } catch { /* keep last */ }
@@ -610,12 +737,13 @@ export default function Admin({ token, onClose }) {
     event.preventDefault()
     setMessage('')
     const email = riderEmail.trim()
-    if (!email) return
+    if (!email || !riderHireStoreId) return
     try {
-      const response = await fetch(`${API_URL}/admin/riders`, { method: 'POST', headers: jsonHeaders(), body: JSON.stringify({ email }) })
+      const response = await fetch(`${API_URL}/admin/riders`, { method: 'POST', headers: jsonHeaders(), body: JSON.stringify({ email, store_ids: [Number(riderHireStoreId)] }) })
       const data = await readJson(response)
       if (!response.ok) throw new Error(data.message ?? Object.values(data.errors ?? {})[0]?.[0] ?? 'Could not add the rider.')
       setRiderEmail('')
+      setRiderHireStoreId('')
       loadRiders()
       setRiderForm(riderFormFrom(data.data))
     } catch (error) { fail(error) }
@@ -946,8 +1074,10 @@ export default function Admin({ token, onClose }) {
     const refundedNote = !refundedLink && !needsRefund
       && (order.payment_status === 'refunded' || order.payment_status === 'partially_refunded' || (order.refunded_amount_cents ?? 0) > 0)
     const giftCards = order.gift_cards ?? []
+    const needsItemReturn = order.cancelled_by === 'rider' && !order.items_returned_at
+    const itemsReturned = order.cancelled_by === 'rider' && !!order.items_returned_at
     const steps = NEXT_ACTIONS[order.status] ?? []
-    if (!codCollect && !needsRefund && !refundedLink && !refundedNote && !giftCards.length && steps.length === 0) return null
+    if (!codCollect && !needsRefund && !refundedLink && !refundedNote && !giftCards.length && !needsItemReturn && !itemsReturned && steps.length === 0) return null
     return (
       <>
         {codCollect && (
@@ -962,16 +1092,35 @@ export default function Admin({ token, onClose }) {
           <a className="act ghost" href={order.stripe_dashboard_url} target="_blank" rel="noreferrer">View in Stripe ↗</a>
         )}
         {refundedNote && (
-          <span className="admin-note" style={{ color: '#2f5a8a' }} title={`Refunded ${money(order.refunded_amount_cents ?? 0)}`}>↩ refunded{order.payment_status === 'partially_refunded' ? ' (partial)' : ''}</span>
+          <span className="admin-note" style={{ color: '#2f5a8a' }} title={(order.refunds ?? []).length
+            ? order.refunds.map((r) => `${money(r.amount_cents)}${r.reason ? ` — ${r.reason}` : ''}${r.creator?.name ? ` — by ${r.creator.name}` : ''}`).join('\n')
+            : `Refunded ${money(order.refunded_amount_cents ?? 0)}`}>↩ refunded{order.payment_status === 'partially_refunded' ? ' (partial)' : ''}</span>
         )}
         {giftCards.length > 0 && (
-          <span className="admin-note" style={{ color: '#6b4f12' }} title={giftCards.map((g) => `${g.code} — ${money(g.initial_cents)}${g.reason ? ` (${g.reason})` : ''}`).join('\n')}>🎁 gift card{giftCards.length > 1 ? ` ×${giftCards.length}` : ''}</span>
+          <span className="admin-note" style={{ color: '#6b4f12' }} title={giftCards.map((g) => `${g.code} — ${money(g.initial_cents)}${g.reason ? ` (${g.reason})` : ''}${g.issued_by?.name ? ` — by ${g.issued_by.name}` : ''}`).join('\n')}>🎁 gift card issued{giftCards.length > 1 ? ` ×${giftCards.length}` : ''}</span>
+        )}
+        {needsItemReturn && (
+          <button type="button" disabled={busyId === order.id} className="act warn" title={order.cancel_reason || ''} onClick={() => patchOrder(order, { items_returned: true })}>Items returned to store</button>
+        )}
+        {itemsReturned && (
+          <span className="admin-note" style={{ color: '#2f6d34' }} title={`Confirmed ${new Date(order.items_returned_at).toLocaleString()}`}>✓ items returned</span>
         )}
         {steps.map(([status, label]) => (
           <button key={status} type="button" disabled={busyId === order.id} className={status === 'cancelled' ? 'act danger' : 'act'} onClick={() => patchOrder(order, { status })}>{label}</button>
         ))}
       </>
     )
+  }
+
+  // Opens an order's drawer straight from the notification bell, even when
+  // that order isn't on the currently loaded Orders page.
+  async function openOrderById(id) {
+    setBellOpen(false)
+    setMessage('')
+    try {
+      const data = await readJson(await fetch(`${API_URL}/admin/orders/${id}`, { headers: authHeaders() }))
+      setOrderDetail(data.data)
+    } catch (error) { fail(error) }
   }
 
   async function openThread(id) {
@@ -1027,8 +1176,9 @@ export default function Admin({ token, onClose }) {
     if (threadId) body.support_thread_id = threadId
     if (refundForm.items.length) body.item_ids = refundForm.items
     else if (refundForm.amount) body.amount_cents = Math.round(Number(refundForm.amount) * 100)
+    const allItemsPicked = refundForm.items.length > 0 && refundForm.items.length === (order.items ?? []).length
     const label = refundForm.items.length
-      ? money(order.items.filter((i) => refundForm.items.includes(i.id)).reduce((s, i) => s + i.line_total_cents, 0))
+      ? money(allItemsPicked ? order.total_cents - (order.refunded_amount_cents ?? 0) : order.items.filter((i) => refundForm.items.includes(i.id)).reduce((s, i) => s + i.line_total_cents, 0))
       : (refundForm.amount ? `$${refundForm.amount}` : money(order.total_cents - (order.refunded_amount_cents ?? 0)))
     if (!window.confirm(`Refund ${label} to the customer via Stripe?`)) return
     setBusyId(threadId ?? order.id)
@@ -1053,8 +1203,10 @@ export default function Admin({ token, onClose }) {
     if (threadId) body.support_thread_id = threadId
     if (refundForm.items.length) body.item_ids = refundForm.items
     else if (refundForm.amount) body.amount_cents = Math.round(Number(refundForm.amount) * 100)
+    const allItemsPicked = refundForm.items.length > 0 && refundForm.items.length === (order.items ?? []).length
+    const room = order.total_cents - (order.refunded_amount_cents ?? 0) - (order.gift_cards ?? []).reduce((s, g) => s + g.initial_cents, 0)
     const label = refundForm.items.length
-      ? money(order.items.filter((i) => refundForm.items.includes(i.id)).reduce((s, i) => s + i.line_total_cents, 0))
+      ? money(allItemsPicked ? room : order.items.filter((i) => refundForm.items.includes(i.id)).reduce((s, i) => s + i.line_total_cents, 0))
       : (refundForm.amount ? `$${refundForm.amount}` : '')
     if (!window.confirm(`Issue a ${label || 'store-credit'} gift card to the customer?`)) return
     setBusyId(threadId ?? order.id)
@@ -1067,6 +1219,25 @@ export default function Admin({ token, onClose }) {
       if (threadId) openThread(threadId)
       refreshOrderInList(order.id)
       setMessage(`Gift card ${data.data.code} for ${money(data.data.amount_cents)} issued.`)
+    } catch (error) { fail(error) } finally { setBusyId(null) }
+  }
+
+  // Applies a gift card the customer already has (from an earlier order) to a
+  // different order that's still unpaid — for when they ask in chat instead
+  // of entering the code themselves at checkout.
+  async function applyGiftCardToOrder(card, order, threadId) {
+    const label = money(Math.min(card.balance_cents, order.total_cents))
+    if (!window.confirm(`Apply ${label} from gift card ${card.code} to order #${order.id}?`)) return
+    setBusyId(threadId ?? order.id)
+    try {
+      const response = await fetch(`${API_URL}/admin/orders/${order.id}/apply-gift-card`, {
+        method: 'POST', headers: jsonHeaders(), body: JSON.stringify({ gift_card_code: card.code, support_thread_id: threadId ?? undefined }),
+      })
+      const data = await readJson(response)
+      if (!response.ok) throw new Error(data.message ?? 'Could not apply the gift card.')
+      if (threadId) openThread(threadId)
+      refreshOrderInList(order.id)
+      setMessage(`Applied ${money(data.data.applied_cents)} from ${card.code} to order #${order.id}.`)
     } catch (error) { fail(error) } finally { setBusyId(null) }
   }
 
@@ -1084,10 +1255,13 @@ export default function Admin({ token, onClose }) {
           : 'This order is not in a refundable state.'
     )
     const selectedSum = (o.items ?? []).filter((i) => refundForm.items.includes(i.id)).reduce((s, i) => s + i.line_total_cents, 0)
+    const allItemsSelected = (o.items ?? []).length > 0 && refundForm.items.length === (o.items ?? []).length
     const bare = refundForm.items.length === 0 && !String(refundForm.amount).trim()
-    const amountCents = refundForm.items.length ? selectedSum : Math.round(Number(refundForm.amount || 0) * 100)
+    const amountCents = refundForm.items.length ? (allItemsSelected ? remaining : selectedSum) : Math.round(Number(refundForm.amount || 0) * 100)
     const amountOk = bare ? remaining > 0 : (amountCents > 0 && amountCents <= remaining)
     const giftLast = giftIssued && giftIssued.order_id === o.id ? giftIssued : null
+    const alreadyIssuedCard = (o.gift_cards ?? [])[0]
+    const alreadyIssuedTitle = alreadyIssuedCard ? `${alreadyIssuedCard.code} — ${money(alreadyIssuedCard.initial_cents)}` : undefined
     const busyKey = threadId ?? o.id
     return (
       <div className="admin-form" style={{ marginTop: 16 }}>
@@ -1105,12 +1279,20 @@ export default function Admin({ token, onClose }) {
               <label>Or amount ($)<input type="number" min="0" step="0.01" disabled={refundForm.items.length > 0} value={refundForm.amount} onChange={(event) => setRefundForm({ ...refundForm, amount: event.target.value })} /></label>
               <label>Reason<input value={refundForm.reason} onChange={(event) => setRefundForm({ ...refundForm, reason: event.target.value })} /></label>
             </div>
-            {refundForm.items.length > 0 && <p className="muted">Selected items: {money(selectedSum)}{selectedSum > remaining ? ' — more than the remaining balance' : ' (tax and fees are refunded separately)'}.</p>}
+            {refundForm.items.length > 0 && (
+              <p className="muted">
+                {allItemsSelected
+                  ? `Every item selected — full refund of ${money(remaining)} (includes tax and fees).`
+                  : `Selected items: ${money(selectedSum)}${selectedSum > remaining ? ' — more than the remaining balance' : ' (tax and fees are refunded separately)'}.`}
+              </p>
+            )}
             <div className="admin-form-actions">
               {canRefund
                 ? <button className="act" type="button" disabled={busyId === busyKey || !amountOk} onClick={() => issueRefund(o, threadId)}>Refund via Stripe</button>
                 : <span className="muted" title={blockReason}>No card to refund — issue store credit instead.</span>}
-              <button className="act" type="button" disabled={busyId === busyKey || !amountOk} onClick={() => issueGiftCard(o, threadId)}>Issue store credit (gift card)</button>
+              {alreadyIssuedCard
+                ? <span className="muted" title={alreadyIssuedTitle}>Store credit already issued for this order.</span>
+                : <button className="act" type="button" disabled={busyId === busyKey || !amountOk} onClick={() => issueGiftCard(o, threadId)}>Issue store credit (gift card)</button>}
               {o.stripe_dashboard_url && <a className="act ghost" href={o.stripe_dashboard_url} target="_blank" rel="noreferrer">View in Stripe ↗</a>}
             </div>
           </>
@@ -1255,8 +1437,8 @@ export default function Admin({ token, onClose }) {
       const response = await fetch(`${API_URL}/admin/riders/${rider.id}/cash-settle`, { method: 'POST', headers: authHeaders() })
       const data = await readJson(response)
       if (!response.ok) throw new Error(data.message ?? 'Could not confirm the cash returned.')
-      setRiderDetail((current) => (current?.rider?.id === rider.id ? { ...current, rider: { ...current.rider, cash_holding_cents: 0 } } : current))
-      setRiders((current) => current.map((r) => (r.id === rider.id ? { ...r, cash_holding_cents: 0 } : r)))
+      setRiderDetail((current) => (current?.rider?.id === rider.id ? { ...current, rider: { ...current.rider, cash_holding_cents: 0, cash_holding_since: null } } : current))
+      setRiders((current) => current.map((r) => (r.id === rider.id ? { ...r, cash_holding_cents: 0, cash_holding_since: null } : r)))
       setMessage(`${rider.name} — ${money(data.data.settled_cents)} confirmed returned.`)
     } catch (error) { fail(error) } finally { setBusyId(null) }
   }
@@ -1286,6 +1468,32 @@ export default function Admin({ token, onClose }) {
       setCustomers((list) => list.map((c) => (c.id === id ? { ...c, is_rider: data.data.is_rider } : c)))
     } catch (error) { fail(error) }
   }
+
+  // Stable per-item keys so a manually-dismissed notification (the × button)
+  // stays hidden across polls/reloads until the underlying item genuinely
+  // changes (e.g. a new refusal on the same order gets a new "at" stamp).
+  const packKey = (o) => `pack-${o.order_id}`
+  const refusedKey = (o) => `refused-${o.order_id}`
+  const cashKey = (c) => `cash-${c.rider_id}`
+  const fbKey = (f) => `fb-${f.source}-${f.order_id}-${f.at}`
+  const finKey = (a) => `fin-${a.type}-${a.order_id}-${a.at}`
+
+  const visibleAwaitingPacking = (notifications.awaiting_packing ?? []).filter((o) => !dismissedNotifs.has(packKey(o)))
+  const visibleRefusedCod = (notifications.refused_cod ?? []).filter((o) => !dismissedNotifs.has(refusedKey(o)))
+  const visibleCashOverdue = (notifications.cash_overdue ?? []).filter((c) => !dismissedNotifs.has(cashKey(c)))
+  const visibleNegativeFeedback = (notifications.negative_feedback ?? []).filter((f) => !dismissedNotifs.has(fbKey(f)))
+  const visibleFinancialActivity = (notifications.financial_activity ?? []).filter((a) => !dismissedNotifs.has(finKey(a)))
+
+  // Totals beyond the fetched sample can't be individually dismissed, but at
+  // least subtract whatever was dismissed within the sample we did fetch.
+  const negativeFeedbackHidden = (notifications.negative_feedback ?? []).length - visibleNegativeFeedback.length
+  const financialActivityHidden = (notifications.financial_activity ?? []).length - visibleFinancialActivity.length
+
+  const notificationCount = visibleAwaitingPacking.length
+    + visibleRefusedCod.length
+    + visibleCashOverdue.length
+    + Math.max(0, (notifications.negative_feedback_total ?? notifications.negative_feedback?.length ?? 0) - negativeFeedbackHidden)
+    + Math.max(0, (notifications.financial_activity_total ?? notifications.financial_activity?.length ?? 0) - financialActivityHidden)
 
   const toggleNav = () => setNavOpen((open) => {
     const next = !open
@@ -1324,12 +1532,151 @@ export default function Admin({ token, onClose }) {
               {TAB_LABELS[name]}{name === 'support' && supportBadge > 0 && <span className="tab-badge">{supportBadge}</span>}
             </button>
           ))}
-          <button className="admin-close soundtoggle" type="button" title={soundMuted ? 'Unmute new-order & chat sound' : 'Mute new-order & chat sound'} onClick={() => setSoundMuted((m) => { const next = !m; try { localStorage.setItem('gdp_support_muted', next ? '1' : '0') } catch { /* ignore */ } return next })}>{soundMuted ? '🔕' : '🔔'}</button>
+          <div className="admin-bell-wrap">
+            <button className={`admin-close${bellShaking ? ' shaking' : ''}`} type="button" title="Notifications" aria-expanded={bellOpen} onClick={() => setBellOpen((v) => !v)}>
+              🔔{notificationCount > 0 && <span className="admin-bell-badge">{notificationCount > 99 ? '99+' : notificationCount}</span>}
+            </button>
+            {bellOpen && (
+              <div className="admin-bell-pop" role="menu">
+                <h4>Needs attention</h4>
+                {notificationCount === 0 ? <p className="muted">Nothing outstanding.</p> : (
+                  <>
+                    {visibleAwaitingPacking.length > 0 && (
+                      <section>
+                        <h5>New orders to pack</h5>
+                        {visibleAwaitingPacking.slice(0, BELL_ITEM_CAP).map((o) => (
+                          <div className="admin-bell-row" key={packKey(o)}>
+                            <button type="button" className="admin-bell-item" onClick={() => openOrderById(o.order_id)}>
+                              🆕 Order #{o.order_id} — {money(o.total_cents)}{o.customer ? ` — ${o.customer}` : ''}
+                            </button>
+                            <button type="button" className="admin-bell-x" title="Dismiss" onClick={(event) => { event.stopPropagation(); dismissNotif(packKey(o)) }}>×</button>
+                          </div>
+                        ))}
+                        {visibleAwaitingPacking.length > BELL_ITEM_CAP && (
+                          <button type="button" className="admin-bell-more" onClick={() => { setBellOpen(false); goTab('orders') }}>+{visibleAwaitingPacking.length - BELL_ITEM_CAP} more — see Orders</button>
+                        )}
+                      </section>
+                    )}
+                    {visibleRefusedCod.length > 0 && (
+                      <section>
+                        <h5>Customer refused C.O.D.</h5>
+                        {visibleRefusedCod.slice(0, BELL_ITEM_CAP).map((o) => (
+                          <div className="admin-bell-row" key={refusedKey(o)}>
+                            <button type="button" className="admin-bell-item danger" onClick={() => openOrderById(o.order_id)}>
+                              🚫 Order #{o.order_id}{o.reason ? ` — ${o.reason}` : ''}
+                            </button>
+                            <button type="button" className="admin-bell-x" title="Dismiss" onClick={(event) => { event.stopPropagation(); dismissNotif(refusedKey(o)) }}>×</button>
+                          </div>
+                        ))}
+                        {visibleRefusedCod.length > BELL_ITEM_CAP && (
+                          <button type="button" className="admin-bell-more" onClick={() => { setBellOpen(false); goTab('orders') }}>+{visibleRefusedCod.length - BELL_ITEM_CAP} more — see Orders</button>
+                        )}
+                      </section>
+                    )}
+                    {visibleCashOverdue.length > 0 && (
+                      <section>
+                        <h5>Cash not returned</h5>
+                        {visibleCashOverdue.slice(0, BELL_ITEM_CAP).map((c) => (
+                          <div className="admin-bell-row" key={cashKey(c)}>
+                            <button type="button" className="admin-bell-item warn" onClick={() => { setBellOpen(false); goTab('riders'); openRiderDetail(c.rider_id) }}>
+                              💰 {c.rider_name} — {money(c.holding_cents)} since {new Date(c.since).toLocaleDateString()}
+                            </button>
+                            <button type="button" className="admin-bell-x" title="Dismiss" onClick={(event) => { event.stopPropagation(); dismissNotif(cashKey(c)) }}>×</button>
+                          </div>
+                        ))}
+                        {visibleCashOverdue.length > BELL_ITEM_CAP && (
+                          <button type="button" className="admin-bell-more" onClick={() => { setBellOpen(false); goTab('riders') }}>+{visibleCashOverdue.length - BELL_ITEM_CAP} more — see Riders</button>
+                        )}
+                      </section>
+                    )}
+                    {visibleNegativeFeedback.length > 0 && (
+                      <section>
+                        <h5>Negative feedback (7 days)</h5>
+                        {visibleNegativeFeedback.slice(0, BELL_ITEM_CAP).map((f) => (
+                          <div className="admin-bell-row" key={fbKey(f)}>
+                            <button type="button" className="admin-bell-item danger" onClick={() => openOrderById(f.order_id)}>
+                              {'★'.repeat(f.rating)}{'☆'.repeat(5 - f.rating)} Order #{f.order_id}{f.source === 'chat' ? ' · chat' : ' · delivery'}{f.comment ? ` — “${f.comment}”` : ''}
+                            </button>
+                            <button type="button" className="admin-bell-x" title="Dismiss" onClick={(event) => { event.stopPropagation(); dismissNotif(fbKey(f)) }}>×</button>
+                          </div>
+                        ))}
+                        {notifications.negative_feedback_total - negativeFeedbackHidden > BELL_ITEM_CAP && (
+                          <span className="admin-bell-more">+{notifications.negative_feedback_total - negativeFeedbackHidden - BELL_ITEM_CAP} more this week</span>
+                        )}
+                      </section>
+                    )}
+                    {visibleFinancialActivity.length > 0 && (
+                      <section>
+                        <h5>Recent refunds &amp; gift cards (7 days)</h5>
+                        {visibleFinancialActivity.slice(0, BELL_ITEM_CAP).map((a) => (
+                          <div className="admin-bell-row" key={finKey(a)}>
+                            <button type="button" className="admin-bell-item" onClick={() => openOrderById(a.order_id)}>
+                              {a.type === 'gift_card' ? '🎁' : '↩'} Order #{a.order_id} — {money(a.amount_cents)}{a.reason ? ` — ${a.reason}` : ''}{a.issued_by_name ? ` (by ${a.issued_by_name})` : ''}
+                            </button>
+                            <button type="button" className="admin-bell-x" title="Dismiss" onClick={(event) => { event.stopPropagation(); dismissNotif(finKey(a)) }}>×</button>
+                          </div>
+                        ))}
+                        {notifications.financial_activity_total - financialActivityHidden > BELL_ITEM_CAP && (
+                          <button type="button" className="admin-bell-more" onClick={() => { setBellOpen(false); goTab('orders') }}>+{notifications.financial_activity_total - financialActivityHidden - BELL_ITEM_CAP} more this week — see Orders</button>
+                        )}
+                      </section>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="admin-bell-wrap">
+            <button className="admin-close soundtoggle" type="button" title="New orders &amp; chat messages" aria-expanded={speakerOpen} onClick={() => setSpeakerOpen((v) => !v)}>
+              {soundMuted ? '🔇' : '🔊'}
+              {(visibleAwaitingPacking.length + pendingThreads.length) > 0 && (
+                <span className="admin-bell-badge">{(visibleAwaitingPacking.length + pendingThreads.length) > 99 ? '99+' : visibleAwaitingPacking.length + pendingThreads.length}</span>
+              )}
+            </button>
+            {speakerOpen && (
+              <div className="admin-bell-pop" role="menu">
+                <h4>New orders &amp; chats</h4>
+                <button type="button" className="admin-bell-mute" onClick={() => setSoundMuted((m) => { const next = !m; try { localStorage.setItem('gdp_support_muted', next ? '1' : '0') } catch { /* ignore */ } return next })}>
+                  {soundMuted ? '🔇 Sound is muted — tap to unmute' : '🔊 Sound is on — tap to mute'}
+                </button>
+                {visibleAwaitingPacking.length === 0 && pendingThreads.length === 0 ? <p className="muted">Nothing new.</p> : (
+                  <>
+                    {visibleAwaitingPacking.length > 0 && (
+                      <section>
+                        <h5>New orders to pack</h5>
+                        {visibleAwaitingPacking.slice(0, BELL_ITEM_CAP).map((o) => (
+                          <button key={packKey(o)} type="button" className="admin-bell-item" onClick={() => { setSpeakerOpen(false); openOrderById(o.order_id) }}>
+                            🆕 Order #{o.order_id} — {money(o.total_cents)}{o.customer ? ` — ${o.customer}` : ''}
+                          </button>
+                        ))}
+                        {visibleAwaitingPacking.length > BELL_ITEM_CAP && (
+                          <button type="button" className="admin-bell-more" onClick={() => { setSpeakerOpen(false); goTab('orders') }}>+{visibleAwaitingPacking.length - BELL_ITEM_CAP} more — see Orders</button>
+                        )}
+                      </section>
+                    )}
+                    {pendingThreads.length > 0 && (
+                      <section>
+                        <h5>New chat messages</h5>
+                        {pendingThreads.slice(0, BELL_ITEM_CAP).map((t) => (
+                          <button key={t.id} type="button" className="admin-bell-item" onClick={() => { setSpeakerOpen(false); goTab('support'); openThread(t.id) }}>
+                            💬 {t.user?.email ?? 'Customer'}{t.order_id ? ` · order #${t.order_id}` : ''}
+                          </button>
+                        ))}
+                        {pendingThreads.length > BELL_ITEM_CAP && (
+                          <button type="button" className="admin-bell-more" onClick={() => { setSpeakerOpen(false); goTab('support') }}>+{pendingThreads.length - BELL_ITEM_CAP} more — see Support</button>
+                        )}
+                      </section>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
           <button className="admin-close" type="button" onClick={onClose}>Back to store</button>
         </div>
       </header>
 
-      {(supportToasts.length > 0 || orderToasts.length > 0) && (
+      {(supportToasts.length > 0 || orderToasts.length > 0 || ratingToasts.length > 0) && (
         <div className="admin-toasts">
           {orderToasts.map((t) => (
             <button key={`o-${t.id}`} type="button" className="admin-toast admin-toast-order" onClick={() => { setOrderToasts((cur) => cur.filter((x) => x.id !== t.id)); goTab('orders') }}>
@@ -1339,6 +1686,11 @@ export default function Admin({ token, onClose }) {
           {supportToasts.map((t) => (
             <button key={`${t.id}-${t.text}`} type="button" className="admin-toast" onClick={() => { goTab('support'); openThread(t.id) }}>
               💬 {t.text} <span>Open →</span>
+            </button>
+          ))}
+          {ratingToasts.map((t) => (
+            <button key={t.id} type="button" className={`admin-toast admin-toast-rating ${t.tone}`} onClick={() => { setRatingToasts((cur) => cur.filter((x) => x.id !== t.id)); if (t.orderId) openOrderById(t.orderId) }}>
+              {t.text}
             </button>
           ))}
         </div>
@@ -1395,13 +1747,13 @@ export default function Admin({ token, onClose }) {
           <section className="admin-grid">
             {!metrics ? <Loading>Loading metrics…</Loading> : (
               <>
-                <article className="metric accent"><span>Paid revenue</span><strong>{money(metrics.revenue_cents)}</strong></article>
+                <article className="metric accent" title="Orders currently marked paid. An order that's since been fully or partially refunded moves out of this figure — see the Payments vs refunds chart below for the net, all-time picture."><span>Paid revenue</span><strong>{money(metrics.revenue_cents)}</strong></article>
                 <article className="metric"><span>Orders</span><strong>{metrics.orders_total}</strong></article>
                 <article className="metric"><span>Avg order value</span><strong>{money(metrics.avg_order_cents ?? 0)}</strong></article>
                 <article className="metric"><span>Awaiting fulfilment</span><strong>{metrics.awaiting_fulfilment}</strong></article>
                 <article className="metric"><span>COD orders</span><strong>{metrics.cod_orders ?? 0}</strong></article>
                 <article className="metric"><span>Discounts given</span><strong>{money(metrics.discount_cents ?? 0)}</strong></article>
-                <article className="metric"><span>Refunded</span><strong>{money(metrics.refunded_cents ?? 0)}</strong></article>
+                <article className="metric" title="Stripe refunds plus store-credit gift cards issued, all-time — across every order regardless of its current status."><span>Refunded</span><strong>{money(metrics.refunded_cents ?? 0)}</strong></article>
                 <article className="metric"><span>Customers</span><strong>{metrics.customers}</strong></article>
                 <article className="metric"><span>Products</span><strong>{metrics.products}</strong></article>
                 <article className="metric"><span>Low stock (&le;5)</span><strong>{metrics.low_stock}</strong></article>
@@ -1417,19 +1769,28 @@ export default function Admin({ token, onClose }) {
                   <button key={value} type="button" className={chartBucket === value ? 'active' : ''} onClick={() => { setChart(null); setChartBucket(value) }}>{label}</button>
                 ))}
               </div>
-              <div className="seg" role="group" aria-label="Measure">
-                {[['orders', 'Orders'], ['revenue_cents', 'Revenue']].map(([value, label]) => (
-                  <button key={value} type="button" className={chartMetric === value ? 'active' : ''} onClick={() => setChartMetric(value)}>{label}</button>
+              <div className="seg" role="group" aria-label="Measure (pick any combination)">
+                {CHART_LINES.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={chartMetrics.includes(key) ? 'active' : ''}
+                    onClick={() => setChartMetrics((cur) => (cur.includes(key)
+                      ? (cur.length > 1 ? cur.filter((k) => k !== key) : cur) // keep at least one on
+                      : [...cur, key]))}
+                  >{label}</button>
                 ))}
               </div>
-              {chart && <span className="muted chart-range">{chart.from} → {chart.to} · {chart.totals.orders} orders · {chart.totals.paid_orders} paid · {money(chart.totals.revenue_cents)}</span>}
+              {chart && <span className="muted chart-range">{chart.from} → {chart.to} · {chart.totals.orders} orders · {chart.totals.paid_orders} paid · {money(chart.totals.revenue_cents)} · {money(chart.totals.refunded_cents ?? 0)} refunded</span>}
             </div>
 
             {!chart ? <Loading>Loading chart…</Loading> : (
               <>
                 <LineChart
-                  series={chart.series.map((row) => ({ label: row.label, value: chartMetric === 'orders' ? row.orders : row.revenue_cents }))}
-                  format={chartMetric === 'orders' ? ((v) => v) : money}
+                  lines={CHART_LINES.filter((line) => chartMetrics.includes(line.key)).map((line) => ({
+                    ...line,
+                    points: chart.series.map((row) => ({ label: row.label, value: row[line.key] ?? 0 })),
+                  }))}
                 />
                 <div className="chart-pies">
                   <div>
@@ -1513,11 +1874,12 @@ export default function Admin({ token, onClose }) {
             </div>
             <div className="dash-split-side">
               <h3 className="admin-subhead">Payments vs refunds</h3>
+              <p className="muted" style={{ margin: '-4px 0 10px', fontSize: 11 }}>All-time net: every order ever collected, minus every refund and gift card issued — not just currently-paid orders, so this won&rsquo;t match &ldquo;Paid revenue&rdquo; above.</p>
               {!metrics ? <Loading>Loading…</Loading> : (
                 <PieChart
                   format={money}
                   data={[
-                    { label: 'Payments', value: metrics.revenue_cents },
+                    { label: 'Payments', value: Math.max(0, (metrics.gross_collected_cents ?? 0) - (metrics.refunded_cents ?? 0)) },
                     { label: 'Refunds', value: metrics.refunded_cents ?? 0 },
                   ]}
                 />
@@ -1545,13 +1907,15 @@ export default function Admin({ token, onClose }) {
                 {orders.map((order) => { const feedback = orderFeedbackTone(order); return (
                   <tr key={order.id}>
                     <td><button type="button" className="link" title="View order summary" onClick={() => setOrderDetail(order)}>#{order.id}</button></td>
-                    <td>{order.user?.email ?? '—'}{(order.delivery_address?.phone || order.user?.phone) && <span className="admin-note">☎ {order.delivery_address?.phone || order.user?.phone}</span>}{order.delivery_instructions && <span className="admin-note" title={order.delivery_instructions}>&ldquo;{order.delivery_instructions}&rdquo;</span>}</td>
+                    <td>{order.user?.display_name ?? '—'}</td>
                     <td>{new Date(order.created_at).toLocaleDateString()}</td>
                     <td>{money(order.total_cents)}<span className="admin-note">{order.items?.length ?? 0} item{order.items?.length === 1 ? '' : 's'}</span></td>
-                    <td><span className={`pill pill-${order.payment_status}`}>{order.payment_status}</span><span className="admin-note">{order.payment_method === 'cod' ? 'C.O.D.' : 'Card'}</span></td>
+                    <td><span className={`pill pill-${order.payment_status}`}>{order.payment_status}</span><span className="admin-note">{order.payment_method === 'cod' ? 'C.O.D.' : 'Card'}</span>{order.cancelled_by === 'rider' && <span className="admin-note" style={{ color: '#a23b28' }} title={order.cancel_reason || 'Customer refused to pay on delivery'}>Customer refused to pay</span>}</td>
                     <td className={feedback ? `admin-td-fb-${feedback}` : undefined} title={feedback ? `${feedback} feedback on this order — open it to see why` : undefined}>{STATUS_LABELS[order.status] ?? order.status}{order.store && <span className="admin-note" title={`Fulfilled by ${order.store.name}${order.store.city ? `, ${order.store.city}` : ''}`}>🏬 {order.store.name}</span>}{order.status === 'completed' && order.delivery_verified === true && <span className="admin-note" style={{ color: '#2f6d34' }} title={order.delivered_at ? `Confirmed ${new Date(order.delivered_at).toLocaleString()}` : ''}>✓ code verified</span>}{!order.rider_accepted_at && order.rider_offer_expires_at && <span className="admin-note" style={{ color: '#7a5c14' }} title={`Offered${order.delivery_partner?.name ? ` to ${order.delivery_partner.name}` : ''}, expires ${new Date(order.rider_offer_expires_at).toLocaleString()}`}>⏳ offer sent</span>}{order.rider_offer_decline_count > 0 && order.status !== 'completed' && <span className="admin-note" style={{ color: '#a23b28' }} title="Riders who declined or missed this offer">↩ declined ×{order.rider_offer_decline_count}</span>}</td>
                     <td className="admin-courier">
-                      {riders.length > 0 ? (
+                      {order.status === 'completed' || order.status === 'cancelled' ? (
+                        order.courier_name || <span className="muted">—</span>
+                      ) : riders.length > 0 ? (
                         <>
                           <select value={order.delivery_partner_id ?? ''} disabled={busyId === order.id}
                             onChange={(event) => patchOrder(order, { delivery_partner_id: event.target.value ? Number(event.target.value) : null })}>
@@ -1803,7 +2167,7 @@ export default function Admin({ token, onClose }) {
               <tbody>
                 {customers.map((customer) => (
                   <tr key={customer.id}>
-                    <td>{customer.name}</td>
+                    <td>{customer.display_name ?? customer.name}</td>
                     <td>{customer.email}</td>
                     <td>{customer.orders_count}</td>
                     <td>{money(customer.spent_cents)}</td>
@@ -1822,8 +2186,14 @@ export default function Admin({ token, onClose }) {
         <section className="admin-panel">
           <form className="admin-toolbar" onSubmit={addRider}>
             <input type="email" placeholder="rider@example.com" value={riderEmail} onChange={(event) => setRiderEmail(event.target.value)} />
-            <button className="act" type="submit">Add rider</button>
-            <span className="muted">Turns an existing customer account into a delivery rider. Auto-assign picks the nearest on-shift rider linked to the order&rsquo;s store; unassigned orders fall back to the pickup pool.</span>
+            <select required value={riderHireStoreId} onChange={(event) => setRiderHireStoreId(event.target.value)}>
+              <option value="" disabled>Assign to store…</option>
+              {stores.map((store) => <option key={store.id} value={store.id}>{store.name || `Store #${store.id}`}{store.city ? ` — ${store.city}` : ''}</option>)}
+            </select>
+            <button className="act" type="submit" disabled={stores.length === 0}>Add rider</button>
+            <span className="muted">{stores.length === 0
+              ? <>Add a store under <strong>Stores</strong> first — every rider needs one, so it&rsquo;s clear where their COD cash gets returned.</>
+              : <>Turns an existing customer account into a delivery rider. A store is required, so it&rsquo;s always clear where the rider returns COD cash. Auto-assign picks the nearest on-shift rider linked to the order&rsquo;s store; unassigned orders fall back to the pickup pool.</>}</span>
           </form>
 
           {riderForm && (
@@ -1886,12 +2256,17 @@ export default function Admin({ token, onClose }) {
               <tbody>
                 {pageSlice(riders, ridersPage).map((rider) => (
                   <tr key={rider.id}>
-                    <td>{rider.name}<span className="admin-note">{rider.email}</span></td>
+                    <td>{rider.name}</td>
                     <td>{rider.phone || <span className="muted">—</span>}</td>
                     <td>{riderStatusChip(rider)}</td>
-                    <td>{(rider.stores ?? []).length
+                    <td className={rider.cash_holding_cents > 0 ? (cashHoldingOverdue(rider.cash_holding_since) ? 'admin-td-cash-overdue' : 'admin-td-cash-today') : undefined}>{(rider.stores ?? []).length
                       ? (rider.stores).map((s) => s.name).join(', ')
-                      : <span className="muted">none — can&rsquo;t be auto-assigned</span>}</td>
+                      : <span className="muted">none — can&rsquo;t be auto-assigned</span>}
+                      {rider.cash_holding_cents > 0 && (
+                        <span className="admin-note admin-cash-note" title={rider.cash_holding_since ? `holding since ${new Date(rider.cash_holding_since).toLocaleDateString()}` : ''}>
+                          💰 {money(rider.cash_holding_cents)} to return
+                        </span>
+                      )}</td>
                     <td>{rider.located
                       ? <span title={rider.located.last_ping_at ? `pinged ${new Date(rider.located.last_ping_at).toLocaleString()}` : ''}>{rider.located.source === 'live' ? '🟢 live' : '📍 base'}</span>
                       : <span className="muted">no base set</span>}</td>
@@ -2587,12 +2962,27 @@ export default function Admin({ token, onClose }) {
               </p>
             )}
             <div className="chat-log">{(thread.messages ?? []).map((m) => (
-              <div key={m.id} className={`chat-msg ${m.is_staff && m.user_id ? 'staff' : m.user_id ? 'customer' : 'system'}`}><span>{m.body}</span><em>{new Date(m.created_at).toLocaleString()}</em></div>
+              <div key={m.id} className={`chat-msg ${m.internal ? 'internal' : m.is_staff && m.user_id ? 'staff' : m.user_id ? 'customer' : 'system'}`}>
+                <span>{m.internal && '🔒 '}{m.body}</span>
+                <em>{m.internal ? 'Internal note — not visible to customer · ' : ''}{new Date(m.created_at).toLocaleString()}</em>
+              </div>
             ))}</div>
             <div className="chat-send">
               <input placeholder="Reply to the customer" value={threadReply} onChange={(event) => setThreadReply(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') replyThread() }} />
               <button type="button" disabled={!threadReply.trim()} onClick={replyThread}>Send</button>
             </div>
+
+            {thread.order && thread.order.payment_status === 'pending' && (thread.user?.gift_cards ?? []).length > 0 && (
+              <div className="admin-form" style={{ marginTop: 16 }}>
+                <h4>Apply an existing gift card</h4>
+                <p className="muted">Order #{thread.order.id} is still open — total {money(thread.order.total_cents)}.</p>
+                {thread.user.gift_cards.map((card) => (
+                  <button key={card.id} type="button" className="act" disabled={busyId === thread.id} onClick={() => applyGiftCardToOrder(card, thread.order, thread.id)}>
+                    Apply {card.code} — {money(card.balance_cents)} balance
+                  </button>
+                ))}
+              </div>
+            )}
 
             {thread.order && renderRefundPanel(thread.order, thread.id)}
           </aside>
@@ -2605,7 +2995,7 @@ export default function Admin({ token, onClose }) {
             <button className="admin-close" type="button" onClick={() => setCustomerDetail(null)}>Close</button>
             {customerDetail.loading ? <Loading>Loading…</Loading> : (
               <>
-                <h3>{customerDetail.name}</h3>
+                <h3>{customerDetail.display_name ?? customerDetail.name}</h3>
                 <p className="muted">{customerDetail.email} · {customerDetail.phone || 'no phone'} · joined {new Date(customerDetail.joined_at).toLocaleDateString()}</p>
                 <label className="admin-check">
                   <input type="checkbox" checked={!!customerDetail.is_rider} onChange={(event) => toggleRider(customerDetail.id, event.target.checked)} />
@@ -2637,7 +3027,7 @@ export default function Admin({ token, onClose }) {
               <button className="admin-close" type="button" onClick={() => setOrderDetail(null)}>Close</button>
               <h3>Order #{o.id}</h3>
               <p className="muted">{new Date(o.created_at).toLocaleString()} · <span className={`pill pill-${o.payment_status}`}>{o.payment_status}</span> · {STATUS_LABELS[o.status] ?? o.status}</p>
-              <p className="muted">{o.user?.name ? `${o.user.name} · ` : ''}{o.user?.email ?? '—'}{(addr.phone || o.user?.phone) ? ` · ☎ ${addr.phone || o.user.phone}` : ''}</p>
+              <p className="muted">{o.user?.display_name ? `${o.user.display_name} · ` : ''}{o.user?.email ?? '—'}{(addr.phone || o.user?.phone) ? ` · ☎ ${addr.phone || o.user.phone}` : ''}</p>
 
               <h4>Items ({o.items?.length ?? 0})</h4>
               <table className="admin-table admin-order-items">
@@ -2661,6 +3051,7 @@ export default function Admin({ token, onClose }) {
                 {o.delivery_fee_cents > 0 && <div><dt>Delivery</dt><dd>{money(o.delivery_fee_cents)}</dd></div>}
                 {o.handling_fee_cents > 0 && <div><dt>Handling</dt><dd>{money(o.handling_fee_cents)}</dd></div>}
                 {o.small_cart_fee_cents > 0 && <div><dt>Small-cart fee</dt><dd>{money(o.small_cart_fee_cents)}</dd></div>}
+                {o.gift_card_discount_cents > 0 && <div><dt>Gift card</dt><dd>−{money(o.gift_card_discount_cents)}</dd></div>}
                 {o.refunded_amount_cents > 0 && <div><dt>Refunded</dt><dd>−{money(o.refunded_amount_cents)}</dd></div>}
                 <div className="admin-order-grand"><dt>Total</dt><dd>{money(o.total_cents)}</dd></div>
               </dl>
@@ -2668,7 +3059,15 @@ export default function Admin({ token, onClose }) {
               {(o.gift_cards ?? []).length > 0 && (
                 <div className="admin-gift-issued">
                   {o.gift_cards.map((g) => (
-                    <p key={g.id}>🎁 Gift card <b>{g.code}</b> — {money(g.initial_cents)} issued{g.balance_cents !== g.initial_cents ? `, ${money(g.balance_cents)} left` : ''}{g.reason ? ` — ${g.reason}` : ''}</p>
+                    <p key={g.id}>🎁 Gift card <b>{g.code}</b> — {money(g.initial_cents)} issued{g.balance_cents !== g.initial_cents ? `, ${money(g.balance_cents)} left` : ''}{g.reason ? ` — ${g.reason}` : ''}{g.issued_by?.name ? ` (by ${g.issued_by.name})` : ''}</p>
+                  ))}
+                </div>
+              )}
+
+              {(o.refunds ?? []).length > 0 && (
+                <div className="admin-gift-issued">
+                  {o.refunds.map((r) => (
+                    <p key={r.id}>↩ Refund <b>{money(r.amount_cents)}</b>{r.reason ? ` — ${r.reason}` : ''}{r.creator?.name ? ` (by ${r.creator.name})` : ''} · {new Date(r.created_at).toLocaleDateString()}</p>
                   ))}
                 </div>
               )}
@@ -2681,6 +3080,11 @@ export default function Admin({ token, onClose }) {
               {!o.rider_accepted_at && o.rider_offer_expires_at && <p className="muted">Offered{o.delivery_partner?.name ? ` to ${o.delivery_partner.name}` : ''}, expires {new Date(o.rider_offer_expires_at).toLocaleString()}</p>}
               {o.rider_offer_decline_count > 0 && <p className="muted">Declined or missed by {o.rider_offer_decline_count} rider{o.rider_offer_decline_count === 1 ? '' : 's'} before this assignment.</p>}
               {o.delivered_at && <p className="muted">Delivered {new Date(o.delivered_at).toLocaleString()}{o.delivery_verified === false ? ` · without code${o.delivery_note ? ` — ${o.delivery_note}` : ''}` : o.delivery_verified ? ' · code verified' : ''}</p>}
+              {o.status === 'cancelled' && o.cancelled_by && (
+                <p className="muted" style={o.cancelled_by === 'rider' ? { color: '#a23b28', fontWeight: 600 } : undefined}>
+                  Cancelled by {o.cancelled_by}{o.cancelled_by === 'rider' ? ' — customer refused to pay' : ''}{o.cancel_reason ? `: “${o.cancel_reason}”` : ''}
+                </p>
+              )}
               {(() => {
                 const reviews = [
                   o.rider_review && { key: 'delivery', label: 'Delivery rating', rating: o.rider_review.rating, comment: o.rider_review.comment },
@@ -2725,6 +3129,11 @@ export default function Admin({ token, onClose }) {
               <>
                 <h3>{riderDetail.rider?.name}{riderDetail.view === 'reviews' ? ' — reviews' : ''}</h3>
                 <p className="muted">{riderDetail.rider?.email} · {riderDetail.rider?.phone || 'no phone'}</p>
+                <p className="muted">{riderDetail.rider?.located?.source === 'live'
+                  ? `Current location: ${riderDetail.rider.located.lat.toFixed(4)}, ${riderDetail.rider.located.lng.toFixed(4)} (live)`
+                  : riderDetail.rider?.rider_base_address
+                    ? `Home base: ${riderDetail.rider.rider_base_address}`
+                    : 'No address on file'}</p>
 
                 {riderDetail.view === 'reviews' ? (
                   <div className="admin-review-overview">
@@ -2760,8 +3169,8 @@ export default function Admin({ token, onClose }) {
                     </div>
 
                     {riderDetail.rider?.cash_holding_cents > 0 && (
-                      <p className="admin-cash-holding">
-                        Holding <b>{money(riderDetail.rider.cash_holding_cents)}</b> in cash from COD deliveries.
+                      <p className={`admin-cash-holding${cashHoldingOverdue(riderDetail.rider.cash_holding_since) ? ' overdue' : ''}`}>
+                        Holding <b>{money(riderDetail.rider.cash_holding_cents)}</b> in cash{riderDetail.rider.cash_holding_since ? ` from ${new Date(riderDetail.rider.cash_holding_since).toLocaleDateString()}` : ''} on COD deliveries.
                         <button type="button" className="act" disabled={busyId === riderDetail.rider.id} onClick={() => settleRiderCash(riderDetail.rider)}>Confirm cash returned</button>
                       </p>
                     )}

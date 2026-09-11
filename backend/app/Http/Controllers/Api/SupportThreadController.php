@@ -97,6 +97,11 @@ class SupportThreadController extends Controller
 
     private function withMessages(SupportThread $thread): SupportThread
     {
-        return $thread->fresh(['messages', 'order:id,status,total_cents']);
+        // Internal admin notes (e.g. why a refund was issued) never reach the
+        // customer's own view of the conversation.
+        return $thread->fresh([
+            'messages' => fn ($query) => $query->where('internal', false),
+            'order:id,status,total_cents',
+        ]);
     }
 }

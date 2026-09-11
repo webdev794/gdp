@@ -102,6 +102,37 @@ class SupportThreadTest extends TestCase
             ->assertJsonPath('data.status', 'resolved');
     }
 
+    public function test_an_internal_note_is_hidden_from_the_customer_but_visible_to_admin(): void
+    {
+        $user = User::factory()->create();
+        $thread = SupportThread::create(['user_id' => $user->id, 'issue_type' => 'other', 'status' => 'open']);
+        $thread->post($user, 'Where is my refund?');
+        $thread->post(null, 'Refund reason: customer changed their mind', isStaff: true, system: true, internal: true);
+
+        Sanctum::actingAs($user);
+        $this->getJson("/api/support/threads/{$thread->id}")
+            ->assertOk()
+            ->assertJsonCount(1, 'data.messages')
+            ->assertJsonMissing(['body' => 'Refund reason: customer changed their mind']);
+
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+        $this->getJson("/api/admin/support/threads/{$thread->id}")
+            ->assertOk()
+            ->assertJsonCount(2, 'data.messages')
+            ->assertJsonPath('data.messages.1.internal', true);
+    }
+
+    public function test_an_internal_note_alone_does_not_mark_the_thread_as_replied_to(): void
+    {
+        $user = User::factory()->create();
+        $thread = SupportThread::create(['user_id' => $user->id, 'issue_type' => 'other', 'status' => 'open']);
+        $thread->post($user, 'Where is my refund?');
+        $thread->post(null, 'Internal-only note', isStaff: true, system: true, internal: true);
+
+        $this->assertFalse($thread->fresh()->hasStaffReply());
+        $this->assertTrue($thread->fresh()->needs_reply);
+    }
+
     public function test_a_normal_user_cannot_reach_the_admin_inbox(): void
     {
         Sanctum::actingAs(User::factory()->create());

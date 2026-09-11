@@ -37,9 +37,24 @@ class AdminSupportController extends Controller
         ]);
     }
 
+    /**
+     * Relations the thread drawer needs: the order (for the refund panel) and
+     * the customer's own spendable gift cards (so admin can apply an
+     * already-issued one to a different open order without the customer
+     * needing to type the code themselves).
+     */
+    private function threadRelations(): array
+    {
+        return [
+            'messages', 'user:id,name,email',
+            'user.giftCards' => fn ($q) => $q->where('is_active', true)->where('balance_cents', '>', 0),
+            'order.items', 'order.refunds', 'order.giftCards', 'order.giftCards.issuedBy:id,name',
+        ];
+    }
+
     public function show(SupportThread $thread): JsonResponse
     {
-        $thread->load(['messages', 'user:id,name,email', 'order.items', 'order.refunds']);
+        $thread->load($this->threadRelations());
 
         return response()->json(['data' => $thread]);
     }
@@ -50,7 +65,7 @@ class AdminSupportController extends Controller
 
         $thread->post($request->user(), $validated['body'], isStaff: true);
 
-        return response()->json(['data' => $thread->fresh(['messages', 'user:id,name,email', 'order.items', 'order.refunds'])]);
+        return response()->json(['data' => $thread->fresh($this->threadRelations())]);
     }
 
     public function update(Request $request, SupportThread $thread): JsonResponse
@@ -62,6 +77,6 @@ class AdminSupportController extends Controller
             'resolved_at' => $validated['status'] === 'resolved' ? now() : null,
         ])->save();
 
-        return response()->json(['data' => $thread->fresh(['messages', 'user:id,name,email', 'order.items', 'order.refunds'])]);
+        return response()->json(['data' => $thread->fresh($this->threadRelations())]);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\GiftCard;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -106,6 +107,36 @@ class AdminMetricsTimeseriesTest extends TestCase
             ->assertJsonPath('data.to', '2026-03-16')
             ->assertJsonCount(3, 'data.series')
             ->assertJsonPath('data.totals.orders', 1);
+    }
+
+    public function test_refunds_and_gift_cards_are_bucketed_by_when_they_were_issued(): void
+    {
+        Carbon::setTestNow('2026-09-07 12:00:00');
+        $admin = User::factory()->create(['is_admin' => true]);
+        Sanctum::actingAs($admin);
+
+        // Order placed on the 5th, refunded on the 7th — the refund line
+        // should land in the 7th's bucket, not the order's own bucket.
+        $order = $this->order(['created_at' => '2026-09-05 10:00:00', 'payment_status' => 'refunded']);
+        $refund = $order->refunds()->create(['amount_cents' => 400, 'created_by' => $admin->id]);
+        $refund->forceFill(['created_at' => '2026-09-07 09:00:00'])->saveQuietly();
+        $card = GiftCard::create([
+            'code' => 'GC-TS-0001', 'pin_hash' => 'x', 'user_id' => $order->user_id, 'order_id' => $order->id,
+            'initial_cents' => 150, 'balance_cents' => 150,
+        ]);
+        $card->forceFill(['created_at' => '2026-09-07 10:00:00'])->saveQuietly();
+
+        $data = $this->getJson('/api/admin/metrics/timeseries?bucket=day')
+            ->assertOk()
+            ->assertJsonPath('data.totals.refunded_cents', 550)
+            ->json('data.series');
+
+        $day5 = collect($data)->firstWhere('period', '2026-09-05');
+        $day7 = collect($data)->firstWhere('period', '2026-09-07');
+        $this->assertSame(0, $day5['refunded_cents']);
+        $this->assertSame(550, $day7['refunded_cents']);
+
+        Carbon::setTestNow();
     }
 
     public function test_non_admin_is_forbidden(): void

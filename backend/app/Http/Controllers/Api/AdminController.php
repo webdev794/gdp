@@ -3,10 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\GiftCard;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\OrderRefund;
 use App\Models\Product;
+use App\Models\RiderReview;
+use App\Models\SupportThread;
 use App\Models\User;
+use App\Support\CustomerNames;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -32,6 +37,14 @@ class AdminController extends Controller
             ->whereColumn('compare_at_price_cents', '>', 'unit_price_cents')
             ->sum(DB::raw('(compare_at_price_cents - unit_price_cents) * quantity'));
 
+        // "Refunded" covers everything actually given back to a customer —
+        // a Stripe refund and store credit (gift card) both count.
+        $refunded = (int) Order::sum('refunded_amount_cents') + (int) GiftCard::sum('initial_cents');
+
+        // Every order where money was ever collected, refunded or not — the
+        // whole pie the Payments-vs-refunds chart splits into kept vs given back.
+        $grossCollected = (int) Order::whereIn('payment_status', ['paid', 'partially_refunded', 'refunded', 'refund_pending'])->sum('total_cents');
+
         return response()->json([
             'data' => [
                 'orders_by_status' => $ordersByStatus,
@@ -41,12 +54,153 @@ class AdminController extends Controller
                 'avg_order_cents' => $paidOrders ? intdiv($revenue, $paidOrders) : 0,
                 'discount_cents' => $discount,
                 'cod_orders' => (int) Order::where('payment_method', 'cod')->count(),
-                'refunded_cents' => (int) Order::sum('refunded_amount_cents'),
+                'refunded_cents' => $refunded,
+                'gross_collected_cents' => $grossCollected,
                 'customers' => User::where('is_admin', false)->count(),
                 'products' => Product::count(),
                 'low_stock' => Product::where('inventory_quantity', '<=', 5)->count(),
             ],
         ]);
+    }
+
+    /**
+     * Standing issues the admin should keep an eye on: riders sitting on COD
+     * cash from a day other than today, and recent (last 7 days) negative
+     * feedback from a delivery or chat rating. Feeds the bell in the top bar.
+     */
+    public function notifications(): JsonResponse
+    {
+        // Paid orders sitting unpacked — every new order lands here first.
+        $awaitingPacking = Order::query()->where('status', 'confirmed')
+            ->with('user:id,name,email')
+            ->latest()
+            ->limit(20)
+            ->get()
+            ->map(fn (Order $o) => [
+                'order_id' => $o->id,
+                'total_cents' => $o->total_cents,
+                'customer' => $o->user?->name ?? $o->user?->email,
+                'at' => $o->created_at,
+            ]);
+
+        // A rider reported the customer refused to pay for a COD delivery —
+        // the order was auto-cancelled, and the bagged items are still with
+        // the rider until the store confirms they're back.
+        $refusedCod = Order::query()->where('status', 'cancelled')->where('cancelled_by', 'rider')
+            ->whereNull('items_returned_at')
+            ->latest()
+            ->limit(20)
+            ->get(['id', 'cancel_reason', 'updated_at'])
+            ->map(fn (Order $o) => ['order_id' => $o->id, 'reason' => $o->cancel_reason, 'at' => $o->updated_at]);
+
+        $cashOverdue = User::query()->where('is_rider', true)->get()
+            ->map(fn (User $rider) => ['rider' => $rider, 'cents' => $rider->codHoldingCents(), 'since' => $rider->codHoldingSince()])
+            ->filter(fn (array $row) => $row['cents'] > 0 && $row['since'] !== null && ! $row['since']->isToday())
+            ->sortBy(fn (array $row) => $row['since'])
+            ->map(fn (array $row) => [
+                'rider_id' => $row['rider']->id,
+                'rider_name' => $row['rider']->name,
+                'holding_cents' => $row['cents'],
+                'since' => $row['since'],
+            ])
+            ->values();
+
+        $since = now()->subDays(7);
+
+        // A busy week can easily produce far more of these than fit in a
+        // dropdown — sample the latest few for display, but report the real
+        // total separately so "+N more" isn't just guessing from a truncated
+        // query.
+        $sampleSize = 10;
+
+        $riderFeedbackQuery = RiderReview::query()->where('rating', '<=', 2)->where('created_at', '>=', $since);
+        $chatFeedbackQuery = SupportThread::query()->whereNotNull('rating')->where('rating', '<=', 2)->where('rated_at', '>=', $since);
+        $negativeFeedbackTotal = $riderFeedbackQuery->clone()->count() + $chatFeedbackQuery->clone()->count();
+
+        $riderFeedback = $riderFeedbackQuery->with('rider:id,name')->latest()->limit($sampleSize)->get()
+            ->map(fn (RiderReview $r) => [
+                'source' => 'delivery',
+                'order_id' => $r->order_id,
+                'rating' => $r->rating,
+                'comment' => $r->comment,
+                'rider_name' => $r->rider?->name,
+                'at' => $r->created_at,
+            ]);
+
+        $chatFeedback = $chatFeedbackQuery->latest('rated_at')->limit($sampleSize)->get()
+            ->map(fn (SupportThread $t) => [
+                'source' => 'chat',
+                'order_id' => $t->order_id,
+                'thread_id' => $t->id,
+                'rating' => $t->rating,
+                'comment' => $t->rating_comment,
+                'rider_name' => null,
+                'at' => $t->rated_at,
+            ]);
+
+        $negativeFeedback = $riderFeedback->concat($chatFeedback)->sortByDesc('at')->take($sampleSize)->values();
+
+        // Every recent rating, good or bad — not a standing "needs attention"
+        // list (that's negative_feedback above), just enough for the admin
+        // console to pop a quick "here's what customers just said" toast,
+        // including the positive ones, then let it fade away on its own.
+        $allRiderRatings = RiderReview::query()->with('rider:id,name')->latest()->limit($sampleSize)->get()
+            ->map(fn (RiderReview $r) => [
+                'source' => 'delivery',
+                'order_id' => $r->order_id,
+                'rating' => $r->rating,
+                'comment' => $r->comment,
+                'rider_name' => $r->rider?->name,
+                'at' => $r->created_at,
+            ]);
+        $allChatRatings = SupportThread::query()->whereNotNull('rating')->latest('rated_at')->limit($sampleSize)->get()
+            ->map(fn (SupportThread $t) => [
+                'source' => 'chat',
+                'order_id' => $t->order_id,
+                'thread_id' => $t->id,
+                'rating' => $t->rating,
+                'comment' => $t->rating_comment,
+                'rider_name' => null,
+                'at' => $t->rated_at,
+            ]);
+        $recentRatings = $allRiderRatings->concat($allChatRatings)->sortByDesc('at')->take($sampleSize)->values();
+
+        $giftCardsQuery = GiftCard::query()->where('created_at', '>=', $since);
+        $refundsQuery = OrderRefund::query()->where('created_at', '>=', $since);
+        $financialActivityTotal = $giftCardsQuery->clone()->count() + $refundsQuery->clone()->count();
+
+        $giftCardsIssued = $giftCardsQuery->with('issuedBy:id,name')->latest()->limit($sampleSize)->get()
+            ->map(fn (GiftCard $g) => [
+                'type' => 'gift_card',
+                'order_id' => $g->order_id,
+                'amount_cents' => $g->initial_cents,
+                'reason' => $g->reason,
+                'issued_by_name' => $g->issuedBy?->name,
+                'at' => $g->created_at,
+            ]);
+
+        $refundsIssued = $refundsQuery->with('creator:id,name')->latest()->limit($sampleSize)->get()
+            ->map(fn (OrderRefund $r) => [
+                'type' => 'refund',
+                'order_id' => $r->order_id,
+                'amount_cents' => $r->amount_cents,
+                'reason' => $r->reason,
+                'issued_by_name' => $r->creator?->name,
+                'at' => $r->created_at,
+            ]);
+
+        $financialActivity = $giftCardsIssued->concat($refundsIssued)->sortByDesc('at')->take($sampleSize)->values();
+
+        return response()->json(['data' => [
+            'awaiting_packing' => $awaitingPacking,
+            'refused_cod' => $refusedCod,
+            'cash_overdue' => $cashOverdue,
+            'negative_feedback' => $negativeFeedback,
+            'negative_feedback_total' => $negativeFeedbackTotal,
+            'financial_activity' => $financialActivity,
+            'financial_activity_total' => $financialActivityTotal,
+            'recent_ratings' => $recentRatings,
+        ]]);
     }
 
     /**
@@ -59,13 +213,15 @@ class AdminController extends Controller
             'bucket' => ['sometimes', 'in:day,week,month'],
             'from' => ['sometimes', 'date'],
             'to' => ['sometimes', 'date', 'after_or_equal:from'],
+            'tz' => ['sometimes', 'nullable', 'string'],
         ]);
 
+        $tz = $this->resolveTz($validated['tz'] ?? null);
         $bucket = $validated['bucket'] ?? 'day';
-        $to = isset($validated['to']) ? Carbon::parse($validated['to'])->endOfDay() : now()->endOfDay();
+        $to = isset($validated['to']) ? Carbon::parse($validated['to'], $tz)->endOfDay() : now($tz)->endOfDay();
 
         $span = ['day' => 13, 'week' => 11, 'month' => 11][$bucket];
-        $from = isset($validated['from']) ? Carbon::parse($validated['from']) : match ($bucket) {
+        $from = isset($validated['from']) ? Carbon::parse($validated['from'], $tz) : match ($bucket) {
             'day' => $to->copy()->subDays($span),
             'week' => $to->copy()->subWeeks($span),
             'month' => $to->copy()->subMonths($span),
@@ -96,18 +252,35 @@ class AdminController extends Controller
         $labelFor = fn (Carbon $d): string => $bucket === 'month' ? $d->format('M Y') : $d->format('M j');
 
         $orders = Order::query()
-            ->whereBetween('created_at', [$from, $to])
+            ->whereBetween('created_at', [$from->copy()->utc(), $to->copy()->utc()])
             ->get(['created_at', 'status', 'payment_status', 'payment_method', 'total_cents']);
 
         $agg = [];
         foreach ($orders as $order) {
-            $key = $keyFor($order->created_at);
-            $agg[$key] ??= ['orders' => 0, 'paid_orders' => 0, 'revenue_cents' => 0];
+            $key = $keyFor($order->created_at->copy()->setTimezone($tz));
+            $agg[$key] ??= ['orders' => 0, 'paid_orders' => 0, 'revenue_cents' => 0, 'refunded_cents' => 0];
             $agg[$key]['orders']++;
             if ($order->payment_status === 'paid') {
                 $agg[$key]['paid_orders']++;
                 $agg[$key]['revenue_cents'] += (int) $order->total_cents;
             }
+        }
+
+        // Refunds and gift cards issued in this window — bucketed by when
+        // they were issued, not when the order was placed, so the "Refunds"
+        // line reflects money actually given back on each day/week/month.
+        $refundEvents = OrderRefund::query()
+            ->whereBetween('created_at', [$from->copy()->utc(), $to->copy()->utc()])
+            ->get(['created_at', 'amount_cents'])
+            ->concat(
+                GiftCard::query()
+                    ->whereBetween('created_at', [$from->copy()->utc(), $to->copy()->utc()])
+                    ->get(['created_at', 'initial_cents as amount_cents'])
+            );
+        foreach ($refundEvents as $event) {
+            $key = $keyFor($event->created_at->copy()->setTimezone($tz));
+            $agg[$key] ??= ['orders' => 0, 'paid_orders' => 0, 'revenue_cents' => 0, 'refunded_cents' => 0];
+            $agg[$key]['refunded_cents'] += (int) $event->amount_cents;
         }
 
         $series = [];
@@ -120,6 +293,7 @@ class AdminController extends Controller
                 'orders' => $agg[$key]['orders'] ?? 0,
                 'paid_orders' => $agg[$key]['paid_orders'] ?? 0,
                 'revenue_cents' => $agg[$key]['revenue_cents'] ?? 0,
+                'refunded_cents' => $agg[$key]['refunded_cents'] ?? 0,
             ];
             match ($bucket) {
                 'day' => $cursor->addDay(),
@@ -140,6 +314,7 @@ class AdminController extends Controller
                     'orders' => array_sum(array_column($series, 'orders')),
                     'paid_orders' => array_sum(array_column($series, 'paid_orders')),
                     'revenue_cents' => array_sum(array_column($series, 'revenue_cents')),
+                    'refunded_cents' => array_sum(array_column($series, 'refunded_cents')),
                 ],
             ],
         ]);
@@ -158,11 +333,12 @@ class AdminController extends Controller
         $validated = $request->validate([
             'preset' => ['sometimes', 'in:day,two_day,week,month,six_month,year,custom'],
             'days' => ['required_if:preset,custom', 'integer', 'min:1', 'max:730'],
+            'tz' => ['sometimes', 'nullable', 'string'],
         ]);
 
         $preset = $validated['preset'] ?? 'month';
         $days = isset($validated['days']) ? (int) $validated['days'] : null;
-        $now = now();
+        $now = now($this->resolveTz($validated['tz'] ?? null));
 
         [$curStart, $curFullEnd, $prevStart, $prevEnd, $unit, $curLabel, $prevLabel] = $this->comparePreset($preset, $days, $now);
 
@@ -170,8 +346,8 @@ class AdminController extends Controller
         $prevTotals = $curTotals;
 
         Order::query()
-            ->where('created_at', '>=', $prevStart)
-            ->where('created_at', '<', $now)
+            ->where('created_at', '>=', $prevStart->copy()->utc())
+            ->where('created_at', '<', $now->copy()->utc())
             ->get(['created_at', 'payment_status', 'total_cents'])
             ->each(function (Order $order) use (
                 &$curTotals, &$prevTotals, $curStart, $now, $prevStart, $prevEnd
@@ -205,18 +381,21 @@ class AdminController extends Controller
      * An orders-by-weekday-and-hour grid for the last 90 days, for the
      * dashboard activity heatmap.
      */
-    public function ordersInsights(): JsonResponse
+    public function ordersInsights(Request $request): JsonResponse
     {
-        $since = now()->subDays(90)->startOfDay();
+        $validated = $request->validate(['tz' => ['sometimes', 'nullable', 'string']]);
+        $tz = $this->resolveTz($validated['tz'] ?? null);
+        $since = now($tz)->subDays(90)->startOfDay();
         $matrix = array_fill(0, 7, array_fill(0, 24, 0));
         $peak = 0;
 
         Order::query()
-            ->where('created_at', '>=', $since)
+            ->where('created_at', '>=', $since->copy()->utc())
             ->get(['created_at'])
-            ->each(function (Order $order) use (&$matrix, &$peak): void {
-                $row = (int) $order->created_at->dayOfWeekIso - 1; // Mon=0 .. Sun=6
-                $col = (int) $order->created_at->format('G');       // 0..23
+            ->each(function (Order $order) use (&$matrix, &$peak, $tz): void {
+                $local = $order->created_at->copy()->setTimezone($tz);
+                $row = (int) $local->dayOfWeekIso - 1; // Mon=0 .. Sun=6
+                $col = (int) $local->format('G');       // 0..23
                 $matrix[$row][$col]++;
                 $peak = max($peak, $matrix[$row][$col]);
             });
@@ -232,8 +411,30 @@ class AdminController extends Controller
     }
 
     /**
+     * The dashboard charts bucket by the admin's own timezone rather than the
+     * server's (UTC), so "today" matches their clock. Best-effort: an
+     * unrecognised or missing value quietly falls back to UTC instead of
+     * failing the whole request — a browser reporting an odd timezone string
+     * shouldn't take the charts down.
+     */
+    private function resolveTz(?string $tz): string
+    {
+        if (! $tz) {
+            return 'UTC';
+        }
+
+        try {
+            new \DateTimeZone($tz);
+
+            return $tz;
+        } catch (\Throwable) {
+            return 'UTC';
+        }
+    }
+
+    /**
      * @return array{0: Carbon, 1: Carbon, 2: Carbon, 3: Carbon, 4: string, 5: string, 6: string}
-     *         [currentStart, currentFullEnd, previousStart, previousEnd, bucketUnit, currentLabel, previousLabel]
+     *                                                                                            [currentStart, currentFullEnd, previousStart, previousEnd, bucketUnit, currentLabel, previousLabel]
      */
     private function comparePreset(string $preset, ?int $days, Carbon $now): array
     {
@@ -291,10 +492,13 @@ class AdminController extends Controller
             ->latest()
             ->paginate($validated['per_page'] ?? 10);
 
+        $names = CustomerNames::map();
+
         return response()->json([
             'data' => $customers->through(fn (User $user) => [
                 'id' => $user->id,
                 'name' => $user->name,
+                'display_name' => $names[$user->id] ?? CustomerNames::base($user),
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'is_rider' => (bool) $user->is_rider,
@@ -314,13 +518,14 @@ class AdminController extends Controller
     public function customer(User $user): JsonResponse
     {
         if ($user->is_admin) {
-            throw new NotFoundHttpException();
+            throw new NotFoundHttpException;
         }
 
         return response()->json([
             'data' => [
                 'id' => $user->id,
                 'name' => $user->name,
+                'display_name' => CustomerNames::map()[$user->id] ?? CustomerNames::base($user),
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'is_rider' => (bool) $user->is_rider,
@@ -334,7 +539,7 @@ class AdminController extends Controller
     public function updateCustomer(Request $request, User $user): JsonResponse
     {
         if ($user->is_admin) {
-            throw new NotFoundHttpException();
+            throw new NotFoundHttpException;
         }
 
         $validated = $request->validate(['is_rider' => ['required', 'boolean']]);

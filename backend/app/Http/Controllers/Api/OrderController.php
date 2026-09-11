@@ -141,10 +141,14 @@ class OrderController extends Controller
             ], 422);
         }
 
-        $order->update([
-            'status' => 'cancelled',
-            'payment_status' => $order->payment_status === 'paid' ? 'refund_pending' : 'cancelled',
-        ]);
+        $paymentStatus = match (true) {
+            $order->wasFullyCoveredByGiftCard() => 'refunded',
+            $order->payment_status === 'paid' => 'refund_pending',
+            default => 'cancelled',
+        };
+
+        $order->update(['status' => 'cancelled', 'payment_status' => $paymentStatus, 'cancelled_by' => 'customer']);
+        $order->restoreGiftCardRedemptions();
 
         return response()->json(['data' => $order->load('items')]);
     }

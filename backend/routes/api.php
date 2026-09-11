@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\AdminBannerController;
 use App\Http\Controllers\Api\AdminCategoryController;
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\AdminGiftCardController;
 use App\Http\Controllers\Api\AdminHomeTileController;
 use App\Http\Controllers\Api\AdminOrderController;
 use App\Http\Controllers\Api\AdminPageController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Api\CheckoutController;
 use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\DeliveryController;
 use App\Http\Controllers\Api\GeocodeController;
+use App\Http\Controllers\Api\GiftCardController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PageController;
@@ -72,7 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update']);
     Route::patch('/profile/password', [ProfileController::class, 'password']);
     Route::post('/checkout', [CheckoutController::class, 'store']);
-    Route::post('/gift-cards/check', [\App\Http\Controllers\Api\GiftCardController::class, 'check']);
+    Route::post('/gift-cards/check', [GiftCardController::class, 'check']);
     Route::get('/orders', [OrderController::class, 'index']);
     Route::get('/orders/{order}', [OrderController::class, 'show']);
     Route::get('/orders/{order}/receipt', [OrderController::class, 'receipt']);
@@ -93,6 +95,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/metrics/timeseries', [AdminController::class, 'ordersTimeseries']);
     Route::get('/metrics/compare', [AdminController::class, 'ordersCompare']);
     Route::get('/metrics/insights', [AdminController::class, 'ordersInsights']);
+    Route::get('/notifications', [AdminController::class, 'notifications']);
     Route::get('/settings', [AdminSettingController::class, 'index']);
     Route::patch('/settings', [AdminSettingController::class, 'update']);
     Route::post('/secure-access/challenge', [AdminSettingController::class, 'secureAccessChallenge'])->middleware('throttle:6,1');
@@ -113,7 +116,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/orders/{order}', [AdminOrderController::class, 'show']);
     Route::patch('/orders/{order}', [AdminOrderController::class, 'update']);
     Route::post('/orders/{order}/refund', [PaymentController::class, 'refund']);
-    Route::post('/orders/{order}/gift-card', [\App\Http\Controllers\Api\AdminGiftCardController::class, 'issue']);
+    Route::post('/orders/{order}/gift-card', [AdminGiftCardController::class, 'issue']);
+    Route::post('/orders/{order}/apply-gift-card', [AdminGiftCardController::class, 'applyToOrder']);
 
     Route::get('/support/threads', [AdminSupportController::class, 'index']);
     Route::get('/support/threads/{thread}', [AdminSupportController::class, 'show']);
@@ -164,6 +168,7 @@ Route::middleware(['auth:sanctum', 'rider'])->prefix('rider')->group(function ()
     Route::post('/orders/{order}/delivery-otp', [RiderController::class, 'sendDeliveryOtp']);
     Route::post('/orders/{order}/deliver', [RiderController::class, 'deliver']);
     Route::post('/orders/{order}/cash-collected', [RiderController::class, 'cashCollected']);
+    Route::post('/orders/{order}/payment-refused', [RiderController::class, 'paymentRefused']);
     Route::get('/orders/{order}/messages', [RiderController::class, 'messages']);
     Route::post('/orders/{order}/messages', [RiderController::class, 'postMessage']);
 });

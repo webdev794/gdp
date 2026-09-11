@@ -2,9 +2,11 @@
 
 start "GDP API" cmd /k "cd /d D:\gdp\backend && D:\xampp8-2-12\php84\php.exe -d display_errors=0 artisan serve" && start "GDP Web" cmd /k "cd /d D:\gdp\web && npm.cmd --cache D:\gdp\.tmp\npm-cache run dev -- --host 127.0.0.1 --port 5173"
                                   
-admin:	test@example.com
+/admin:	test@example.com
+[client](http://127.0.0.1:5173/): testcaresort@outlook.com
+/rider: rider@example.com
 
-client: testcaresort@outlook.com
+password: password
 
 ## See Output Quickly
 

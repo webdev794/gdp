@@ -119,6 +119,8 @@ class AdminRiderController extends Controller
     {
         $data = $request->validate([
             'email' => ['required', 'email', 'max:255'],
+            'store_ids' => ['required', 'array', 'min:1'],
+            'store_ids.*' => ['integer', 'exists:stores,id'],
         ]);
 
         $user = User::where('email', $data['email'])->first();
@@ -136,6 +138,9 @@ class AdminRiderController extends Controller
             'rider_is_active' => true,
             'rider_since' => $user->rider_since ?? now(),
         ])->save();
+
+        // A rider must have a store to return cash to — never hired store-less.
+        $user->stores()->sync($data['store_ids']);
 
         return response()->json(['data' => $this->row($user->fresh()->load('stores:id,name,city'))], 201);
     }
@@ -263,6 +268,7 @@ class AdminRiderController extends Controller
             'missed_count' => (int) $rider->rider_missed_count,
             'acceptance_rate' => $rider->riderAcceptanceRate(),
             'cash_holding_cents' => $rider->codHoldingCents(),
+            'cash_holding_since' => $rider->codHoldingSince(),
             'stores' => $rider->relationLoaded('stores')
                 ? $rider->stores->map(fn ($s) => ['id' => $s->id, 'name' => $s->name, 'city' => $s->city])->values()
                 : [],

@@ -84,6 +84,21 @@ class OrderRefundTest extends TestCase
         $this->postJson("/api/admin/orders/{$order->id}/refund")->assertForbidden();
     }
 
+    public function test_the_order_view_shows_the_refund_reason_and_who_issued_it(): void
+    {
+        $agent = $this->admin();
+        $agent->update(['name' => 'Support Agent']);
+        $order = $this->order(['status' => 'completed', 'payment_status' => 'partially_refunded', 'stripe_payment_intent_id' => 'pi_1', 'refunded_amount_cents' => 500]);
+        $order->refunds()->create(['amount_cents' => 500, 'reason' => 'Late delivery', 'created_by' => $agent->id, 'stripe_refund_id' => 're_1']);
+
+        Sanctum::actingAs($this->admin());
+
+        $this->getJson("/api/admin/orders/{$order->id}")
+            ->assertOk()
+            ->assertJsonPath('data.refunds.0.reason', 'Late delivery')
+            ->assertJsonPath('data.refunds.0.creator.name', 'Support Agent');
+    }
+
     private function admin(): User
     {
         return User::factory()->create(['is_admin' => true]);

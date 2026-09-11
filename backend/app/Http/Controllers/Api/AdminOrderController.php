@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\User;
 use App\Notifications\RiderAssigned;
+use App\Support\CustomerNames;
 use App\Support\DeliveryOfferSweeper;
 use App\Support\RiderAssignment;
 use Illuminate\Http\JsonResponse;
@@ -33,11 +34,15 @@ class AdminOrderController extends Controller
                 'items', 'user:id,name,email,phone', 'deliveryPartner:id,name', 'store:id,name,city',
                 'riderReview:id,order_id,rating,comment,source',
                 'supportThreads:id,order_id,rating,rating_comment',
-                'giftCards:id,order_id,code,initial_cents,balance_cents,reason,created_at',
+                'giftCards:id,order_id,code,initial_cents,balance_cents,reason,issued_by,created_at',
+                'giftCards.issuedBy:id,name',
+                'refunds.creator:id,name',
             ])
             ->when($validated['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->latest()
             ->paginate($validated['per_page'] ?? 10);
+
+        $this->attachCustomerNames($orders->items());
 
         return response()->json([
             'data' => $orders->items(),
@@ -52,12 +57,17 @@ class AdminOrderController extends Controller
 
     public function show(Order $order): JsonResponse
     {
-        return response()->json(['data' => $order->load([
+        $order->load([
             'items', 'user:id,name,email,phone', 'store:id,name,city',
             'riderReview:id,order_id,rating,comment,source',
             'supportThreads:id,order_id,rating,rating_comment',
-            'giftCards:id,order_id,code,initial_cents,balance_cents,reason,created_at',
-        ])]);
+            'giftCards:id,order_id,code,initial_cents,balance_cents,reason,issued_by,created_at',
+            'giftCards.issuedBy:id,name',
+            'refunds.creator:id,name',
+        ]);
+        $this->attachCustomerNames([$order]);
+
+        return response()->json(['data' => $order]);
     }
 
     public function update(Request $request, Order $order): JsonResponse
@@ -68,13 +78,15 @@ class AdminOrderController extends Controller
             'delivery_partner_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
             'cash_collected' => ['sometimes', 'boolean'],
             'refunded' => ['sometimes', 'boolean'],
+            'items_returned' => ['sometimes', 'boolean'],
         ]);
 
         if (! array_key_exists('status', $validated)
             && ! array_key_exists('courier_name', $validated)
             && ! array_key_exists('delivery_partner_id', $validated)
             && ! array_key_exists('cash_collected', $validated)
-            && ! array_key_exists('refunded', $validated)) {
+            && ! array_key_exists('refunded', $validated)
+            && ! array_key_exists('items_returned', $validated)) {
             return response()->json(['message' => 'Provide a status change, a courier assignment, or a payment update.'], 422);
         }
 
@@ -144,6 +156,7 @@ class AdminOrderController extends Controller
             && $order->isCashOnDelivery()
             && $order->payment_status !== 'paid') {
             $changes['payment_status'] = 'paid';
+            $changes['cash_collected_at'] = now();
         }
 
         // Cancelling an order before any money moved also voids its payment —
@@ -153,14 +166,36 @@ class AdminOrderController extends Controller
             $changes['payment_status'] = 'cancelled';
         }
 
+        if (($changes['status'] ?? null) === 'cancelled') {
+            $changes['cancelled_by'] = 'admin';
+        }
+
+        // A gift card covered the whole order — restoring its balance below
+        // already is the full refund, so there's nothing left for an admin
+        // to action.
+        if (($changes['status'] ?? null) === 'cancelled' && $order->wasFullyCoveredByGiftCard()) {
+            $changes['payment_status'] = 'refunded';
+        }
+
         // Admin has issued the refund for a customer-cancelled paid order.
         if (($validated['refunded'] ?? false) && $order->payment_status === 'refund_pending') {
             $changes['payment_status'] = 'refunded';
         }
 
+        // Store confirms the rider brought back the items from a refused-COD
+        // cancellation — clears the reminder from the rider's dashboard.
+        if (($validated['items_returned'] ?? false) && $order->needsItemReturn()) {
+            $changes['items_returned_at'] = now();
+        }
+
         $previousRiderId = $order->delivery_partner_id;
 
         $order->update($changes);
+
+        // Cancelling voids any gift-card balance spent on this order at checkout.
+        if (($changes['status'] ?? null) === 'cancelled') {
+            $order->restoreGiftCardRedemptions();
+        }
 
         // Tell a rider the moment they're put on an order by hand (auto-assign
         // notifies from RiderAssignment). Only on an actual change of rider.
@@ -182,11 +217,27 @@ class AdminOrderController extends Controller
         // customer their summary email with the PDF bill.
         $order->refresh()->sendDeliveredReceiptIfReady();
 
-        return response()->json(['data' => $order->fresh()->load([
+        $fresh = $order->fresh()->load([
             'items', 'user:id,name,email,phone', 'deliveryPartner:id,name', 'store:id,name,city',
             'riderReview:id,order_id,rating,comment,source',
             'supportThreads:id,order_id,rating,rating_comment',
-            'giftCards:id,order_id,code,initial_cents,balance_cents,reason,created_at',
-        ])]);
+            'giftCards:id,order_id,code,initial_cents,balance_cents,reason,issued_by,created_at',
+            'giftCards.issuedBy:id,name',
+            'refunds.creator:id,name',
+        ]);
+        $this->attachCustomerNames([$fresh]);
+
+        return response()->json(['data' => $fresh]);
+    }
+
+    /** @param  iterable<Order>  $orders */
+    private function attachCustomerNames(iterable $orders): void
+    {
+        $names = CustomerNames::map();
+        foreach ($orders as $order) {
+            if ($order->user) {
+                $order->user->display_name = $names[$order->user->id] ?? CustomerNames::base($order->user);
+            }
+        }
     }
 }

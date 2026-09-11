@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Carbon;
 use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'password', 'phone', 'stripe_customer_id'])]
@@ -39,6 +40,12 @@ class User extends Authenticatable
     public function supportThreads(): HasMany
     {
         return $this->hasMany(SupportThread::class);
+    }
+
+    /** Gift cards (store credit) issued to this customer. */
+    public function giftCards(): HasMany
+    {
+        return $this->hasMany(GiftCard::class);
     }
 
     /** Orders this user is the delivery rider for. */
@@ -110,6 +117,19 @@ class User extends Authenticatable
             ->where('payment_status', 'paid')
             ->whereNull('cash_settled_at')
             ->sum('total_cents');
+    }
+
+    /** Earliest still-unsettled COD collection — how long the rider has been holding cash. */
+    public function codHoldingSince(): ?Carbon
+    {
+        $order = $this->deliveries()
+            ->where('payment_method', 'cod')
+            ->where('payment_status', 'paid')
+            ->whereNull('cash_settled_at')
+            ->orderBy('cash_collected_at')
+            ->first(['cash_collected_at']);
+
+        return $order?->cash_collected_at;
     }
 
     /** Admin confirms the rider handed back everything they're currently holding. */

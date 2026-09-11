@@ -25,11 +25,26 @@ class GiftCard extends Model
 
     protected $hidden = ['pin_hash'];
 
-    public function user(): BelongsTo { return $this->belongsTo(User::class); }
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
-    public function order(): BelongsTo { return $this->belongsTo(Order::class); }
+    public function order(): BelongsTo
+    {
+        return $this->belongsTo(Order::class);
+    }
 
-    public function redemptions(): HasMany { return $this->hasMany(GiftCardRedemption::class); }
+    /** The admin/staff member who issued this store credit. */
+    public function issuedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'issued_by');
+    }
+
+    public function redemptions(): HasMany
+    {
+        return $this->hasMany(GiftCardRedemption::class);
+    }
 
     public function isSpendable(): bool
     {

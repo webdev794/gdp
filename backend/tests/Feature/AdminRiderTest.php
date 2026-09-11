@@ -105,21 +105,34 @@ class AdminRiderTest extends TestCase
     public function test_admin_promotes_an_account_to_rider_by_email(): void
     {
         $user = User::factory()->create(['email' => 'newrider@example.com']);
+        $store = $this->store('Main');
         Sanctum::actingAs($this->admin());
 
-        $this->postJson('/api/admin/riders', ['email' => 'newrider@example.com'])
+        $this->postJson('/api/admin/riders', ['email' => 'newrider@example.com', 'store_ids' => [$store->id]])
             ->assertCreated()
             ->assertJsonPath('data.id', $user->id)
             ->assertJsonPath('data.rider_is_active', true);
 
         $this->assertTrue($user->fresh()->is_rider);
+        $this->assertTrue($user->fresh()->stores->contains($store));
+    }
+
+    public function test_hiring_a_rider_without_a_store_is_rejected(): void
+    {
+        User::factory()->create(['email' => 'newrider@example.com']);
+        Sanctum::actingAs($this->admin());
+
+        $this->postJson('/api/admin/riders', ['email' => 'newrider@example.com'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('store_ids');
     }
 
     public function test_promoting_an_unknown_email_is_rejected(): void
     {
+        $store = $this->store('Main');
         Sanctum::actingAs($this->admin());
 
-        $this->postJson('/api/admin/riders', ['email' => 'nobody@example.com'])
+        $this->postJson('/api/admin/riders', ['email' => 'nobody@example.com', 'store_ids' => [$store->id]])
             ->assertStatus(422)
             ->assertJsonValidationErrors('email');
     }
