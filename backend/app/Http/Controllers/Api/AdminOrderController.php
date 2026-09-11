@@ -33,6 +33,7 @@ class AdminOrderController extends Controller
                 'items', 'user:id,name,email,phone', 'deliveryPartner:id,name', 'store:id,name,city',
                 'riderReview:id,order_id,rating,comment,source',
                 'supportThreads:id,order_id,rating,rating_comment',
+                'giftCards:id,order_id,code,initial_cents,balance_cents,reason,created_at',
             ])
             ->when($validated['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
             ->latest()
@@ -55,6 +56,7 @@ class AdminOrderController extends Controller
             'items', 'user:id,name,email,phone', 'store:id,name,city',
             'riderReview:id,order_id,rating,comment,source',
             'supportThreads:id,order_id,rating,rating_comment',
+            'giftCards:id,order_id,code,initial_cents,balance_cents,reason,created_at',
         ])]);
     }
 
@@ -184,6 +186,7 @@ class AdminOrderController extends Controller
             'items', 'user:id,name,email,phone', 'deliveryPartner:id,name', 'store:id,name,city',
             'riderReview:id,order_id,rating,comment,source',
             'supportThreads:id,order_id,rating,rating_comment',
+            'giftCards:id,order_id,code,initial_cents,balance_cents,reason,created_at',
         ])]);
     }
 }

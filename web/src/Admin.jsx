@@ -940,8 +940,14 @@ export default function Admin({ token, onClose }) {
     const codCollect = order.payment_method === 'cod' && order.payment_status !== 'paid' && order.status !== 'cancelled'
     const needsRefund = order.payment_status === 'refund_pending' || (order.payment_status === 'paid' && order.status === 'cancelled')
     const refundedLink = order.payment_status === 'refunded' && order.stripe_dashboard_url
+    // A refund that's settled but has nowhere to click through to (manual / COD
+    // "Mark refunded", or a Stripe partial refund) — still worth a line so the
+    // Actions column isn't blank for an order that was in fact refunded.
+    const refundedNote = !refundedLink && !needsRefund
+      && (order.payment_status === 'refunded' || order.payment_status === 'partially_refunded' || (order.refunded_amount_cents ?? 0) > 0)
+    const giftCards = order.gift_cards ?? []
     const steps = NEXT_ACTIONS[order.status] ?? []
-    if (!codCollect && !needsRefund && !refundedLink && steps.length === 0) return null
+    if (!codCollect && !needsRefund && !refundedLink && !refundedNote && !giftCards.length && steps.length === 0) return null
     return (
       <>
         {codCollect && (
@@ -954,6 +960,12 @@ export default function Admin({ token, onClose }) {
         )}
         {refundedLink && (
           <a className="act ghost" href={order.stripe_dashboard_url} target="_blank" rel="noreferrer">View in Stripe ↗</a>
+        )}
+        {refundedNote && (
+          <span className="admin-note" style={{ color: '#2f5a8a' }} title={`Refunded ${money(order.refunded_amount_cents ?? 0)}`}>↩ refunded{order.payment_status === 'partially_refunded' ? ' (partial)' : ''}</span>
+        )}
+        {giftCards.length > 0 && (
+          <span className="admin-note" style={{ color: '#6b4f12' }} title={giftCards.map((g) => `${g.code} — ${money(g.initial_cents)}${g.reason ? ` (${g.reason})` : ''}`).join('\n')}>🎁 gift card{giftCards.length > 1 ? ` ×${giftCards.length}` : ''}</span>
         )}
         {steps.map(([status, label]) => (
           <button key={status} type="button" disabled={busyId === order.id} className={status === 'cancelled' ? 'act danger' : 'act'} onClick={() => patchOrder(order, { status })}>{label}</button>
@@ -2630,6 +2642,14 @@ export default function Admin({ token, onClose }) {
                 {o.refunded_amount_cents > 0 && <div><dt>Refunded</dt><dd>−{money(o.refunded_amount_cents)}</dd></div>}
                 <div className="admin-order-grand"><dt>Total</dt><dd>{money(o.total_cents)}</dd></div>
               </dl>
+
+              {(o.gift_cards ?? []).length > 0 && (
+                <div className="admin-gift-issued">
+                  {o.gift_cards.map((g) => (
+                    <p key={g.id}>🎁 Gift card <b>{g.code}</b> — {money(g.initial_cents)} issued{g.balance_cents !== g.initial_cents ? `, ${money(g.balance_cents)} left` : ''}{g.reason ? ` — ${g.reason}` : ''}</p>
+                  ))}
+                </div>
+              )}
 
               <h4>Delivery</h4>
               <p className="muted">{addrLine || 'No address on file'}</p>
