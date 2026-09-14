@@ -636,9 +636,9 @@ export default function Storefront() {
       : selectedAddress
         ? `${selectedAddress.line1}, ${selectedAddress.city}`
         : [checkoutForm.line1, checkoutForm.city, checkoutForm.state].filter(Boolean).join(', ') || 'New address'
-  const etaText = serviceable?.deliverable && serviceable?.minutes
-    ? `Delivery in ~${serviceable.minutes} min`
-    : outOfArea ? 'Not available here yet' : 'Delivery in 12 min'
+  const etaText = outOfArea
+    ? 'Not available here yet'
+    : fees.free_delivery_threshold_cents > 0 ? `Free shipping over ${price(fees.free_delivery_threshold_cents)}` : 'Free shipping'
 
   const visibleProducts = useMemo(() => {
     const term = query.trim().toLowerCase()
