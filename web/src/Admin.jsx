@@ -120,7 +120,7 @@ const TAB_ICONS = {
 }
 const EMPTY_BRANDING = { store_name: '', tagline: '', logo_url: '', favicon_url: '', theme: 'light', layout_width: 'boxed', color_brand: '#1f7a3d', color_accent: '#ffd23f', color_heading: '#18211c' }
 const SOCIAL_PLATFORMS = [['facebook', 'Facebook'], ['x', 'X / Twitter'], ['instagram', 'Instagram'], ['linkedin', 'LinkedIn'], ['youtube', 'YouTube']]
-const EMPTY_FOOTER = { copyright: '© {year} Grocerly', note: '', app_store_url: '', play_store_url: '', socials: { facebook: '', x: '', instagram: '', linkedin: '', youtube: '' }, links: [] }
+const EMPTY_FOOTER = { copyright: '© {year} NexTech', note: '', app_store_url: '', play_store_url: '', socials: { facebook: '', x: '', instagram: '', linkedin: '', youtube: '' }, links: [] }
 
 const ISSUE_LABELS = {
   item_missing: 'Item missing', item_damaged: 'Item damaged', wrong_item: 'Wrong item',
@@ -945,7 +945,7 @@ export default function Admin({ token, onClose }) {
   async function saveBranding(event) {
     event.preventDefault()
     const saved = await saveSetting({
-      store_name: brandingForm.store_name.trim() || 'Grocerly',
+      store_name: brandingForm.store_name.trim() || 'NexTech',
       tagline: brandingForm.tagline.trim(),
       logo_url: brandingForm.logo_url.trim(),
       favicon_url: brandingForm.favicon_url.trim(),
@@ -2702,7 +2702,7 @@ export default function Admin({ token, onClose }) {
               <h3>Footer</h3>
               <p className="muted">The storefront footer. &ldquo;Useful Links&rdquo; also lists your published content pages; the links below are added after them.</p>
               <div className="admin-form-grid">
-                <label>Copyright line<input maxLength="160" value={footerForm.copyright} onChange={(event) => setFooterForm({ ...footerForm, copyright: event.target.value })} placeholder="© {year} Grocerly" /></label>
+                <label>Copyright line<input maxLength="160" value={footerForm.copyright} onChange={(event) => setFooterForm({ ...footerForm, copyright: event.target.value })} placeholder="© {year} NexTech" /></label>
                 <label>App Store URL<input value={footerForm.app_store_url} onChange={(event) => setFooterForm({ ...footerForm, app_store_url: event.target.value })} placeholder="https://apps.apple.com/…" /></label>
                 <label>Google Play URL<input value={footerForm.play_store_url} onChange={(event) => setFooterForm({ ...footerForm, play_store_url: event.target.value })} placeholder="https://play.google.com/…" /></label>
               </div>

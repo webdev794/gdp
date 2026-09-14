@@ -61,7 +61,7 @@ function Root() {
           </>
         ) : user ? (
           <>
-            <Stack.Screen name="Catalog" component={CatalogScreen} options={{ title: 'Grocerly' }} />
+            <Stack.Screen name="Catalog" component={CatalogScreen} options={{ title: 'NexTech' }} />
             <Stack.Screen name="Product" component={ProductScreen} options={{ title: 'Product' }} />
             <Stack.Screen name="Cart" component={CartScreen} options={{ title: 'Your cart' }} />
             <Stack.Screen name="Checkout" component={CheckoutScreen} options={{ title: 'Checkout' }} />

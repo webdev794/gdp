@@ -2,8 +2,8 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api, loadToken, setToken } from './api';
 
-const CART_KEY = 'grocerly_cart';
-const LOCATION_KEY = 'grocerly_location';
+const CART_KEY = 'nextech_cart';
+const LOCATION_KEY = 'nextech_location';
 
 const AppContext = createContext(null);
 

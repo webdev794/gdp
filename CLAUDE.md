@@ -16,7 +16,7 @@ Guidance for Claude Code when working in this repository.
 
 ## Project overview
 
-**Grocerly** ("GDP") — a Blinkit-style grocery delivery platform. Three apps in one repo:
+**NexTech** ("GDP") — a Blinkit-style grocery delivery platform. Three apps in one repo:
 
 | Path | Stack | Purpose |
 |------|-------|---------|

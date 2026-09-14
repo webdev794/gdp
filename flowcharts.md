@@ -1,4 +1,4 @@
-# Grocerly — Major Event Flowcharts
+# NexTech — Major Event Flowcharts
 
 Diagrams of the software's key end-to-end flows, using standard flowchart
 notation. Rendered automatically by GitHub, GitLab, and most Markdown viewers

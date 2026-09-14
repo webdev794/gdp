@@ -229,7 +229,7 @@ Administrators must be able to manage:
 - [x] Expo (React Native) Android customer app scaffolded in `mobile/`
 - [x] Mobile: OTP auth, catalog, search, product detail, cart, checkout, order tracking
 - [x] Mobile: in-app Stripe card payment via a WebView on the PaymentIntent flow
-- [x] Grocerly browser page metadata and local Vite development server
+- [x] NexTech browser page metadata and local Vite development server
 - [x] Public storage symlink created
 - [x] Initial test suite passing
 - [x] Initial project backup pushed to `webdev794/gdp`

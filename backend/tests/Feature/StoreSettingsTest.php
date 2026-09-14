@@ -34,7 +34,7 @@ class StoreSettingsTest extends TestCase
     {
         $this->getJson('/api/config')
             ->assertOk()
-            ->assertJsonPath('data.branding.store_name', 'Grocerly')
+            ->assertJsonPath('data.branding.store_name', 'NexTech')
             ->assertJsonPath('data.branding.theme', 'light')
             ->assertJsonPath('data.branding.layout_width', 'boxed')
             ->assertJsonPath('data.branding.color_brand', '#1f7a3d');

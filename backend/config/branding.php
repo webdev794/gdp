@@ -8,7 +8,7 @@
  */
 
 return [
-    'store_name' => env('STORE_NAME', 'Grocerly'),
+    'store_name' => env('STORE_NAME', 'NexTech'),
     'tagline' => env('STORE_TAGLINE', 'Fresh groceries, less fuss'),
     'logo_url' => env('STORE_LOGO_URL', ''),
     'favicon_url' => env('STORE_FAVICON_URL', ''),

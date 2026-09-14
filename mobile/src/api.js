@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from './config';
 
-const TOKEN_KEY = 'grocerly_token';
+const TOKEN_KEY = 'nextech_token';
 
 let memoryToken = null;
 

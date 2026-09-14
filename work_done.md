@@ -1,4 +1,4 @@
-# Grocerly — Access & Menu Guide
+# NexTech — Access & Menu Guide
 
 ---
 
@@ -48,7 +48,7 @@
 | **Cart / View cart** | Change quantities, remove items, and see the running subtotal, fees, tax and total. |
 | **Checkout** | Choose a saved or new delivery address, add a phone number and delivery note, pick card or cash on delivery, and — if support has issued one — enter a gift-card code + password to apply store credit (checked for a balance before you pay; any leftover stays on the card for next time). |
 | **Payment** | Pay by card (Stripe), use a saved card, or tick "save this card" for next time. |
-| **Orders** | Track delivery status, complete payment, cancel an order, download the bill (PDF), or get help on an order. Once an order is delivered, rate the rider 1–5 stars with an optional private note (also available from the delivery chat); the note goes to the Grocerly team only. |
+| **Orders** | Track delivery status, complete payment, cancel an order, download the bill (PDF), or get help on an order. Once an order is delivered, rate the rider 1–5 stars with an optional private note (also available from the delivery chat); the note goes to the NexTech team only. |
 | **Account → Profile** | Update name and phone, and change password. |
 | **Account → Addresses** | Add, edit, delete and set a default delivery address. |
 | **Account → Payment methods** | Add a card, set a default, and remove saved cards. |

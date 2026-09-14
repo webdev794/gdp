@@ -48,7 +48,7 @@ export default function AuthScreen({ navigation }) {
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
-        <Text style={styles.brand}>grocerly</Text>
+        <Text style={styles.brand}>nextech</Text>
         <Text style={styles.title}>{mode === 'register' ? 'Create your account' : 'Welcome back'}</Text>
         <Text style={styles.sub}>
           {mode === 'register' ? 'Save your details for faster checkout.' : 'Sign in to pick up where you left off.'}

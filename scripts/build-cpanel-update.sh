@@ -113,8 +113,8 @@ find "$DEST/storage" "$DEST/bootstrap/cache" -name '.gitignore' -delete 2>/dev/n
 
 echo "==> READ_ME_FIRST.txt"
 cat > "$STAGE/READ_ME_FIRST.txt" <<'TXT'
-GROCERLY - code update bundle
-=============================
+NEXTECH - code update bundle
+============================
 Updated application code + built frontend. No .env, no database, no installer -
 nothing of yours is touched. Runs as-is: on the first page load after upload,
 index.php clears the old compiled caches and resets OPcache by itself (no

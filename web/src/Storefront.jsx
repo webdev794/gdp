@@ -139,7 +139,7 @@ function StarPicker({ value, onChange, readOnly }) {
 
 /**
  * Customer's 1–5 rating and optional private note for the rider on an order or a
- * delivery chat. The comment is shown only to the Grocerly team, never the rider.
+ * delivery chat. The comment is shown only to the NexTech team, never the rider.
  */
 function RiderRating({ orderId, existing, source, onSaved }) {
   const [rating, setRating] = useState(existing?.rating ?? 0)
@@ -179,7 +179,7 @@ function RiderRating({ orderId, existing, source, onSaved }) {
     <div className="rider-rating">
       <span className="rider-rating-h">Rate your delivery rider</span>
       <StarPicker value={rating} onChange={setRating} />
-      <textarea rows="2" maxLength="1000" placeholder="Add a note for the Grocerly team (optional, private — the rider never sees it)" value={comment} onChange={(event) => setComment(event.target.value)} />
+      <textarea rows="2" maxLength="1000" placeholder="Add a note for the NexTech team (optional, private — the rider never sees it)" value={comment} onChange={(event) => setComment(event.target.value)} />
       <div className="rider-rating-actions">
         <button type="button" className="text-button" disabled={busy} onClick={submit}>{existing ? 'Update rating' : 'Submit rating'}</button>
         {existing && <button type="button" className="text-button" onClick={() => { setEditing(false); setRating(existing.rating); setComment(existing.comment ?? '') }}>Cancel</button>}
@@ -337,6 +337,8 @@ export default function Storefront() {
     } catch { return [] }
   })
   const [pickedVariant, setPickedVariant] = useState({})
+  const [detailProduct, setDetailProduct] = useState(null)
+  const [galleryIndex, setGalleryIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [offline, setOffline] = useState(false)
   const [pages, setPages] = useState([])
@@ -496,7 +498,7 @@ export default function Storefront() {
     s.setProperty('--shell-max', branding.layout_width === 'full' ? 'none' : '1280px')
     root.style.colorScheme = dark ? 'dark' : 'light'
 
-    const name = branding.store_name || 'Grocerly'
+    const name = branding.store_name || 'NexTech'
     document.title = branding.tagline ? `${name} | ${branding.tagline}` : name
     if (branding.favicon_url) {
       let link = document.querySelector("link[rel='icon']")
@@ -731,6 +733,36 @@ export default function Storefront() {
       const quantity = item.quantity + amount
       return quantity > 0 ? [{ ...item, quantity }] : []
     }))
+  }
+
+  // Shared by the product card and the detail popup so both agree on which
+  // variant is selected, its price/stock, and the cart quantity for it.
+  function variantView(product) {
+    const variants = product.variants ?? []
+    const hasVariants = variants.length > 0
+    const options = hasVariants
+      ? [{ id: '', label: product.name, price_cents: product.price_cents, compare_at_price_cents: product.compare_at_price_cents, inventory_quantity: product.inventory_quantity, image_url: product.image_url }, ...variants]
+      : []
+    const chosen = hasVariants
+      ? (options.find((o) => String(o.id) === String(pickedVariant[product.id] ?? '')) ?? options[0])
+      : null
+    const variant = chosen && chosen.id !== '' ? chosen : null
+    const unitPrice = chosen ? chosen.price_cents : product.price_cents
+    const compareAt = chosen ? chosen.compare_at_price_cents : product.compare_at_price_cents
+    const onSale = compareAt != null && compareAt > unitPrice
+    const pctOff = onSale ? Math.round((1 - unitPrice / compareAt) * 100) : 0
+    const stock = chosen ? chosen.inventory_quantity : product.inventory_quantity
+    const key = lineKey(product.id, variant?.id)
+    const qty = cartQty[key] ?? 0
+    const img = (chosen?.image_url) || product.image_url
+    return { variants, hasVariants, options, chosen, variant, unitPrice, compareAt, onSale, pctOff, stock, key, qty, img }
+  }
+
+  // Every distinct photo for a product: its own image plus each variant's
+  // own image (variants that reuse the base photo don't add a duplicate).
+  function galleryImages(product) {
+    const urls = [product.image_url, ...(product.variants ?? []).map((v) => v.image_url)].filter(Boolean)
+    return [...new Set(urls)]
   }
 
   // The floating "View cart" pill can be dragged upward to reveal text it covers;
@@ -1441,9 +1473,9 @@ export default function Storefront() {
   return <><div className="app-shell">
     <header className="topbar">
       <div className="topbar-row">
-        <a className="brand" href={import.meta.env.BASE_URL || '/'} aria-label={`${branding?.store_name || 'Grocerly'} home`}>{branding?.logo_url
-          ? <img className="brand-logo" src={mediaUrl(branding.logo_url)} alt={branding?.store_name || 'Grocerly'} />
-          : <><span className="brand-mark">{(branding?.store_name || 'g').trim().charAt(0).toLowerCase() || 'g'}</span>{(branding?.store_name || 'grocerly').toLowerCase()}</>}</a>
+        <a className="brand" href={import.meta.env.BASE_URL || '/'} aria-label={`${branding?.store_name || 'NexTech'} home`}>{branding?.logo_url
+          ? <img className="brand-logo" src={mediaUrl(branding.logo_url)} alt={branding?.store_name || 'NexTech'} />
+          : <><span className="brand-mark">{(branding?.store_name || 'n').trim().charAt(0).toLowerCase() || 'n'}</span>{(branding?.store_name || 'nextech').toLowerCase()}</>}</a>
         <button className="deliver-to" type="button" onClick={() => { setLocationOpen(true); setLocationMsg('') }}><span className="deliver-eta">{etaText}</span><strong>{location ? location.label : 'Set your location'} <em aria-hidden>&#9662;</em></strong></button>
         <div className="topbar-actions">
           {currentUser ? <>
@@ -1500,7 +1532,7 @@ export default function Storefront() {
           {homeTileList.length > 0 && <section className="home-cats" aria-label="Shop by category">
             {homeTileList.map((tile) => { const meta = tileMeta(tile); return <button className="home-cat" type="button" key={tile.id} onClick={() => openHomeTarget(tile)}>
               <span className="home-cat-img" aria-hidden>{categoryEmoji(meta.label)}{tile.image_url && <img src={mediaUrl(tile.image_url)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
-              {!tile.image_url && <span className="home-cat-label">{meta.label}</span>}
+              <span className="home-cat-label">{meta.label}</span>
             </button> })}
           </section>}
         </>
@@ -1512,26 +1544,9 @@ export default function Storefront() {
           </nav>
           <div className="catalog-head"><h2>{searching ? `Results for “${query.trim()}”` : activeCategory}</h2><span>{visibleProducts.length} items</span></div>
           <div className="product-grid">{visibleProducts.map((product) => {
-            const variants = product.variants ?? []
-            const hasVariants = variants.length > 0
-            // The plain product is always the first ("base") option.
-            const options = hasVariants
-              ? [{ id: '', label: product.name, price_cents: product.price_cents, compare_at_price_cents: product.compare_at_price_cents, inventory_quantity: product.inventory_quantity, image_url: product.image_url }, ...variants]
-              : []
-            const chosen = hasVariants
-              ? (options.find((o) => String(o.id) === String(pickedVariant[product.id] ?? '')) ?? options[0])
-              : null
-            const variant = chosen && chosen.id !== '' ? chosen : null
-            const unitPrice = chosen ? chosen.price_cents : product.price_cents
-            const compareAt = chosen ? chosen.compare_at_price_cents : product.compare_at_price_cents
-            const onSale = compareAt != null && compareAt > unitPrice
-            const pctOff = onSale ? Math.round((1 - unitPrice / compareAt) * 100) : 0
-            const stock = chosen ? chosen.inventory_quantity : product.inventory_quantity
-            const key = lineKey(product.id, variant?.id)
-            const qty = cartQty[key] ?? 0
-            const img = (chosen?.image_url) || product.image_url
+            const { hasVariants, options, chosen, variant, unitPrice, compareAt, onSale, pctOff, stock, key, qty, img } = variantView(product)
             return <article className={stock === 0 ? 'pcard sold-out' : 'pcard'} key={product.id}>
-              <div className="pcard-img" aria-hidden>{stock === 0 && <span className="pcard-oos">Out of stock</span>}{onSale && stock !== 0 && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
+              <button className="pcard-img" type="button" aria-label={`View details for ${product.name}`} onClick={() => { setDetailProduct(product); setGalleryIndex(0) }}>{stock === 0 && <span className="pcard-oos">Out of stock</span>}{onSale && stock !== 0 && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</button>
               <p className="pcard-cat">{product.category?.name ?? 'Grocery'}</p>
               <h3>{variantTitle(product.name, variant?.label)}</h3>
               {hasVariants && <select className="pcard-variant" aria-label={`${product.name} option`} value={String(chosen?.id ?? '')} onChange={(event) => setPickedVariant((current) => ({ ...current, [product.id]: event.target.value }))}>{options.map((o) => <option key={o.id === '' ? 'base' : o.id} value={String(o.id)}>{o.label} — {price(o.price_cents)}</option>)}</select>}
@@ -1544,6 +1559,36 @@ export default function Storefront() {
       )}
       </>}
     </main>
+    {detailProduct && (() => {
+      const { hasVariants, options, chosen, variant, unitPrice, compareAt, onSale, pctOff, stock, key, qty } = variantView(detailProduct)
+      const images = galleryImages(detailProduct)
+      const activeImg = images[galleryIndex] ?? images[0]
+      function pickVariant(value) {
+        setPickedVariant((current) => ({ ...current, [detailProduct.id]: value }))
+        const opt = options.find((o) => String(o.id) === value)
+        const idx = opt?.image_url ? images.indexOf(opt.image_url) : -1
+        if (idx >= 0) setGalleryIndex(idx)
+      }
+      return <div className="overlay" role="presentation" onClick={() => setDetailProduct(null)}>
+        <div className="product-modal" role="dialog" aria-modal="true" aria-labelledby="pm-title" onClick={(event) => event.stopPropagation()}>
+          <button className="close-button" type="button" onClick={() => setDetailProduct(null)} aria-label="Close details">x</button>
+          <div className="pm-gallery">
+            <div className="pm-main-img" aria-hidden>{stock === 0 && <span className="pcard-oos">Out of stock</span>}{onSale && stock !== 0 && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(detailProduct.name)}{activeImg && <img src={mediaUrl(activeImg)} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
+            {images.length > 1 && <div className="pm-thumbs">{images.map((url, i) => <button type="button" key={url} className={i === galleryIndex ? 'pm-thumb active' : 'pm-thumb'} onClick={() => setGalleryIndex(i)} aria-label={`Photo ${i + 1}`}><img src={mediaUrl(url)} alt="" /></button>)}</div>}
+          </div>
+          <div className="pm-info">
+            <p className="pcard-cat">{detailProduct.category?.name ?? 'Grocery'}</p>
+            <h2 id="pm-title">{variantTitle(detailProduct.name, variant?.label)}</h2>
+            <div className="pm-price">{onSale ? <><strong className="on-sale">{price(unitPrice)}</strong><s>{price(compareAt)}</s></> : <strong>{price(unitPrice)}</strong>}</div>
+            {hasVariants && <select className="pcard-variant" aria-label={`${detailProduct.name} option`} value={String(chosen?.id ?? '')} onChange={(event) => pickVariant(event.target.value)}>{options.map((o) => <option key={o.id === '' ? 'base' : o.id} value={String(o.id)}>{o.label} — {price(o.price_cents)}</option>)}</select>}
+            <p className="pm-desc">{detailProduct.description || 'No description available yet.'}</p>
+            {qty === 0
+              ? <button className="add-btn pm-add" type="button" disabled={stock === 0} onClick={() => add(detailProduct, variant)}>{stock === 0 ? 'OUT OF STOCK' : 'ADD TO CART'}</button>
+              : <span className="stepper pm-add"><button type="button" aria-label="Remove one" onClick={() => updateQuantity(key, -1)}>&minus;</button><b>{qty}</b><button type="button" aria-label="Add one" disabled={stock != null && qty >= stock} onClick={() => updateQuantity(key, 1)}>+</button></span>}
+          </div>
+        </div>
+      </div>
+    })()}
     {cartCount > 0 && <aside className={`cart-tray${trayDragging ? ' dragging' : ''}`} aria-live="polite" style={{ transform: `translateX(-50%) translateY(${trayLift}px)` }} onPointerDown={trayPointerDown} onPointerMove={trayPointerMove} onPointerUp={trayPointerUp} onPointerCancel={trayPointerUp}><div><strong>{cartCount} {cartCount === 1 ? 'item' : 'items'} in your cart</strong><span>{price(cartTotal)} subtotal</span></div><button type="button" onClick={() => setCartOpen(true)}>View cart <span>-&gt;</span></button></aside>}
     {cartOpen && <div className="overlay" role="presentation" onClick={() => setCartOpen(false)}><aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" onClick={(event) => event.stopPropagation()}><div className="drawer-header"><div><p className="eyebrow">Ready when you are</p><h2 id="cart-title">Your cart</h2></div><button className="close-button" type="button" onClick={() => setCartOpen(false)} aria-label="Close cart">x</button></div>{cart.length ? <><div className="drawer-items">{cartView.map((item) => <div className="drawer-item" key={item.key}><div className="mini-visual" aria-hidden>{productEmoji(item.name)}{item.image_url && <img src={mediaUrl(item.image_url)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div><div className="drawer-item-copy"><strong>{variantTitle(item.name, item.variantLabel)}</strong><span>{item.onSale ? <><strong className="on-sale">{price(item.unit)}</strong> <s>{price(item.reg)}</s></> : price(item.unit)}{item.quantity > 1 && <> &middot; {item.quantity} pcs = {item.onSale ? <><strong className="on-sale">{price(item.unit * item.quantity)}</strong> <s>{price(item.lineReg)}</s></> : price(item.unit * item.quantity)}</>}</span></div><div className="quantity"><button type="button" onClick={() => updateQuantity(item.key, -1)}>-</button><span>{item.quantity}</span><button type="button" onClick={() => updateQuantity(item.key, 1)}>+</button></div></div>)}</div><div className="drawer-summary"><div><span>Subtotal</span><span>{cartRegularTotal > est.sub ? <><s className="on-sale">{price(cartRegularTotal)}</s> {price(est.sub)}</> : price(est.sub)}</span></div><div><span>Delivery</span><span>{est.delivery === 0 ? 'FREE' : price(est.delivery)}</span></div><div><span>Handling</span><span>{price(est.handling)}</span></div>{est.smallCart > 0 && <div><span>Small cart fee</span><span>{price(est.smallCart)}</span></div>}<div><span>Tax</span><span>{price(est.tax)}</span></div><div className="drawer-summary-total"><strong>Estimated total</strong><strong>{price(est.total)}</strong></div></div>{fees.delivery_mode === 'distance' && serviceable?.delivery_fee_cents == null && <p className="drawer-nudge">Delivery fee is based on distance — set your location for the exact amount.</p>}{est.toFreeDelivery > 0 && <p className="drawer-nudge">Add {price(est.toFreeDelivery)} more for free delivery.</p>}{est.toNoSmallCart > 0 && <p className="drawer-nudge">Add {price(est.toNoSmallCart)} more to drop the {price(est.smallCart)} small-cart fee.</p>}<button className="checkout-button" type="button" onClick={() => { setCartOpen(false); setCheckoutOpen(true); setCheckoutStep('address'); setCheckoutMessage('') }}>Continue to checkout <span>-&gt;</span></button></> : <div className="empty-cart"><div className="empty-cart-mark">+</div><h3>Your cart is empty</h3><p>Find something good in the essentials below.</p><button type="button" onClick={() => setCartOpen(false)}>Keep shopping</button></div>}</aside></div>}
     {authMode && <div className="overlay" role="presentation" onClick={() => { setAuthMode(null); setOtpStage(null); setAuthTab('code'); setPwMode('signin') }}><div className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => { setAuthMode(null); setOtpStage(null); setAuthTab('code'); setPwMode('signin') }} aria-label="Close authentication">x</button><p className="eyebrow">A better grocery run</p>{otpStage ? <><h2 id="auth-title">Enter your code</h2><p className="auth-intro">We emailed a 6-digit code to {otpStage.email}. It expires in 10 minutes.</p><form onSubmit={submitOtp}><input required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength="8" placeholder="6-digit code" value={otpCode} onChange={(event) => setOtpCode(event.target.value.replace(/[^0-9]/g, ''))} /><button className="checkout-button" type="submit">Verify <span>-&gt;</span></button></form>{authMessage && <p className="auth-message">{authMessage}</p>}<button className="switch-auth" type="button" onClick={resendOtp}>Resend code</button><button className="switch-auth" type="button" onClick={() => { setOtpStage(null); setAuthMessage('') }}>Use a different email</button></> : <><h2 id="auth-title">Sign in or sign up</h2><div className="auth-tabs" role="tablist"><button type="button" role="tab" aria-selected={authTab === 'code'} className={authTab === 'code' ? 'auth-tab active' : 'auth-tab'} onClick={() => { setAuthTab('code'); setAuthMessage('') }}>Email code</button><button type="button" role="tab" aria-selected={authTab === 'password'} className={authTab === 'password' ? 'auth-tab active' : 'auth-tab'} onClick={() => { setAuthTab('password'); setAuthMessage('') }}>Password</button></div>{authTab === 'password' ? (() => {
@@ -1736,7 +1781,7 @@ export default function Storefront() {
       </div>
     </div>
     <div className="site-footer-bottom">
-      <span className="site-footer-copy">{(footer?.copyright || '© {year} Grocerly').replace('{year}', String(new Date().getFullYear()))}</span>
+      <span className="site-footer-copy">{(footer?.copyright || '© {year} NexTech').replace('{year}', String(new Date().getFullYear()))}</span>
       {(footer?.app_store_url || footer?.play_store_url) && <span className="site-footer-app">
         {footer?.app_store_url && <a className="app-badge" href={footer.app_store_url} target="_blank" rel="noopener noreferrer" aria-label="Download on the App Store">
           <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path fill="currentColor" d="M17.05 12.53c-.03-2.79 2.28-4.13 2.38-4.19-1.3-1.9-3.32-2.16-4.04-2.19-1.72-.17-3.35 1.01-4.22 1.01-.87 0-2.21-.99-3.63-.96-1.87.03-3.59 1.09-4.55 2.76-1.94 3.37-.5 8.36 1.39 11.09.92 1.34 2.02 2.84 3.46 2.79 1.39-.06 1.91-.9 3.59-.9 1.67 0 2.15.9 3.62.87 1.49-.03 2.44-1.37 3.36-2.71 1.06-1.56 1.5-3.07 1.52-3.15-.03-.02-2.92-1.12-2.95-4.46zM14.28 4.38c.77-.93 1.29-2.23 1.15-3.52-1.11.04-2.45.74-3.24 1.67-.71.82-1.33 2.13-1.16 3.39 1.24.1 2.5-.63 3.25-1.54z"/></svg>

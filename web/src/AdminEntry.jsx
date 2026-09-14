@@ -62,7 +62,7 @@ export default function AdminEntry() {
       .then(readJson)
       .then(({ data }) => {
         if (cancelled || !data?.branding) return
-        const name = data.branding.store_name || 'Grocerly'
+        const name = data.branding.store_name || 'NexTech'
         document.title = `${name} · Admin`
         if (data.branding.favicon_url) {
           let link = document.querySelector("link[rel='icon']")

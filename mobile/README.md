@@ -1,4 +1,4 @@
-# Grocerly mobile (Expo)
+# NexTech mobile (Expo)
 
 React Native customer app built with Expo. It talks to the same Laravel API as the web
 storefront (`backend/`). No Android Studio required — it runs in **Expo Go**.

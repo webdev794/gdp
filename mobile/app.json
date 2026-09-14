@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "Grocerly",
-    "slug": "grocerly-mobile",
+    "name": "NexTech",
+    "slug": "nextech-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "grocerly",
+    "scheme": "nextech",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -14,14 +14,14 @@
       "**/*"
     ],
     "android": {
-      "package": "com.grocerly.app",
+      "package": "com.nextech.app",
       "adaptiveIcon": {
         "backgroundColor": "#8bd08f"
       }
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.grocerly.app"
+      "bundleIdentifier": "com.nextech.app"
     },
     "extra": {
       "apiUrl": "http://10.0.2.2:8000/api"
@@ -32,7 +32,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Grocerly uses your location to show items your nearest store stocks and to estimate delivery."
+          "locationWhenInUsePermission": "NexTech uses your location to show items your nearest store stocks and to estimate delivery."
         }
       ]
     ]

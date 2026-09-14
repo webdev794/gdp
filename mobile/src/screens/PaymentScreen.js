@@ -93,7 +93,7 @@ export default function PaymentScreen({ route, navigation }) {
 
       <WebView
         originWhitelist={['*']}
-        source={{ html: stripeHtml(clientSecret, publishableKey), baseUrl: 'https://grocerly.local' }}
+        source={{ html: stripeHtml(clientSecret, publishableKey), baseUrl: 'https://nextech.local' }}
         onMessage={onMessage}
         style={{ flex: 1, opacity: status === 'ready' || status === 'error' ? 1 : 0 }}
         javaScriptEnabled
