@@ -75,7 +75,8 @@ cat > "$DEST/.htaccess" <<'HTACCESS'
 </IfModule>
 
 # Block direct web access to application internals
-RedirectMatch 404 (?i)/gdp/(app|bootstrap|config|database|resources|routes|storage|vendor|tests)/
+RedirectMatch 404 (?i)/gdp/(app|bootstrap|config|database|resources|routes|vendor|tests)/
+RedirectMatch 404 (?i)/gdp/storage/(framework|logs|app)/
 <FilesMatch "^(\.env.*|composer\.(json|lock)|artisan|package.*\.json|.*\.md)$">
     Require all denied
 </FilesMatch>

@@ -32,134 +32,13 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Sam Rider', 'password' => Hash::make('password'), 'email_verified_at' => now()]
         )->forceFill(['is_rider' => true])->save();
 
-        // Free ingredient photos from TheMealDB (public, no key, white background).
-        $img = fn (?string $ingredient) => $ingredient === null ? null
-            : 'https://www.themealdb.com/images/ingredients/' . rawurlencode($ingredient) . '-Medium.png';
-
-        // [display name, stable slug, category image (null = emoji tile), [ [product, sku, price_cents, image], ... ] ]
-        // Names mirror Blinkit; the slug never changes so re-seeding just refreshes
-        // the name on the existing row. Tiles fall back to a per-category emoji;
-        // upload real artwork per tile in Admin -> Homepage -> Category tiles.
-        // SKUs 001-015 unchanged.
-        $catalog = [
-            ['Fruits & Vegetables', 'fresh-produce', null, [
-                ['Organic Bananas', 'GDP-PROD-001', 299, 'Banana'],
-                ['Gala Apples', 'GDP-PROD-002', 449, 'Apples'],
-                ['Baby Spinach', 'GDP-PROD-007', 349, 'Spinach'],
-                ['Roma Tomatoes', 'GDP-PROD-008', 279, 'Tomato'],
-                ['Hass Avocados', 'GDP-PROD-009', 599, 'Avocado'],
-            ]],
-            ['Dairy, Bread & Eggs', 'dairy-and-eggs', null, [
-                ['Large Brown Eggs', 'GDP-PROD-003', 599, 'Egg'],
-                ['Whole Milk', 'GDP-PROD-004', 429, 'Milk'],
-                ['Greek Yogurt', 'GDP-PROD-010', 519, 'Yogurt'],
-                ['Sharp Cheddar', 'GDP-PROD-011', 649, 'Cheddar Cheese'],
-                ['Unsalted Butter', 'GDP-PROD-012', 399, 'Butter'],
-            ]],
-            ['Atta, Rice & Dal', 'pantry-staples', null, [
-                ['Long Grain Rice', 'GDP-PROD-005', 699, 'Rice'],
-                ['Pasta', 'GDP-PROD-006', 249, 'Spaghetti'],
-                ['Extra Virgin Olive Oil', 'GDP-PROD-013', 899, 'Olive Oil'],
-                ['Rolled Oats', 'GDP-PROD-014', 459, 'Oats'],
-                ['Peanut Butter', 'GDP-PROD-015', 549, 'Peanut Butter'],
-            ]],
-            ['Snacks & Munchies', 'snacks-and-munchies', null, [
-                ['Salted Potato Chips', 'GDP-PROD-016', 199, null],
-                ['Butter Popcorn', 'GDP-PROD-017', 249, null],
-                ['Roasted Trail Mix', 'GDP-PROD-018', 549, null],
-            ]],
-            ['Cold Drinks & Juices', 'beverages', null, [
-                ['Orange Juice', 'GDP-PROD-019', 399, 'Orange'],
-                ['Sparkling Water', 'GDP-PROD-020', 149, 'Water'],
-                ['Cola 6-Pack', 'GDP-PROD-021', 499, null],
-            ]],
-            ['Bakery & Biscuits', 'bakery-and-breads', null, [
-                ['Sourdough Loaf', 'GDP-PROD-022', 449, 'Bread'],
-                ['Burger Buns', 'GDP-PROD-023', 279, null],
-                ['Butter Croissants', 'GDP-PROD-024', 399, null],
-            ]],
-            ['Breakfast & Instant Food', 'breakfast-and-cereal', null, [
-                ['Corn Flakes', 'GDP-PROD-025', 429, null],
-                ['Honey Granola', 'GDP-PROD-026', 549, null],
-                ['Pancake Mix', 'GDP-PROD-027', 389, 'Flour'],
-            ]],
-            ['Sweet Tooth', 'sweets-and-chocolate', null, [
-                ['Dark Chocolate Bar', 'GDP-PROD-028', 299, null],
-                ['Choc Chip Cookies', 'GDP-PROD-029', 349, null],
-                ['Gummy Bears', 'GDP-PROD-030', 199, null],
-            ]],
-            ['Chicken, Meat & Fish', 'meat-and-seafood', null, [
-                ['Chicken Breast', 'GDP-PROD-031', 899, 'Chicken'],
-                ['Salmon Fillet', 'GDP-PROD-032', 1299, 'Salmon'],
-                ['Pork Sausages', 'GDP-PROD-033', 649, null],
-            ]],
-            ['Frozen Foods', 'frozen-foods', null, [
-                ['Frozen Peas', 'GDP-PROD-034', 249, null],
-                ['Vanilla Ice Cream', 'GDP-PROD-035', 549, null],
-                ['Crispy Fries', 'GDP-PROD-036', 399, null],
-            ]],
-            ['Tea, Coffee & Health Drink', 'tea-and-coffee', null, [
-                ['Ground Coffee', 'GDP-PROD-037', 899, 'Coffee'],
-                ['Green Tea Bags', 'GDP-PROD-038', 449, null],
-                ['Masala Chai', 'GDP-PROD-039', 399, null],
-            ]],
-            ['Sauces & Spreads', 'sauces-and-spreads', null, [
-                ['Tomato Ketchup', 'GDP-PROD-040', 249, null],
-                ['Mayonnaise', 'GDP-PROD-041', 329, null],
-                ['Strawberry Jam', 'GDP-PROD-042', 299, null],
-            ]],
-            ['Cleaning Essentials', 'cleaning-essentials', null, [
-                ['Dish Soap', 'GDP-PROD-043', 279, null],
-                ['Laundry Detergent', 'GDP-PROD-044', 899, null],
-                ['Surface Cleaner', 'GDP-PROD-045', 349, null],
-            ]],
-            ['Personal Care', 'personal-care', null, [
-                ['Shampoo', 'GDP-PROD-046', 549, null],
-                ['Toothpaste', 'GDP-PROD-047', 199, null],
-                ['Hand Soap', 'GDP-PROD-048', 249, null],
-            ]],
-            ['Baby Care', 'baby-care', null, [
-                ['Diapers Value Pack', 'GDP-PROD-049', 1499, null],
-                ['Baby Wipes', 'GDP-PROD-050', 299, null],
-                ['Baby Lotion', 'GDP-PROD-051', 449, null],
-            ]],
-            ['Home & Office', 'home-and-kitchen', null, [
-                ['Paper Towels', 'GDP-PROD-052', 399, null],
-                ['Trash Bags', 'GDP-PROD-053', 349, null],
-                ['Aluminium Foil', 'GDP-PROD-054', 299, null],
-            ]],
-            ['Paan Corner', 'paan-corner', null, []],
-            ['Pharma & Wellness', 'pharma-wellness', null, []],
-            ['Organic & Premium', 'organic-premium', null, []],
-            ['Pet Care', 'pet-care', null, []],
-        ];
-
-        foreach ($catalog as $index => [$name, $slug, $categoryImage, $products]) {
-            $category = Category::updateOrCreate(
-                ['slug' => $slug],
-                ['name' => $name, 'sort_order' => $index + 1, 'image_url' => "/img/cat/{$slug}.png"]
-            );
-
-            foreach ($products as [$productName, $sku, $priceCents, $productImage]) {
-                Product::updateOrCreate(
-                    ['sku' => $sku],
-                    [
-                        'name' => $productName,
-                        'slug' => \Illuminate\Support\Str::slug($productName),
-                        'price_cents' => $priceCents,
-                        'image_url' => $img($productImage),
-                        'category_id' => $category->id,
-                        'inventory_quantity' => 100,
-                    ]
-                );
-            }
-        }
-
-        // A few demo items go "on sale" so the strike-through pricing is visible.
-        Product::whereIn('sku', ['GDP-PROD-002', 'GDP-PROD-010', 'GDP-PROD-028', 'GDP-PROD-044'])->get()
-            ->each(fn (Product $p) => $p->update(['compare_at_price_cents' => (int) round($p->price_cents / 0.8)]));
-
-        $this->seedVariants();
+        // Electronics catalog: categories, products and variants. The slug on
+        // each never changes so re-seeding just refreshes the row it matches;
+        // Admin -> Homepage -> Category tiles is where per-tile artwork is
+        // customised. Prices/inventory are demo values.
+        $this->seedCategories();
+        $this->seedProducts();
+        $this->seedProductVariants();
         $this->seedBanners();
         $this->seedHomeTiles();
         $this->seedPages();
@@ -951,65 +830,189 @@ MD,
             [
                 'image_url' => 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=2700/layout-engine/2026-01/Frame-1437256605-2-2.jpg',
                 'headline' => null,
-                'category_slug' => 'fresh-produce',
+                'category_slug' => 'mobiles-smartphones',
                 'placement' => 'hero',
                 'sort_order' => 1,
             ],
             [
                 'image_url' => 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=720/layout-engine/2023-07/pharmacy-WEB.jpg',
                 'headline' => null,
-                'category_slug' => 'personal-care',
+                'category_slug' => 'personal-care-electronics',
                 'placement' => 'strip',
                 'sort_order' => 2,
             ],
             [
                 'image_url' => 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=720/layout-engine/2026-01/pet_crystal_WEB-1.png',
                 'headline' => null,
-                'category_slug' => 'home-and-kitchen',
+                'category_slug' => 'office-electronics',
                 'placement' => 'strip',
                 'sort_order' => 3,
             ],
             [
                 'image_url' => 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=720/layout-engine/2026-01/baby_crystal_WEB-1.png',
                 'headline' => null,
-                'category_slug' => 'baby-care',
+                'category_slug' => 'kids-and-baby-tech',
                 'placement' => 'strip',
                 'sort_order' => 4,
             ],
         ];
 
+        // Matched by placement + sort_order (not image_url): once an admin
+        // uploads a real banner image the image_url no longer matches this
+        // placeholder, and matching on it would create a duplicate row on
+        // every reseed instead of recognising the banner as already seeded.
+        // If a banner is already there — seeded before, or admin-created —
+        // leave it alone so a reseed never clobbers an edit.
         foreach ($banners as $banner) {
-            Banner::updateOrCreate(['image_url' => $banner['image_url']], $banner);
+            $exists = Banner::where('placement', $banner['placement'])->where('sort_order', $banner['sort_order'])->exists();
+
+            if (! $exists) {
+                Banner::create($banner);
+            }
         }
     }
 
     /**
-     * A couple of demo products get Blinkit-style pack sizes so the variant
-     * selector is visible out of the box. Everything else stays single-price.
+     * The electronics catalog: 20 categories, 54 products and their variants.
+     * This mirrors the live demo data (ported 2026-09-15 after the store was
+     * rebranded from groceries) so a fresh seed matches what's actually
+     * deployed instead of recreating the old grocery catalog.
      */
-    private function seedVariants(): void
+    private function seedCategories(): void
     {
-        $packs = [
-            'GDP-PROD-004' => [ // Whole Milk
-                ['label' => '500 ml', 'sku' => 'GDP-PROD-004-500', 'price_cents' => 249, 'inventory_quantity' => 80, 'sort_order' => 1],
-                ['label' => '1 L', 'sku' => 'GDP-PROD-004-1000', 'price_cents' => 429, 'inventory_quantity' => 60, 'sort_order' => 2],
-                ['label' => '2 L', 'sku' => 'GDP-PROD-004-2000', 'price_cents' => 799, 'inventory_quantity' => 30, 'sort_order' => 3],
-            ],
-            'GDP-PROD-005' => [ // Long Grain Rice
-                ['label' => '1 kg', 'sku' => 'GDP-PROD-005-1KG', 'price_cents' => 699, 'inventory_quantity' => 50, 'sort_order' => 1],
-                ['label' => '5 kg', 'sku' => 'GDP-PROD-005-5KG', 'price_cents' => 3199, 'inventory_quantity' => 15, 'sort_order' => 2],
-            ],
+        // [name, slug, image_url, sort_order]
+        $categories = [
+            ['Mobiles & Smartphones', 'mobiles-smartphones', '/img/cat/mobiles-smartphones.webp', 1],
+            ['Laptops & Computers', 'laptops-computers', '/img/cat/laptops-computers.webp', 2],
+            ['Audio & Headphones', 'audio-headphones', '/img/cat/audio-headphones.jpg', 3],
+            ['Mobile Accessories', 'mobile-accessories', '/img/cat/mobile-accessories.webp', 4],
+            ['Smart Watches & Wearables', 'smart-watches-wearables', '/img/cat/smart-watches-wearables.jpg', 5],
+            ['Cameras & Photography', 'cameras-photography', '/img/cat/cameras-photography.jpg', 6],
+            ['Televisions', 'televisions', '/img/cat/televisions.jpg', 7],
+            ['Gaming Consoles & Accessories', 'gaming-consoles-accessories', '/img/cat/gaming-consoles-accessories.png', 8],
+            ['Home Appliances', 'home-appliances', '/img/cat/home-appliances.jpg', 9],
+            ['Computer Accessories', 'computer-accessories', '/img/cat/computer-accessories.jpg', 10],
+            ['Power Banks & Chargers', 'power-banks-chargers', '/img/cat/power-banks-chargers.jpg', 11],
+            ['Storage Devices', 'storage-devices', '/img/cat/storage-devices.jpg', 12],
+            ['Networking Devices', 'networking-devices', '/img/cat/networking-devices.jpg', 13],
+            ['Personal Care Electronics', 'personal-care-electronics', '/img/cat/personal-care-electronics.jpg', 14],
+            ['Kids & Baby Tech', 'kids-and-baby-tech', '/img/cat/kids-and-baby-tech.webp', 15],
+            ['Office Electronics', 'office-electronics', '/img/cat/office-electronics.jpg', 16],
+            ['Smart Home', 'smart-home', '/img/cat/smart-home.webp', 17],
+            ['Health & Fitness Tech', 'health-and-fitness-tech', '/img/cat/health-and-fitness-tech.jpg', 18],
+            ['Premium & Flagship', 'premium-and-flagship', '/img/cat/premium-and-flagship.webp', 19],
+            ['Car Electronics', 'car-electronics', '/img/cat/car-electronics.jpg', 20],
         ];
 
-        foreach ($packs as $productSku => $variants) {
+        foreach ($categories as [$name, $slug, $image, $sort]) {
+            Category::updateOrCreate(['slug' => $slug], ['name' => $name, 'image_url' => $image, 'sort_order' => $sort]);
+        }
+    }
+
+    private function seedProducts(): void
+    {
+        // [name, slug, description, sku, price_cents, compare_at_price_cents, inventory_quantity, image_url, category_slug]
+        $products = [
+            ['Apple iPhone 15 Pro', 'apple-iphone-15-pro', 'Apple\'s titanium-body flagship with the A17 Pro chip, a 48MP main camera, and USB-C — built for all-day performance in the pocket.', 'GDP-PROD-001', 99900, null, 100, '/img/products/1.webp', 'mobiles-smartphones'],
+            ['Samsung Galaxy S24', 'samsung-galaxy-s24', 'A compact Android flagship with a bright Dynamic AMOLED display, Snapdragon power, and Galaxy AI features built in.', 'GDP-PROD-002', 79900, null, 99, '/img/products/2.webp', 'mobiles-smartphones'],
+            ['Google Pixel 8', 'google-pixel-8', 'Google\'s pure-Android phone with the Tensor G3 chip and a camera tuned for standout low-light and portrait shots.', 'GDP-PROD-007', 69900, 74900, 100, '/img/products/3.png', 'mobiles-smartphones'],
+            ['OnePlus 12', 'oneplus-12', 'A fast, fluid flagship with Hasselblad-tuned cameras and 100W charging that tops up the battery in minutes.', 'GDP-PROD-008', 73900, null, 100, '/img/products/4.webp', 'mobiles-smartphones'],
+            ['Xiaomi 14', 'xiaomi-14', 'A pocketable flagship with Leica optics and flagship-tier Snapdragon performance at a sharp price.', 'GDP-PROD-009', 64900, null, 100, '/img/products/5.png', 'mobiles-smartphones'],
+            ['Apple MacBook Air M3', 'apple-macbook-air-m3', 'Apple\'s fanless, all-day laptop — the M3 chip handles everyday work and creative apps without breaking a sweat.', 'GDP-PROD-003', 109900, null, 80, '/img/products/6.webp', 'laptops-computers'],
+            ['Dell XPS 13', 'dell-xps-13', 'A compact ultrabook with an edge-to-edge InfinityEdge display, built for work on the go.', 'GDP-PROD-004', 99900, null, 100, '/img/products/7.webp', 'laptops-computers'],
+            ['HP Spectre x360', 'hp-spectre-x360', 'A convertible 2-in-1 with a gem-cut design that folds flat into tablet mode for sketching, notes, or streaming.', 'GDP-PROD-010', 129900, null, 91, '/img/products/8.webp', 'laptops-computers'],
+            ['Lenovo ThinkPad X1 Carbon', 'lenovo-thinkpad-x1-carbon', 'The business standard: a carbon-fibre chassis, legendary keyboard, and MIL-SPEC durability.', 'GDP-PROD-011', 159900, null, 89, '/img/products/9.webp', 'laptops-computers'],
+            ['Asus ROG Zephyrus G14', 'asus-rog-zephyrus-g14', 'A compact gaming laptop that punches well above its size, with enough GPU power for the latest titles.', 'GDP-PROD-012', 179900, null, 98, '/img/products/10.webp', 'laptops-computers'],
+            ['Sony WH-1000XM5', 'sony-wh-1000xm5', 'Industry-leading noise cancellation and all-day comfort, tuned for travel and focus.', 'GDP-PROD-005', 34900, null, 99, '/img/products/11.jpg', 'audio-headphones'],
+            ['Apple AirPods Pro 2', 'apple-airpods-pro-2', 'Adaptive noise cancellation, Transparency mode, and spatial audio in Apple\'s smallest true wireless earbuds.', 'GDP-PROD-006', 24900, null, 99, '/img/products/12.webp', 'audio-headphones'],
+            ['Bose QuietComfort Ultra', 'bose-quietcomfort-ultra', 'Bose\'s quietest headphones yet, with immersive spatial audio and plush all-day comfort.', 'GDP-PROD-013', 42900, null, 100, '/img/products/13.jpg', 'audio-headphones'],
+            ['JBL Flip 6 Speaker', 'jbl-flip-6-speaker', 'A rugged, waterproof Bluetooth speaker with punchy JBL sound for the beach, the shower, or the backyard.', 'GDP-PROD-014', 12900, null, 99, '/img/products/14.webp', 'audio-headphones'],
+            ['Sennheiser Momentum 4', 'sennheiser-momentum-4', 'Audiophile-tuned sound with up to 60 hours of battery life on a single charge.', 'GDP-PROD-015', 34900, null, 99, '/img/products/15.webp', 'audio-headphones'],
+            ['Tempered Glass Screen Protector', 'tempered-glass-screen-protector', '9H hardness, an oleophobic coating, and edge-to-edge clarity that keeps your screen scratch-free.', 'GDP-PROD-016', 999, null, 100, '/img/products/16.png', 'mobile-accessories'],
+            ['Silicone Phone Case', 'silicone-phone-case', 'A soft-touch silicone case with a microfibre lining that protects without adding bulk.', 'GDP-PROD-017', 1499, null, 99, '/img/products/17.webp', 'mobile-accessories'],
+            ['MagSafe Wireless Charger', 'magsafe-wireless-charger', 'Snap-on magnetic charging for a clean, cable-free charge every time you set your phone down.', 'GDP-PROD-018', 3999, null, 100, '/img/products/18.webp', 'mobile-accessories'],
+            ['Apple Watch Series 9', 'apple-watch-series-9', 'Apple\'s smartwatch with the new double-tap gesture, a brighter always-on display, and deep health tracking.', 'GDP-PROD-019', 39900, null, 100, '/img/products/19.webp', 'smart-watches-wearables'],
+            ['Samsung Galaxy Watch 6', 'samsung-galaxy-watch-6', 'A sleek Wear OS smartwatch with advanced sleep coaching and body composition tracking.', 'GDP-PROD-020', 32900, null, 100, '/img/products/20.jpg', 'smart-watches-wearables'],
+            ['Fitbit Charge 6', 'fitbit-charge-6', 'A slim fitness tracker with built-in GPS, heart-rate tracking, and up to a week of battery life.', 'GDP-PROD-021', 15900, null, 100, '/img/products/21.jpg', 'smart-watches-wearables'],
+            ['Canon EOS R50', 'canon-eos-r50', 'An entry-level mirrorless camera with fast autofocus, ideal for stepping up from a phone camera.', 'GDP-PROD-022', 79900, null, 100, '/img/products/22.jpg', 'cameras-photography'],
+            ['Sony Alpha ZV-E10', 'sony-alpha-zv-e10', 'A vlogging-focused mirrorless camera with a fully articulating screen and background-defocus mode.', 'GDP-PROD-023', 69900, null, 100, '/img/products/23.jpg', 'cameras-photography'],
+            ['GoPro Hero 12', 'gopro-hero-12', 'Rugged, waterproof, and stabilized — built to capture action from anywhere.', 'GDP-PROD-024', 39900, null, 100, '/img/products/24.jpg', 'cameras-photography'],
+            ['Samsung 55" QLED TV', 'samsung-55-qled-tv', 'Quantum Dot colour and a wide viewing angle bring movies and sport to life in a 55-inch frame.', 'GDP-PROD-025', 89900, null, 100, '/img/products/25.jpg', 'televisions'],
+            ['LG 65" OLED TV', 'lg-65-oled-tv', 'Self-lit OLED pixels deliver perfect blacks and infinite contrast on a 65-inch canvas.', 'GDP-PROD-026', 179900, null, 100, '/img/products/26.jpg', 'televisions'],
+            ['Sony 43" Bravia TV', 'sony-43-bravia-tv', 'Sony\'s processing engine sharpens detail and motion for a crisp, cinematic picture.', 'GDP-PROD-027', 54900, null, 100, '/img/products/27.jpg', 'televisions'],
+            ['Sony PlayStation 5', 'sony-playstation-5', 'Lightning-fast SSD loading, stunning visuals, and the DualSense controller\'s haptic feedback.', 'GDP-PROD-028', 49900, null, 100, '/img/products/28.png', 'gaming-consoles-accessories'],
+            ['Microsoft Xbox Series X', 'microsoft-xbox-series-x', 'Microsoft\'s most powerful console, built for 4K gaming at up to 120fps.', 'GDP-PROD-029', 49900, null, 100, '/img/products/29.png', 'gaming-consoles-accessories'],
+            ['Nintendo Switch OLED', 'nintendo-switch-oled', 'A vivid 7-inch OLED screen makes handheld play pop, and it still docks to the TV in seconds.', 'GDP-PROD-030', 34900, null, 100, '/img/products/30.jpg', 'gaming-consoles-accessories'],
+            ['Dyson V15 Vacuum Cleaner', 'dyson-v15-vacuum-cleaner', 'A laser reveals hidden dust while a cordless motor delivers powerful, whole-home suction.', 'GDP-PROD-031', 74900, null, 100, '/img/products/31.jpg', 'home-appliances'],
+            ['Philips Air Fryer XXL', 'philips-air-fryer-xxl', 'Rapid Air technology cooks crispy, low-oil favourites fast enough for a weeknight dinner.', 'GDP-PROD-032', 19900, null, 100, '/img/products/32.jpg', 'home-appliances'],
+            ['LG 8kg Front Load Washing Machine', 'lg-8kg-front-load-washing-machine', 'Steam-cleaning and a quiet direct-drive motor make laundry day easier.', 'GDP-PROD-033', 54900, null, 100, '/img/products/33.jpg', 'home-appliances'],
+            ['Logitech MX Master 3S Mouse', 'logitech-mx-master-3s-mouse', 'A precision mouse with silent clicks and an ultra-fast scroll wheel, built for all-day productivity.', 'GDP-PROD-034', 9900, null, 100, '/img/products/34.jpg', 'computer-accessories'],
+            ['Keychron K2 Mechanical Keyboard', 'keychron-k2-mechanical-keyboard', 'Hot-swappable mechanical switches and Bluetooth multi-device pairing in a compact 75% layout.', 'GDP-PROD-035', 8900, null, 100, '/img/products/35.jpg', 'computer-accessories'],
+            ['Dell 27" 4K Monitor', 'dell-27-4k-monitor', 'Sharp 4K clarity and accurate colour on a 27-inch panel built for work and creative editing.', 'GDP-PROD-036', 39900, null, 100, '/img/products/36.png', 'computer-accessories'],
+            ['Anker 20000mAh Power Bank', 'anker-20000mah-power-bank', 'Enough capacity for multiple full phone charges, with fast pass-through charging.', 'GDP-PROD-037', 4999, null, 100, '/img/products/37.jpg', 'power-banks-chargers'],
+            ['Apple 20W USB-C Fast Charger', 'apple-20w-usb-c-fast-charger', 'Apple\'s compact charger tops up an iPhone to 50% in about 30 minutes.', 'GDP-PROD-038', 1999, null, 100, '/img/products/38.webp', 'power-banks-chargers'],
+            ['Belkin 3-in-1 Wireless Charging Stand', 'belkin-3-in-1-wireless-charging-stand', 'Charge your phone, watch, and earbuds together from a single stand.', 'GDP-PROD-039', 9999, null, 100, '/img/products/39.png', 'power-banks-chargers'],
+            ['SanDisk 1TB Portable SSD', 'sandisk-1tb-portable-ssd', 'Pocket-sized storage with fast transfer speeds, built to survive drops and bumps on the go.', 'GDP-PROD-040', 8999, null, 100, '/img/products/40.jpg', 'storage-devices'],
+            ['Samsung 256GB microSD Card', 'samsung-256gb-microsd-card', 'High-speed storage for phones, cameras, and handheld consoles.', 'GDP-PROD-041', 2999, null, 100, '/img/products/41.png', 'storage-devices'],
+            ['WD 2TB External Hard Drive', 'wd-2tb-external-hard-drive', 'Reliable backup storage with plug-and-play simplicity for photos, videos, and files.', 'GDP-PROD-042', 6999, null, 100, '/img/products/42.jpg', 'storage-devices'],
+            ['TP-Link Archer WiFi 6 Router', 'tp-link-archer-wifi-6-router', 'Faster, more reliable Wi-Fi for a house full of devices with WiFi 6 speeds.', 'GDP-PROD-043', 12900, null, 100, '/img/products/43.jpg', 'networking-devices'],
+            ['Netgear Orbi Mesh WiFi System', 'netgear-orbi-mesh-wifi-system', 'Whole-home mesh coverage that eliminates dead zones without losing speed.', 'GDP-PROD-044', 22900, null, 100, '/img/products/44.jpg', 'networking-devices'],
+            ['TP-Link 8-Port Gigabit Switch', 'tp-link-8-port-gigabit-switch', 'Expand your wired network with eight reliable gigabit ports.', 'GDP-PROD-045', 3999, null, 100, '/img/products/45.jpg', 'networking-devices'],
+            ['Philips Hair Dryer', 'philips-hair-dryer', 'Fast-drying airflow with a cooling shot to lock in your style.', 'GDP-PROD-046', 2999, null, 100, '/img/products/46.jpg', 'personal-care-electronics'],
+            ['Oral-B Electric Toothbrush', 'oral-b-electric-toothbrush', 'A pressure sensor and timer help you brush the dentist-recommended way, every time.', 'GDP-PROD-047', 4999, null, 100, '/img/products/47.jpg', 'personal-care-electronics'],
+            ['Panasonic Beard Trimmer', 'panasonic-beard-trimmer', 'Precision blades and multiple length settings for a clean, consistent trim.', 'GDP-PROD-048', 3499, null, 100, '/img/products/48.jpg', 'personal-care-electronics'],
+            ['Motorola Video Baby Monitor', 'motorola-video-baby-monitor', 'See and hear your baby clearly with night vision and two-way audio.', 'GDP-PROD-049', 8999, null, 100, '/img/products/49.jpg', 'kids-and-baby-tech'],
+            ['Amazon Fire Kids Tablet', 'amazon-fire-kids-tablet', 'A durable, parent-controlled tablet built for young explorers, with a kid-proof case included.', 'GDP-PROD-050', 9999, null, 100, '/img/products/50.webp', 'kids-and-baby-tech'],
+            ['LeapFrog Learning Tablet', 'leapfrog-learning-tablet', 'A screen-time companion designed to teach letters, numbers, and problem-solving through play.', 'GDP-PROD-051', 5999, null, 100, '/img/products/51.webp', 'kids-and-baby-tech'],
+            ['HP LaserJet Printer', 'hp-laserjet-printer', 'Crisp, fast black-and-white printing built for the home office.', 'GDP-PROD-052', 17900, null, 100, '/img/products/52.jpg', 'office-electronics'],
+            ['Epson Portable Projector', 'epson-portable-projector', 'A compact projector that turns any wall into a big screen for movies or presentations.', 'GDP-PROD-053', 39900, null, 100, '/img/products/53.jpg', 'office-electronics'],
+            ['Logitech Webcam C920', 'logitech-webcam-c920', 'Full HD 1080p video and clear audio, built for sharp video calls and streaming.', 'GDP-PROD-054', 6999, 7999, 100, '/img/products/54.jpg', 'office-electronics'],
+        ];
+
+        foreach ($products as [$name, $slug, $description, $sku, $price, $compareAt, $inventory, $image, $categorySlug]) {
+            $category = Category::where('slug', $categorySlug)->first();
+
+            Product::updateOrCreate(['sku' => $sku], [
+                'name' => $name, 'slug' => $slug, 'description' => $description,
+                'price_cents' => $price, 'compare_at_price_cents' => $compareAt,
+                'inventory_quantity' => $inventory, 'image_url' => $image, 'category_id' => $category->id,
+            ]);
+        }
+    }
+
+    private function seedProductVariants(): void
+    {
+        // [product_sku, label, sku, price_cents, compare_at_price_cents, inventory_quantity, image_url, sort_order]
+        $variants = [
+            ['GDP-PROD-004', '256GB SSD / 8GB RAM', 'GDP-PROD-004-500', 99900, null, 80, null, 1],
+            ['GDP-PROD-004', '512GB SSD / 16GB RAM', 'GDP-PROD-004-1000', 119900, null, 58, null, 2],
+            ['GDP-PROD-004', '1TB SSD / 32GB RAM', 'GDP-PROD-004-2000', 149900, null, 22, null, 3],
+            ['GDP-PROD-005', 'Midnight Black', 'GDP-PROD-005-1KG', 34900, null, 50, null, 1],
+            ['GDP-PROD-005', 'Platinum Silver', 'GDP-PROD-005-5KG', 36900, null, 15, null, 2],
+            ['GDP-PROD-001', '256GB', 'GDP-PROD-001-V1', 109900, null, 40, '/storage/products/08qPFcHzRNRtfDWtI3xgql5mOPaCVg0fUdUWSYiN.webp', 0],
+            ['GDP-PROD-001', '512GB', 'GDP-PROD-001-V2', 129900, null, 40, '/storage/products/PT66ONnzX8Kml67rgAB9wU8BYBRxvCSTkZ8hinSm.webp', 1],
+            ['GDP-PROD-002', '256GB', 'GDP-PROD-002-V1', 89900, null, 40, null, 1],
+            ['GDP-PROD-003', '16GB / 512GB', 'GDP-PROD-003-V1', 139900, null, 40, null, 1],
+            ['GDP-PROD-010', '16GB / 1TB', 'GDP-PROD-010-V1', 159900, null, 40, null, 1],
+            ['GDP-PROD-017', 'Ocean Blue', 'GDP-PROD-017-V1', 1499, null, 40, null, 1],
+            ['GDP-PROD-017', 'Blossom Pink', 'GDP-PROD-017-V2', 1499, null, 40, null, 2],
+            ['GDP-PROD-019', '45mm', 'GDP-PROD-019-V1', 42900, null, 40, null, 1],
+            ['GDP-PROD-021', 'Coral', 'GDP-PROD-021-V1', 15900, null, 40, null, 1],
+            ['GDP-PROD-028', 'Digital Edition', 'GDP-PROD-028-V1', 44900, null, 40, '/img/products/28-v15.png', 1],
+            ['GDP-PROD-030', 'Neon Red / Neon Blue', 'GDP-PROD-030-V1', 34900, null, 40, null, 1],
+            ['GDP-PROD-034', 'Pale Grey', 'GDP-PROD-034-V1', 9900, null, 40, '/img/products/34-v17.jpg', 1],
+        ];
+
+        foreach ($variants as [$productSku, $label, $sku, $price, $compareAt, $inventory, $image, $sort]) {
             $product = Product::where('sku', $productSku)->first();
             if (! $product) {
                 continue;
             }
 
-            foreach ($variants as $variant) {
-                $product->variants()->updateOrCreate(['sku' => $variant['sku']], $variant);
-            }
+            $product->variants()->updateOrCreate(['sku' => $sku], [
+                'label' => $label, 'price_cents' => $price, 'compare_at_price_cents' => $compareAt,
+                'inventory_quantity' => $inventory, 'image_url' => $image, 'sort_order' => $sort,
+            ]);
         }
     }
 }
