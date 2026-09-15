@@ -46,6 +46,23 @@
 .pay-card em{margin-left:auto;color:var(--muted);font:11px 'Okra',sans-serif;font-style:normal}
 .order-modal .order-receipt{margin:0 0 12px}
 .support-modal{max-width:460px}
+.product-modal{max-width:560px}
+.pm-gallery{margin:34px 0 14px}
+.pm-main-img{position:relative;height:280px;border-radius:11px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;font-size:64px;overflow:hidden}
+.pm-main-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:16px;background:#fff}
+.pm-thumbs{display:flex;gap:8px;margin-top:8px;overflow-x:auto}
+.pm-thumb{flex:0 0 auto;width:56px;height:56px;padding:0;border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden;cursor:pointer}
+.pm-thumb img{width:100%;height:100%;object-fit:contain}
+.pm-thumb.active{border-color:var(--green);box-shadow:0 0 0 2px var(--lime)}
+.product-modal h2{margin-bottom:14px}
+.product-modal .pcard-variant{margin-top:6px}
+.pm-price{margin:10px 0;font-size:20px;font-weight:700}
+.pm-price .on-sale{color:#c02b0a;margin-right:8px}
+.pm-price s{color:var(--muted);font-weight:400}
+.pm-desc{color:var(--muted);font-size:14px;line-height:1.5;margin:0 0 18px;white-space:pre-line}
+.pm-stepper{width:fit-content;margin:0 auto}
+.pm-stepper button{width:44px;height:42px;font-size:20px}
+.pm-stepper b{min-width:28px;font-size:16px}
 .support-list{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:8px;max-height:46vh;overflow-y:auto}
 .support-list button{display:block;width:100%;text-align:left;padding:11px 13px;border:1px solid var(--line);background:white;cursor:pointer}
 .support-list button:hover{border-color:var(--green,#3f7d43)}

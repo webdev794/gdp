@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 5.2.1
+-- version 5.2.3
 -- https://www.phpmyadmin.net/
 --
--- Host: 127.0.0.1
--- Generation Time: Sep 14, 2026 at 06:41 AM
--- Server version: 10.4.32-MariaDB
--- PHP Version: 8.2.12
+-- Host: localhost:3306
+-- Generation Time: Sep 15, 2026 at 01:00 PM
+-- Server version: 10.6.28-MariaDB
+-- PHP Version: 8.4.24
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `gdp`
+-- Database: `caretest_gdp`
 --
 
 -- --------------------------------------------------------
@@ -64,7 +64,9 @@ INSERT INTO `addresses` (`id`, `user_id`, `label`, `name`, `line1`, `line2`, `ci
 (13, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-11 02:51:54', '2026-09-11 02:51:54'),
 (14, 15, 'Home', 'Test User', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-11 04:19:57', '2026-09-11 04:19:57'),
 (15, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-11 04:35:06', '2026-09-11 04:35:06'),
-(16, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-11 07:31:04', '2026-09-11 07:31:04');
+(16, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-11 07:31:04', '2026-09-11 07:31:04'),
+(17, 15, 'Home', 'Test User', 'Jan Marg', NULL, 'Mohali', 'Punjab', '160059', 30.7128000, 76.7242000, 0, '2026-09-15 07:53:25', '2026-09-15 07:53:25'),
+(18, 32, 'Home', 'Suraj Kumar', 'Plot C-205, Phase 8B, Sector 74', NULL, 'Mohali', 'Punjab', '160055', NULL, NULL, 1, '2026-09-15 08:15:48', '2026-09-15 08:15:48');
 
 -- --------------------------------------------------------
 
@@ -111,7 +113,7 @@ INSERT INTO `banners` (`id`, `image_url`, `headline`, `category_slug`, `link_url
 (1, 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=2700/layout-engine/2026-01/Frame-1437256605-2-2.jpg', NULL, 'fresh-produce', NULL, 'hero', 1, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
 (2, 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=720/layout-engine/2023-07/pharmacy-WEB.jpg', NULL, 'personal-care', NULL, 'strip', 2, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
 (3, 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=720/layout-engine/2026-01/pet_crystal_WEB-1.png', NULL, 'home-and-kitchen', NULL, 'strip', 3, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(4, 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=720/layout-engine/2026-01/baby_crystal_WEB-1.png', NULL, 'baby-care', NULL, 'strip', 4, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49');
+(4, 'https://cdn.grofers.com/cdn-cgi/image/f=auto,fit=scale-down,q=70,metadata=none,w=720/layout-engine/2026-01/baby_crystal_WEB-1.png', NULL, 'baby-care', NULL, 'strip', 4, 1, '2026-09-09 01:12:49', '2026-09-15 08:02:37');
 
 -- --------------------------------------------------------
 
@@ -471,7 +473,9 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 (62, '2026_09_11_020000_add_reversed_at_to_gift_card_redemptions_table', 15),
 (63, '2026_09_11_030000_add_cancellation_reason_to_orders_table', 16),
 (64, '2026_09_11_040000_add_items_returned_at_to_orders_table', 17),
-(65, '2026_09_11_050000_add_internal_to_support_messages_table', 18);
+(65, '2026_09_11_050000_add_internal_to_support_messages_table', 18),
+(66, '2026_09_15_180000_add_attachment_url_to_support_messages_table', 19),
+(67, '2026_09_15_190000_create_product_images_table', 19);
 
 -- --------------------------------------------------------
 
@@ -543,7 +547,8 @@ INSERT INTO `orders` (`id`, `user_id`, `store_id`, `status`, `cancelled_by`, `ca
 (22, 17, 1, 'completed', NULL, NULL, NULL, '2026-09-11 03:48:04', NULL, NULL, '2026-09-11 03:48:05', 0, 'testtest', NULL, NULL, 'Sam Rider', 16, NULL, '2026-09-11 03:47:50', NULL, 0, 'paid', 'card', 'pi_3UEPiZ0B2YCt230S1wDMd2kb', NULL, 0, 3894, 345, 0, 99, 0, 0, 4338, '{\"id\":13,\"user_id\":17,\"label\":\"Home\",\"name\":\"Testcaresort\",\"line1\":\"34 Jan Marg\",\"line2\":null,\"city\":\"Mohali\",\"state\":\"PB\",\"postal_code\":\"160061\",\"latitude\":30.7149794,\"longitude\":76.7227993,\"is_default\":false,\"created_at\":\"2026-09-11T08:21:54.000000Z\",\"updated_at\":\"2026-09-11T08:21:54.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-11 02:51:54', '2026-09-11 03:48:05'),
 (23, 15, 1, 'cancelled', 'admin', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 'cancelled', 'cod', NULL, NULL, 0, 1118, 99, 299, 99, 0, 0, 1615, '{\"id\":14,\"user_id\":15,\"label\":\"Home\",\"name\":\"Test User\",\"line1\":\"34 Jan Marg\",\"line2\":null,\"city\":\"Mohali\",\"state\":\"PB\",\"postal_code\":\"160061\",\"latitude\":30.7149794,\"longitude\":76.7227993,\"is_default\":false,\"created_at\":\"2026-09-11T09:49:57.000000Z\",\"updated_at\":\"2026-09-11T09:49:57.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-11 04:19:58', '2026-09-11 04:34:49'),
 (25, 17, 1, 'completed', NULL, NULL, NULL, '2026-09-11 04:41:48', NULL, '2026-09-11 04:41:39', '2026-09-11 04:41:49', 0, 'test order', NULL, NULL, 'Sam Rider', 16, NULL, NULL, NULL, 0, 'paid', 'cod', NULL, NULL, 0, 1048, 93, 299, 99, 0, 0, 1539, '{\"id\":15,\"user_id\":17,\"label\":\"Home\",\"name\":\"Testcaresort\",\"line1\":\"34 Jan Marg\",\"line2\":null,\"city\":\"Mohali\",\"state\":\"PB\",\"postal_code\":\"160061\",\"latitude\":30.7149794,\"longitude\":76.7227993,\"is_default\":false,\"created_at\":\"2026-09-11T10:05:06.000000Z\",\"updated_at\":\"2026-09-11T10:05:06.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-11 04:35:06', '2026-09-11 04:41:49'),
-(26, 17, 1, 'cancelled', 'rider', 'no pay', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Sam Rider', 16, NULL, NULL, NULL, 0, 'cancelled', 'cod', NULL, NULL, 0, 449, 40, 299, 99, 199, 0, 1086, '{\"id\":16,\"user_id\":17,\"label\":\"Home\",\"name\":\"Testcaresort\",\"line1\":\"34 Jan Marg\",\"line2\":null,\"city\":\"Mohali\",\"state\":\"PB\",\"postal_code\":\"160061\",\"latitude\":30.7149794,\"longitude\":76.7227993,\"is_default\":false,\"created_at\":\"2026-09-11T13:01:04.000000Z\",\"updated_at\":\"2026-09-11T13:01:04.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-11 07:31:05', '2026-09-11 07:37:27');
+(26, 17, 1, 'cancelled', 'rider', 'no pay', '2026-09-15 07:54:39', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Sam Rider', 16, NULL, NULL, NULL, 0, 'cancelled', 'cod', NULL, NULL, 0, 449, 40, 299, 99, 199, 0, 1086, '{\"id\":16,\"user_id\":17,\"label\":\"Home\",\"name\":\"Testcaresort\",\"line1\":\"34 Jan Marg\",\"line2\":null,\"city\":\"Mohali\",\"state\":\"PB\",\"postal_code\":\"160061\",\"latitude\":30.7149794,\"longitude\":76.7227993,\"is_default\":false,\"created_at\":\"2026-09-11T13:01:04.000000Z\",\"updated_at\":\"2026-09-11T13:01:04.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-11 07:31:05', '2026-09-15 07:54:39'),
+(27, 15, 1, 'completed', NULL, NULL, NULL, NULL, NULL, '2026-09-15 08:11:41', '2026-09-15 08:11:47', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 'paid', 'cod', NULL, NULL, 0, 3153, 280, 299, 99, 0, 0, 3831, '{\"id\":17,\"user_id\":15,\"label\":\"Home\",\"name\":\"Test User\",\"line1\":\"Jan Marg\",\"line2\":null,\"city\":\"Mohali\",\"state\":\"Punjab\",\"postal_code\":\"160059\",\"latitude\":30.7128,\"longitude\":76.7242,\"is_default\":false,\"created_at\":\"2026-09-15T07:53:25.000000Z\",\"updated_at\":\"2026-09-15T07:53:25.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-15 07:53:25', '2026-09-15 08:11:47');
 
 -- --------------------------------------------------------
 
@@ -600,7 +605,14 @@ INSERT INTO `order_items` (`id`, `order_id`, `product_id`, `product_variant_id`,
 (26, 23, 8, NULL, 'Greek Yogurt', 'GDP-PROD-010', NULL, 1, 519, 649, 519, '2026-09-11 04:19:58', '2026-09-11 04:19:58'),
 (27, 25, 9, NULL, 'Sharp Cheddar', 'GDP-PROD-011', NULL, 1, 649, NULL, 649, '2026-09-11 04:35:06', '2026-09-11 04:35:06'),
 (28, 25, 10, NULL, 'Unsalted Butter', 'GDP-PROD-012', NULL, 1, 399, NULL, 399, '2026-09-11 04:35:06', '2026-09-11 04:35:06'),
-(29, 26, 2, NULL, 'Gala Apples', 'GDP-PROD-002', NULL, 1, 449, 561, 449, '2026-09-11 07:31:05', '2026-09-11 07:31:05');
+(29, 26, 2, NULL, 'Gala Apples', 'GDP-PROD-002', NULL, 1, 449, 561, 449, '2026-09-11 07:31:05', '2026-09-11 07:31:05'),
+(30, 27, 36, NULL, 'Crispy Fries', 'GDP-PROD-036', NULL, 1, 399, NULL, 399, '2026-09-15 07:53:25', '2026-09-15 07:53:25'),
+(31, 27, 3, NULL, 'Baby Spinach', 'GDP-PROD-007', NULL, 1, 349, NULL, 349, '2026-09-15 07:53:25', '2026-09-15 07:53:25'),
+(32, 27, 2, NULL, 'Gala Apples', 'GDP-PROD-002', NULL, 1, 449, 561, 449, '2026-09-15 07:53:25', '2026-09-15 07:53:25'),
+(33, 27, 5, NULL, 'Hass Avocados', 'GDP-PROD-009', NULL, 1, 599, NULL, 599, '2026-09-15 07:53:25', '2026-09-15 07:53:25'),
+(34, 27, 1, NULL, 'Organic Bananas', 'GDP-PROD-001', NULL, 1, 299, NULL, 299, '2026-09-15 07:53:25', '2026-09-15 07:53:25'),
+(35, 27, 4, NULL, 'Roma Tomatoes', 'GDP-PROD-008', NULL, 2, 279, NULL, 558, '2026-09-15 07:53:25', '2026-09-15 07:53:25'),
+(36, 27, 55, NULL, 'Organic Lemon(pcs of 6)', 'LM343235', NULL, 1, 500, 600, 500, '2026-09-15 07:53:25', '2026-09-15 07:53:25');
 
 -- --------------------------------------------------------
 
@@ -755,7 +767,24 @@ INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `n
 (145, 'App\\Models\\User', 17, 'customer', '6a7627c7ab0b89a2ae1264fff32b48b28d2c3e25d7c4409ed3d654b75421e9f5', '[\"*\"]', '2026-09-11 07:36:03', NULL, '2026-09-11 07:30:49', '2026-09-11 07:36:03'),
 (146, 'App\\Models\\User', 15, 'customer', 'cf685902bb90e6db866250f19b7cea477bf72f49313c39d4da692a2650d126ad', '[\"*\"]', '2026-09-11 07:36:39', NULL, '2026-09-11 07:36:05', '2026-09-11 07:36:39'),
 (147, 'App\\Models\\User', 16, 'customer', '71aad9a79dabcb0d72947f46a1fbca9b098074322f975dc99fb2cd2ea81d6c8f', '[\"*\"]', '2026-09-11 07:37:03', NULL, '2026-09-11 07:36:42', '2026-09-11 07:37:03'),
-(148, 'App\\Models\\User', 15, 'customer', '453edb1cb275cb32c85ccf96398164691e5263104899db20982cfae888fd12dc', '[\"*\"]', '2026-09-13 23:11:10', NULL, '2026-09-11 07:37:06', '2026-09-13 23:11:10');
+(148, 'App\\Models\\User', 15, 'customer', '453edb1cb275cb32c85ccf96398164691e5263104899db20982cfae888fd12dc', '[\"*\"]', '2026-09-13 23:11:10', NULL, '2026-09-11 07:37:06', '2026-09-13 23:11:10'),
+(151, 'App\\Models\\User', 15, 'customer', '2eb22ba8df083b982777d2e90b1c63b4d5fab3e725fe48030283294de3d55e31', '[\"*\"]', '2026-09-14 11:08:04', NULL, '2026-09-14 04:53:07', '2026-09-14 11:08:04'),
+(152, 'App\\Models\\User', 15, 'customer', '3ee7cc668201ee2ffa92a85e3545a10dd7a34fd4b23fa6226622976311616029', '[\"*\"]', '2026-09-14 13:35:53', NULL, '2026-09-14 11:15:21', '2026-09-14 13:35:53'),
+(153, 'App\\Models\\User', 31, 'customer', '3af2dafbaeb918464b640c112fd3988920344bd95310f80f94be46710a9fb4e6', '[\"*\"]', NULL, NULL, '2026-09-14 12:12:49', '2026-09-14 12:12:49'),
+(154, 'App\\Models\\User', 31, 'customer', '42402314617db2b765b7dfab560fc8b93dad1a3e4904328b3a06ccb4cb8ef9a8', '[\"*\"]', NULL, NULL, '2026-09-14 12:12:57', '2026-09-14 12:12:57'),
+(155, 'App\\Models\\User', 32, 'customer', '1d7b3ec6d23f1e0e7c4af5a666373385d7ac062f15a01dd44cc6db9d697e1f07', '[\"*\"]', NULL, NULL, '2026-09-14 12:39:49', '2026-09-14 12:39:49'),
+(156, 'App\\Models\\User', 32, 'customer', 'd8c5fc6cc17f09dcbec0d097560db72377d547a5f2c81baf7cc651470e86916b', '[\"*\"]', NULL, NULL, '2026-09-14 12:39:54', '2026-09-14 12:39:54'),
+(157, 'App\\Models\\User', 33, 'customer', 'f3d94d67be310da83b1caa847943fed6680014c6127825dc0260894d158e9c6f', '[\"*\"]', NULL, NULL, '2026-09-14 12:45:28', '2026-09-14 12:45:28'),
+(158, 'App\\Models\\User', 33, 'customer', '219f49b3cb0b1dd43eae5761e68facdcd7785d2caf7355716c7f6b6b332112f1', '[\"*\"]', NULL, NULL, '2026-09-14 12:46:37', '2026-09-14 12:46:37'),
+(159, 'App\\Models\\User', 33, 'customer', 'cf814131357b9d1d581233f04f5acde23157fb0b0d2a947145dc563a3daa5981', '[\"*\"]', '2026-09-15 07:43:30', NULL, '2026-09-14 13:11:18', '2026-09-15 07:43:30'),
+(160, 'App\\Models\\User', 15, 'customer', 'a828ee4dc74afed5beff3a13ec412ca727f65a9be4775a9debc3fad1c4aba2cf', '[\"*\"]', '2026-09-15 11:27:01', NULL, '2026-09-15 07:09:36', '2026-09-15 11:27:01'),
+(161, 'App\\Models\\User', 17, 'customer', '80741ae6b90923f074d7fcc37465a055916415cfff6ddc8178e799e1e01daa1c', '[\"*\"]', '2026-09-15 08:25:14', NULL, '2026-09-15 07:38:05', '2026-09-15 08:25:14'),
+(162, 'App\\Models\\User', 33, 'customer', '3e0b5d75e8bc8e0882d1d61d4fa041b410df945eb3150628d3a2c956f6a556d3', '[\"*\"]', '2026-09-15 13:00:22', NULL, '2026-09-15 07:57:11', '2026-09-15 13:00:22'),
+(163, 'App\\Models\\User', 32, 'customer', 'c1546822494daf688e14c3c7aab5c9d93e26bc1c82fe4dafb75cfeaa780c3947', '[\"*\"]', '2026-09-15 08:13:32', NULL, '2026-09-15 08:13:32', '2026-09-15 08:13:32'),
+(164, 'App\\Models\\User', 32, 'customer', 'ae8aba79123d9c7e6ccf71db5520d9c41400e07b0af71dca0b042df187ab4884', '[\"*\"]', '2026-09-15 08:15:48', NULL, '2026-09-15 08:15:47', '2026-09-15 08:15:48'),
+(165, 'App\\Models\\User', 32, 'customer', '82b2915b39778c8fbd08c073a4725fbc3ee6923c12c877c818b5cef3b501a081', '[\"*\"]', '2026-09-15 08:48:24', NULL, '2026-09-15 08:48:24', '2026-09-15 08:48:24'),
+(166, 'App\\Models\\User', 32, 'customer', 'e2b3d5e45d0c2c96edb4b524824bf88a214b8357b29f38033fad06e7ef6ad40e', '[\"*\"]', '2026-09-15 09:15:23', NULL, '2026-09-15 09:15:22', '2026-09-15 09:15:23'),
+(168, 'App\\Models\\User', 15, 'customer', '8e577b619cbb52948fa7f9207202b4aba0ef72fc3d3c36ad03658a89384707a7', '[\"*\"]', '2026-09-15 13:00:19', NULL, '2026-09-15 12:19:44', '2026-09-15 13:00:19');
 
 -- --------------------------------------------------------
 
@@ -784,11 +813,11 @@ CREATE TABLE `products` (
 --
 
 INSERT INTO `products` (`id`, `category_id`, `name`, `slug`, `description`, `sku`, `price_cents`, `compare_at_price_cents`, `inventory_quantity`, `image_url`, `is_active`, `created_at`, `updated_at`) VALUES
-(1, 1, 'Organic Bananas', 'organic-bananas', NULL, 'GDP-PROD-001', 299, NULL, 100, 'https://www.themealdb.com/images/ingredients/Banana-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(2, 1, 'Gala Apples', 'gala-apples', NULL, 'GDP-PROD-002', 449, 561, 99, 'https://www.themealdb.com/images/ingredients/Apples-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-11 07:31:05'),
-(3, 1, 'Baby Spinach', 'baby-spinach', NULL, 'GDP-PROD-007', 349, NULL, 100, 'https://www.themealdb.com/images/ingredients/Spinach-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(4, 1, 'Roma Tomatoes', 'roma-tomatoes', NULL, 'GDP-PROD-008', 279, NULL, 100, 'https://www.themealdb.com/images/ingredients/Tomato-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(5, 1, 'Hass Avocados', 'hass-avocados', NULL, 'GDP-PROD-009', 599, NULL, 100, 'https://www.themealdb.com/images/ingredients/Avocado-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
+(1, 1, 'Organic Bananas', 'organic-bananas', NULL, 'GDP-PROD-001', 299, NULL, 99, 'https://www.themealdb.com/images/ingredients/Banana-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-15 07:53:25'),
+(2, 1, 'Gala Apples', 'gala-apples', NULL, 'GDP-PROD-002', 449, 561, 98, 'https://www.themealdb.com/images/ingredients/Apples-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-15 07:53:25'),
+(3, 1, 'Baby Spinach', 'baby-spinach', NULL, 'GDP-PROD-007', 349, NULL, 99, 'https://www.themealdb.com/images/ingredients/Spinach-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-15 07:53:25'),
+(4, 1, 'Roma Tomatoes', 'roma-tomatoes', NULL, 'GDP-PROD-008', 279, NULL, 98, 'https://www.themealdb.com/images/ingredients/Tomato-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-15 07:53:25'),
+(5, 1, 'Hass Avocados', 'hass-avocados', NULL, 'GDP-PROD-009', 599, NULL, 99, 'https://www.themealdb.com/images/ingredients/Avocado-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-15 07:53:25'),
 (6, 2, 'Large Brown Eggs', 'large-brown-eggs', NULL, 'GDP-PROD-003', 599, NULL, 80, 'https://www.themealdb.com/images/ingredients/Egg-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-11 04:19:58'),
 (7, 2, 'Whole Milk', 'whole-milk', NULL, 'GDP-PROD-004', 429, NULL, 100, 'https://www.themealdb.com/images/ingredients/Milk-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
 (8, 2, 'Greek Yogurt', 'greek-yogurt', NULL, 'GDP-PROD-010', 519, 649, 91, 'https://www.themealdb.com/images/ingredients/Yogurt-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-11 04:19:58'),
@@ -819,7 +848,7 @@ INSERT INTO `products` (`id`, `category_id`, `name`, `slug`, `description`, `sku
 (33, 9, 'Pork Sausages', 'pork-sausages', NULL, 'GDP-PROD-033', 649, NULL, 100, NULL, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
 (34, 10, 'Frozen Peas', 'frozen-peas', NULL, 'GDP-PROD-034', 249, NULL, 100, NULL, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
 (35, 10, 'Vanilla Ice Cream', 'vanilla-ice-cream', NULL, 'GDP-PROD-035', 549, NULL, 100, NULL, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(36, 10, 'Crispy Fries', 'crispy-fries', NULL, 'GDP-PROD-036', 399, NULL, 100, NULL, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
+(36, 10, 'Crispy Fries', 'crispy-fries', NULL, 'GDP-PROD-036', 399, NULL, 99, NULL, 1, '2026-09-09 01:12:49', '2026-09-15 07:53:25'),
 (37, 11, 'Ground Coffee', 'ground-coffee', NULL, 'GDP-PROD-037', 899, NULL, 100, 'https://www.themealdb.com/images/ingredients/Coffee-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
 (38, 11, 'Green Tea Bags', 'green-tea-bags', NULL, 'GDP-PROD-038', 449, NULL, 100, NULL, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
 (39, 11, 'Masala Chai', 'masala-chai', NULL, 'GDP-PROD-039', 399, NULL, 100, NULL, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
@@ -837,7 +866,30 @@ INSERT INTO `products` (`id`, `category_id`, `name`, `slug`, `description`, `sku
 (51, 15, 'Baby Lotion', 'baby-lotion', NULL, 'GDP-PROD-051', 449, NULL, 100, NULL, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
 (52, 16, 'Paper Towels', 'paper-towels', NULL, 'GDP-PROD-052', 399, NULL, 100, NULL, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
 (53, 16, 'Trash Bags', 'trash-bags', NULL, 'GDP-PROD-053', 349, NULL, 100, NULL, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(54, 16, 'Aluminium Foil', 'aluminium-foil', NULL, 'GDP-PROD-054', 299, NULL, 100, NULL, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49');
+(54, 16, 'Aluminium Foil', 'aluminium-foil', NULL, 'GDP-PROD-054', 299, NULL, 100, NULL, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
+(55, 1, 'Organic Lemon', 'organic-lemon', 'Fresh lemons are vibrant, smooth, and citrus-scented oval fruits packed with a sharp, clean sourness and rich Vitamin C content.', 'LM343235', 100, 200, 99, 'https://testcaresortwork.co.in/gdp/storage/products/Qt94qxoNXDPjTBdIiTJPUUn9x0qw8Tdy1T6gGhXl.jpg', 1, '2026-09-15 07:49:05', '2026-09-15 12:57:53');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `product_images`
+--
+
+CREATE TABLE `product_images` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `product_id` bigint(20) UNSIGNED NOT NULL,
+  `image_url` varchar(255) NOT NULL,
+  `sort_order` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `product_images`
+--
+
+INSERT INTO `product_images` (`id`, `product_id`, `image_url`, `sort_order`, `created_at`, `updated_at`) VALUES
+(1, 3, '/api/media/file/products/fF0T0qtbiZ4lq58tVHgfpldcdHu8RQnPOhp1Usf5.webp', 0, '2026-09-15 12:47:42', '2026-09-15 12:47:42');
 
 -- --------------------------------------------------------
 
@@ -869,7 +921,9 @@ INSERT INTO `product_variants` (`id`, `product_id`, `label`, `sku`, `price_cents
 (2, 7, '1 L', 'GDP-PROD-004-1000', 429, NULL, 58, NULL, 2, 1, '2026-09-09 01:12:49', '2026-09-10 05:14:45'),
 (3, 7, '2 L', 'GDP-PROD-004-2000', 799, NULL, 22, NULL, 3, 1, '2026-09-09 01:12:49', '2026-09-10 05:14:45'),
 (4, 11, '1 kg', 'GDP-PROD-005-1KG', 699, NULL, 50, NULL, 1, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(5, 11, '5 kg', 'GDP-PROD-005-5KG', 3199, NULL, 15, NULL, 2, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49');
+(5, 11, '5 kg', 'GDP-PROD-005-5KG', 3199, NULL, 15, NULL, 2, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
+(6, 55, 'Set of 6 pcs', 'LMsds34', 500, 1000, 10, '/api/media/file/products/NsUHCOle01BBDwoflEIodg5E1skGknypHCFLPMrp.webp', 0, 1, '2026-09-15 08:23:58', '2026-09-15 12:57:53'),
+(7, 55, 'Set of 10 pcs', 'LM8734', 800, 2000, 10, '/api/media/file/products/VLjrKow3oLxGhjWmpL87skLNFbSMXanSipGxz7pA.jpg', 1, 1, '2026-09-15 08:23:58', '2026-09-15 12:57:53');
 
 -- --------------------------------------------------------
 
@@ -1016,7 +1070,7 @@ CREATE TABLE `settings` (
 --
 
 INSERT INTO `settings` (`key`, `value`, `created_at`, `updated_at`) VALUES
-('branding', '{\"v\":{\"store_name\":\"Grocerly\",\"tagline\":\"Fresh groceries, less fuss\",\"logo_url\":null,\"favicon_url\":\"http:\\/\\/127.0.0.1:8000\\/storage\\/products\\/IylK58VcMqgCgj81gvBdM7HMnHi9XTQAiM9oKlEP.jpg\",\"theme\":\"light\",\"layout_width\":\"boxed\",\"color_brand\":\"#1f7a3d\",\"color_accent\":\"#ffd23f\",\"color_heading\":\"#18211c\"}}', '2026-09-09 01:31:48', '2026-09-09 01:31:48'),
+('branding', '{\"v\":{\"store_name\":\"Grocerly\",\"tagline\":\"Fresh groceries, less fuss\",\"logo_url\":null,\"favicon_url\":\"https:\\/\\/testcaresortwork.co.in\\/gdp\\/storage\\/products\\/9jiGvL5aS8S4aq6nA5rE5rirTIJ6UgCZ9apxaZf9.png\",\"theme\":\"light\",\"layout_width\":\"boxed\",\"color_brand\":\"#1f7a3d\",\"color_accent\":\"#ffd23f\",\"color_heading\":\"#18211c\"}}', '2026-09-09 01:31:48', '2026-09-15 07:16:03'),
 ('checkout_fees', '{\"v\":{\"delivery_mode\":\"fixed\",\"delivery_fee_cents\":299,\"delivery_near_fee_cents\":199,\"delivery_far_fee_cents\":599,\"free_delivery_threshold_cents\":3500,\"handling_fee_cents\":99,\"small_cart_fee_cents\":199,\"small_cart_min_cents\":1000,\"tax_rate_bps\":887}}', '2026-09-10 07:26:50', '2026-09-10 07:26:50'),
 ('cod_enabled', '{\"v\":true}', '2026-09-10 07:26:49', '2026-09-10 07:26:49'),
 ('footer', '{\"v\":{\"copyright\":\"\\u00a9 {year} Grocerly\",\"app_store_url\":\"https:\\/\\/apps.apple.com\\/app\\/grocerly-demo\",\"play_store_url\":\"https:\\/\\/play.google.com\\/store\\/apps\\/details?id=com.grocerly.demo\",\"socials\":{\"facebook\":\"https:\\/\\/facebook.com\\/grocerly\",\"x\":\"https:\\/\\/x.com\\/grocerly\",\"instagram\":\"https:\\/\\/instagram.com\\/grocerly\",\"linkedin\":\"https:\\/\\/www.linkedin.com\\/company\\/grocerly\",\"youtube\":\"https:\\/\\/www.youtube.com\\/@grocerly\"},\"links\":[]}}', '2026-09-09 01:12:49', '2026-09-09 01:12:49');
@@ -1100,6 +1154,7 @@ CREATE TABLE `support_messages` (
   `is_staff` tinyint(1) NOT NULL DEFAULT 0,
   `internal` tinyint(1) NOT NULL DEFAULT 0,
   `body` text NOT NULL,
+  `attachment_url` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1108,42 +1163,46 @@ CREATE TABLE `support_messages` (
 -- Dumping data for table `support_messages`
 --
 
-INSERT INTO `support_messages` (`id`, `support_thread_id`, `user_id`, `is_staff`, `internal`, `body`, `created_at`, `updated_at`) VALUES
-(1, 1, NULL, 0, 0, 'Support request opened — item missing.', '2026-09-09 02:28:35', '2026-09-09 02:28:35'),
-(2, 1, 17, 0, 0, 'Hi', '2026-09-09 02:28:35', '2026-09-09 02:28:35'),
-(3, 1, 15, 1, 0, 'Hi', '2026-09-09 02:39:52', '2026-09-09 02:39:52'),
-(4, 1, 15, 1, 0, 'We have noticed that your order is just packed and ready to be delivered. Please elaborate your issue.', '2026-09-09 02:40:31', '2026-09-09 02:40:31'),
-(5, 2, NULL, 0, 0, 'Your delivery rider started a chat about order #3.', '2026-09-09 04:34:33', '2026-09-09 04:34:33'),
-(6, 2, 16, 1, 0, 'Hi, I have picked up order.', '2026-09-09 04:34:46', '2026-09-09 04:34:46'),
-(7, 2, 17, 0, 0, 'Ok.', '2026-09-09 05:00:07', '2026-09-09 05:00:07'),
-(8, 1, 15, 1, 0, 'Delivered.', '2026-09-09 05:07:13', '2026-09-09 05:07:13'),
-(9, 3, NULL, 0, 0, 'Support request opened about order #12 — item missing.', '2026-09-10 07:40:15', '2026-09-10 07:40:15'),
-(10, 3, 17, 0, 0, 'hi', '2026-09-10 07:40:15', '2026-09-10 07:40:15'),
-(11, 3, 15, 1, 0, 'hi', '2026-09-10 07:41:12', '2026-09-10 07:41:12'),
-(12, 3, 15, 1, 0, 'Why you rated 3 stars?', '2026-09-11 00:03:25', '2026-09-11 00:03:25'),
-(13, 3, 17, 0, 0, 'I want full refund for order.', '2026-09-11 00:11:21', '2026-09-11 00:11:21'),
-(14, 3, 15, 1, 0, 'It was cash on delivery order. So, online refund not possible.', '2026-09-11 00:12:12', '2026-09-11 00:12:12'),
-(15, 3, 15, 1, 0, 'We can give a Gift card of $23.50, which you can use in next order.', '2026-09-11 00:14:19', '2026-09-11 00:14:19'),
-(16, 3, NULL, 1, 0, 'Store credit $23.50 issued.\nGift card: GC-5FSZ-EYUA\nPassword: t8cre7am\nEnter both at checkout on your next order to use the balance.', '2026-09-11 00:14:43', '2026-09-11 00:14:43'),
-(17, 3, 17, 0, 0, 'Ok, I am marking chat to 5 star rating.', '2026-09-11 00:15:46', '2026-09-11 00:15:46'),
-(18, 3, 17, 0, 0, 'I tried to use gift card on next order, however it say gift card and password not matching.', '2026-09-11 00:18:51', '2026-09-11 00:18:51'),
-(19, 3, 15, 1, 0, 'Please use these values: Gift card: GC-5FSZ-EYUA Password: t8cre7am', '2026-09-11 00:20:12', '2026-09-11 00:20:12'),
-(20, 4, NULL, 0, 0, 'Support request opened about order #3 — wrong item.', '2026-09-11 01:43:53', '2026-09-11 01:43:53'),
-(21, 4, 17, 0, 0, 'Need refund.', '2026-09-11 01:43:53', '2026-09-11 01:43:53'),
-(22, 4, 17, 0, 0, 'First item refund.', '2026-09-11 01:44:03', '2026-09-11 01:44:03'),
-(23, 4, NULL, 1, 0, 'Refund of $20.76 issued — Refunded..', '2026-09-11 01:44:49', '2026-09-11 01:44:49'),
-(24, 5, NULL, 0, 0, 'Support request opened about order #25 — item damaged.', '2026-09-11 04:42:48', '2026-09-11 04:42:48'),
-(25, 5, 17, 0, 0, 'refund.', '2026-09-11 04:42:48', '2026-09-11 04:42:48'),
-(26, 5, NULL, 1, 0, 'Store credit $6.49 issued for the missing item(s): Sharp Cheddar.\nGift card: GC-56UL-WBTS\nPassword: cb3hnzcr\nEnter both at checkout on your next order to use the balance.', '2026-09-11 04:43:40', '2026-09-11 04:43:40'),
-(27, 5, 15, 1, 0, 'Done.', '2026-09-11 04:44:12', '2026-09-11 04:44:12'),
-(28, 4, NULL, 1, 0, 'Refund of $5.00 issued.', '2026-09-11 05:05:26', '2026-09-11 05:05:26'),
-(29, 4, NULL, 1, 1, 'Refund reason: Testing message.', '2026-09-11 05:05:26', '2026-09-11 05:05:26'),
-(30, 4, NULL, 1, 0, 'Refund of $0.82 issued.', '2026-09-11 05:06:42', '2026-09-11 05:06:42'),
-(31, 4, NULL, 1, 1, 'Refund reason: taxes', '2026-09-11 05:06:42', '2026-09-11 05:06:42'),
-(32, 4, 15, 1, 0, 'Multiple refunds given to cover taxes and fees because all items were refunded.', '2026-09-11 05:09:48', '2026-09-11 05:09:48'),
-(33, 6, NULL, 0, 0, 'Support request opened — item missing.', '2026-09-11 07:47:50', '2026-09-11 07:47:50'),
-(34, 6, 15, 0, 0, 'Hi', '2026-09-11 07:47:50', '2026-09-11 07:47:50'),
-(35, 6, 15, 0, 0, 'Client ended chat.', '2026-09-11 07:48:02', '2026-09-11 07:48:02');
+INSERT INTO `support_messages` (`id`, `support_thread_id`, `user_id`, `is_staff`, `internal`, `body`, `attachment_url`, `created_at`, `updated_at`) VALUES
+(1, 1, NULL, 0, 0, 'Support request opened — item missing.', NULL, '2026-09-09 02:28:35', '2026-09-09 02:28:35'),
+(2, 1, 17, 0, 0, 'Hi', NULL, '2026-09-09 02:28:35', '2026-09-09 02:28:35'),
+(3, 1, 15, 1, 0, 'Hi', NULL, '2026-09-09 02:39:52', '2026-09-09 02:39:52'),
+(4, 1, 15, 1, 0, 'We have noticed that your order is just packed and ready to be delivered. Please elaborate your issue.', NULL, '2026-09-09 02:40:31', '2026-09-09 02:40:31'),
+(5, 2, NULL, 0, 0, 'Your delivery rider started a chat about order #3.', NULL, '2026-09-09 04:34:33', '2026-09-09 04:34:33'),
+(6, 2, 16, 1, 0, 'Hi, I have picked up order.', NULL, '2026-09-09 04:34:46', '2026-09-09 04:34:46'),
+(7, 2, 17, 0, 0, 'Ok.', NULL, '2026-09-09 05:00:07', '2026-09-09 05:00:07'),
+(8, 1, 15, 1, 0, 'Delivered.', NULL, '2026-09-09 05:07:13', '2026-09-09 05:07:13'),
+(9, 3, NULL, 0, 0, 'Support request opened about order #12 — item missing.', NULL, '2026-09-10 07:40:15', '2026-09-10 07:40:15'),
+(10, 3, 17, 0, 0, 'hi', NULL, '2026-09-10 07:40:15', '2026-09-10 07:40:15'),
+(11, 3, 15, 1, 0, 'hi', NULL, '2026-09-10 07:41:12', '2026-09-10 07:41:12'),
+(12, 3, 15, 1, 0, 'Why you rated 3 stars?', NULL, '2026-09-11 00:03:25', '2026-09-11 00:03:25'),
+(13, 3, 17, 0, 0, 'I want full refund for order.', NULL, '2026-09-11 00:11:21', '2026-09-11 00:11:21'),
+(14, 3, 15, 1, 0, 'It was cash on delivery order. So, online refund not possible.', NULL, '2026-09-11 00:12:12', '2026-09-11 00:12:12'),
+(15, 3, 15, 1, 0, 'We can give a Gift card of $23.50, which you can use in next order.', NULL, '2026-09-11 00:14:19', '2026-09-11 00:14:19'),
+(16, 3, NULL, 1, 0, 'Store credit $23.50 issued.\nGift card: GC-5FSZ-EYUA\nPassword: t8cre7am\nEnter both at checkout on your next order to use the balance.', NULL, '2026-09-11 00:14:43', '2026-09-11 00:14:43'),
+(17, 3, 17, 0, 0, 'Ok, I am marking chat to 5 star rating.', NULL, '2026-09-11 00:15:46', '2026-09-11 00:15:46'),
+(18, 3, 17, 0, 0, 'I tried to use gift card on next order, however it say gift card and password not matching.', NULL, '2026-09-11 00:18:51', '2026-09-11 00:18:51'),
+(19, 3, 15, 1, 0, 'Please use these values: Gift card: GC-5FSZ-EYUA Password: t8cre7am', NULL, '2026-09-11 00:20:12', '2026-09-11 00:20:12'),
+(20, 4, NULL, 0, 0, 'Support request opened about order #3 — wrong item.', NULL, '2026-09-11 01:43:53', '2026-09-11 01:43:53'),
+(21, 4, 17, 0, 0, 'Need refund.', NULL, '2026-09-11 01:43:53', '2026-09-11 01:43:53'),
+(22, 4, 17, 0, 0, 'First item refund.', NULL, '2026-09-11 01:44:03', '2026-09-11 01:44:03'),
+(23, 4, NULL, 1, 0, 'Refund of $20.76 issued — Refunded..', NULL, '2026-09-11 01:44:49', '2026-09-11 01:44:49'),
+(24, 5, NULL, 0, 0, 'Support request opened about order #25 — item damaged.', NULL, '2026-09-11 04:42:48', '2026-09-11 04:42:48'),
+(25, 5, 17, 0, 0, 'refund.', NULL, '2026-09-11 04:42:48', '2026-09-11 04:42:48'),
+(26, 5, NULL, 1, 0, 'Store credit $6.49 issued for the missing item(s): Sharp Cheddar.\nGift card: GC-56UL-WBTS\nPassword: cb3hnzcr\nEnter both at checkout on your next order to use the balance.', NULL, '2026-09-11 04:43:40', '2026-09-11 04:43:40'),
+(27, 5, 15, 1, 0, 'Done.', NULL, '2026-09-11 04:44:12', '2026-09-11 04:44:12'),
+(28, 4, NULL, 1, 0, 'Refund of $5.00 issued.', NULL, '2026-09-11 05:05:26', '2026-09-11 05:05:26'),
+(29, 4, NULL, 1, 1, 'Refund reason: Testing message.', NULL, '2026-09-11 05:05:26', '2026-09-11 05:05:26'),
+(30, 4, NULL, 1, 0, 'Refund of $0.82 issued.', NULL, '2026-09-11 05:06:42', '2026-09-11 05:06:42'),
+(31, 4, NULL, 1, 1, 'Refund reason: taxes', NULL, '2026-09-11 05:06:42', '2026-09-11 05:06:42'),
+(32, 4, 15, 1, 0, 'Multiple refunds given to cover taxes and fees because all items were refunded.', NULL, '2026-09-11 05:09:48', '2026-09-11 05:09:48'),
+(33, 6, NULL, 0, 0, 'Support request opened — item missing.', NULL, '2026-09-11 07:47:50', '2026-09-11 07:47:50'),
+(34, 6, 15, 0, 0, 'Hi', NULL, '2026-09-11 07:47:50', '2026-09-11 07:47:50'),
+(35, 6, 15, 0, 0, 'Client ended chat.', NULL, '2026-09-11 07:48:02', '2026-09-11 07:48:02'),
+(36, 7, NULL, 0, 0, 'Support request opened about order #27 — item damaged.', NULL, '2026-09-15 08:08:20', '2026-09-15 08:08:20'),
+(37, 7, 15, 0, 0, 'some items are damaged', NULL, '2026-09-15 08:08:20', '2026-09-15 08:08:20'),
+(38, 7, 15, 1, 0, 'Which items are damaged, send us clear picture of this', NULL, '2026-09-15 08:09:24', '2026-09-15 08:09:24'),
+(39, 7, 15, 0, 0, 'let me send you soon', NULL, '2026-09-15 08:10:30', '2026-09-15 08:10:30');
 
 -- --------------------------------------------------------
 
@@ -1177,7 +1236,8 @@ INSERT INTO `support_threads` (`id`, `user_id`, `order_id`, `issue_type`, `statu
 (3, 17, 12, 'item_missing', 'resolved', '2026-09-11 00:20:12', '2026-09-11 00:20:12', '2026-09-11 04:25:42', 5, NULL, '2026-09-11 00:19:07', '2026-09-10 07:40:15', '2026-09-11 04:25:42'),
 (4, 17, 3, 'wrong_item', 'open', '2026-09-11 05:09:48', '2026-09-11 05:09:48', NULL, 5, NULL, '2026-09-11 05:07:24', '2026-09-11 01:43:53', '2026-09-11 05:10:04'),
 (5, 17, 25, 'item_damaged', 'resolved', '2026-09-11 04:44:12', '2026-09-11 04:44:12', '2026-09-11 05:09:18', NULL, NULL, NULL, '2026-09-11 04:42:48', '2026-09-11 05:09:18'),
-(6, 15, 23, 'item_missing', 'resolved', '2026-09-11 07:48:02', NULL, '2026-09-11 07:54:40', NULL, NULL, NULL, '2026-09-11 07:47:50', '2026-09-11 07:54:40');
+(6, 15, 23, 'item_missing', 'resolved', '2026-09-11 07:48:02', NULL, '2026-09-11 07:54:40', NULL, NULL, NULL, '2026-09-11 07:47:50', '2026-09-11 07:54:40'),
+(7, 15, 27, 'item_damaged', 'open', '2026-09-15 08:10:30', '2026-09-15 08:09:24', NULL, NULL, NULL, NULL, '2026-09-15 08:08:20', '2026-09-15 08:10:30');
 
 -- --------------------------------------------------------
 
@@ -1227,7 +1287,10 @@ INSERT INTO `users` (`id`, `name`, `email`, `phone`, `stripe_customer_id`, `is_a
 (17, 'Testcaresort', 'testcaresort@outlook.com', '+15551234567', 'cus_VE8eecdx05e2pN', 0, 0, 1, NULL, 0, 0, 0, 0, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '$2y$12$skX3B4/nh5s/002bOYkfZ.uO5eeXCokTCYPh.8Q.Z28wpSnfcUDvy', NULL, '2026-09-09 02:25:33', '2026-09-10 07:25:57'),
 (18, 'New Ride', 'new_ride@example.com', NULL, NULL, 0, 1, 1, NULL, 0, 0, 0, 0, 480, '2026-09-09 05:14:36', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '$2y$12$kvtzqkILF65K1f7Zekch8ux7wHqhyNNSBFQG0zutKPpuhtETcpLZe', NULL, '2026-09-09 05:14:36', '2026-09-11 01:33:45'),
 (19, 'Ride Example', 'ride_example@gmail.com', NULL, NULL, 0, 0, 0, NULL, 0, 0, 0, 0, NULL, '2026-09-09 05:15:06', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '$2y$12$s8TjsvlZWoF3ROrlOuTM2ucqQDyws.3wK9rRNdYSEe4Y6x/JnNos2', NULL, '2026-09-09 05:15:06', '2026-09-11 01:34:32'),
-(28, 'UI Admin', 'uiadmin@ex.com', NULL, NULL, 1, 0, 1, NULL, 0, 0, 0, 0, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '$2y$12$V6kPxpexIX6LF07gDN.9I.z9ssx/seSKPat5GgisFgIzNM9l0mhTW', NULL, '2026-09-10 02:14:06', '2026-09-10 02:14:06');
+(28, 'UI Admin', 'uiadmin@ex.com', NULL, NULL, 1, 0, 1, NULL, 0, 0, 0, 0, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '$2y$12$V6kPxpexIX6LF07gDN.9I.z9ssx/seSKPat5GgisFgIzNM9l0mhTW', NULL, '2026-09-10 02:14:06', '2026-09-10 02:14:06'),
+(31, 'Test Flutter User', 'flutter_probe_1@example.com', '+15551234567', NULL, 0, 0, 1, NULL, 0, 0, 0, 0, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '$2y$12$SQoD6T90pqnAAhYiwUNT9uKVjQhq8zJd6hD.E/GCFaFYKuhnOL1bm', NULL, '2026-09-14 12:12:49', '2026-09-14 12:12:49'),
+(32, 'Suraj Kumar', 'livetest_1789389591@gmail.com', '+91 9876543210', NULL, 0, 0, 1, NULL, 0, 0, 0, 0, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '$2y$12$mlezIJ0rn8MaPZvg1bMojuC/e13wYuL/X15SmP4Np9bvKl5IZet8u', NULL, '2026-09-14 12:39:49', '2026-09-15 09:15:23'),
+(33, 'Suraj Kumar', 'surajkumarsuraj278@gmail.com', '6333636365', NULL, 0, 0, 1, NULL, 0, 0, 0, 0, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '$2y$12$wio7DvS058.eh8Wck8dL..2IcisBayqSzksgbk3a4Nqy5vqZ3X/LW', NULL, '2026-09-14 12:45:28', '2026-09-14 12:45:28');
 
 --
 -- Indexes for dumped tables
@@ -1412,6 +1475,13 @@ ALTER TABLE `products`
   ADD KEY `products_is_active_index` (`is_active`);
 
 --
+-- Indexes for table `product_images`
+--
+ALTER TABLE `product_images`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `product_images_product_id_sort_order_index` (`product_id`,`sort_order`);
+
+--
 -- Indexes for table `product_variants`
 --
 ALTER TABLE `product_variants`
@@ -1520,7 +1590,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `addresses`
 --
 ALTER TABLE `addresses`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- AUTO_INCREMENT for table `auth_otps`
@@ -1544,7 +1614,7 @@ ALTER TABLE `carts`
 -- AUTO_INCREMENT for table `cart_items`
 --
 ALTER TABLE `cart_items`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
 
 --
 -- AUTO_INCREMENT for table `categories`
@@ -1586,19 +1656,19 @@ ALTER TABLE `jobs`
 -- AUTO_INCREMENT for table `migrations`
 --
 ALTER TABLE `migrations`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=66;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=68;
 
 --
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
 
 --
 -- AUTO_INCREMENT for table `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
 
 --
 -- AUTO_INCREMENT for table `order_refunds`
@@ -1616,19 +1686,25 @@ ALTER TABLE `pages`
 -- AUTO_INCREMENT for table `personal_access_tokens`
 --
 ALTER TABLE `personal_access_tokens`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=149;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=169;
 
 --
 -- AUTO_INCREMENT for table `products`
 --
 ALTER TABLE `products`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=55;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=56;
+
+--
+-- AUTO_INCREMENT for table `product_images`
+--
+ALTER TABLE `product_images`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `product_variants`
 --
 ALTER TABLE `product_variants`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `rider_reviews`
@@ -1670,19 +1746,19 @@ ALTER TABLE `store_inventory`
 -- AUTO_INCREMENT for table `support_messages`
 --
 ALTER TABLE `support_messages`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
 
 --
 -- AUTO_INCREMENT for table `support_threads`
 --
 ALTER TABLE `support_threads`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
 
 --
 -- Constraints for dumped tables
@@ -1753,6 +1829,12 @@ ALTER TABLE `order_refunds`
 --
 ALTER TABLE `products`
   ADD CONSTRAINT `products_category_id_foreign` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON UPDATE CASCADE;
+
+--
+-- Constraints for table `product_images`
+--
+ALTER TABLE `product_images`
+  ADD CONSTRAINT `product_images_product_id_foreign` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `product_variants`

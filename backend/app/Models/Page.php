@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PublicMedia;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -19,6 +20,36 @@ class Page extends Model
             'show_in_footer' => 'boolean',
             'sort_order' => 'integer',
         ];
+    }
+
+    public function getBannerImageAttribute(?string $value): ?string
+    {
+        return PublicMedia::url($value);
+    }
+
+    /**
+     * Section blocks can carry image_url at the top level (hero, media_text)
+     * or nested in items[] (feature_grid/"cards") — rewrite every occurrence,
+     * at any depth, the same way every other image field is.
+     */
+    public function getSectionsAttribute($value): array
+    {
+        $sections = is_array($value) ? $value : (json_decode($value ?? '[]', true) ?: []);
+
+        return self::rewriteImageUrls($sections);
+    }
+
+    private static function rewriteImageUrls(array $data): array
+    {
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $data[$key] = self::rewriteImageUrls($value);
+            } elseif ($key === 'image_url' && is_string($value)) {
+                $data[$key] = PublicMedia::url($value);
+            }
+        }
+
+        return $data;
     }
 
     public function getRouteKeyName(): string

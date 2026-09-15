@@ -28,7 +28,7 @@ class AdminProductController extends Controller
         $sort = $validated['sort'] ?? 'newest';
 
         $products = Product::query()
-            ->with(['category:id,name', 'variants', 'storeInventory'])
+            ->with(['category:id,name', 'variants', 'images', 'storeInventory'])
             // When filtering by store, `effective_stock` is that store's on-hand
             // count (its stocked row, else the product's single count); otherwise
             // it's just the single count. Used by the stock sorts.
@@ -67,33 +67,37 @@ class AdminProductController extends Controller
     {
         $data = $this->validated($request);
         $variants = $this->pullVariants($data);
+        $images = $this->pullImages($data);
         $storeStock = $this->pullStoreStock($data);
         $data['slug'] ??= $this->uniqueSlug($data['name']);
 
-        $product = DB::transaction(function () use ($data, $variants, $storeStock): Product {
+        $product = DB::transaction(function () use ($data, $variants, $images, $storeStock): Product {
             $product = Product::create($data);
             $this->syncVariants($product, $variants);
+            $this->syncImages($product, $images);
             $this->syncStoreStock($product, $storeStock);
 
             return $product;
         });
 
-        return response()->json(['data' => $product->load('category:id,name', 'variants', 'storeInventory')], 201);
+        return response()->json(['data' => $product->load('category:id,name', 'variants', 'images', 'storeInventory')], 201);
     }
 
     public function update(Request $request, Product $product): JsonResponse
     {
         $data = $this->validated($request, $product);
         $variants = $this->pullVariants($data);
+        $images = $this->pullImages($data);
         $storeStock = $this->pullStoreStock($data);
 
-        DB::transaction(function () use ($product, $data, $variants, $storeStock): void {
+        DB::transaction(function () use ($product, $data, $variants, $images, $storeStock): void {
             $product->update($data);
             $this->syncVariants($product, $variants);
+            $this->syncImages($product, $images);
             $this->syncStoreStock($product, $storeStock);
         });
 
-        return response()->json(['data' => $product->fresh()->load('category:id,name', 'variants', 'storeInventory')]);
+        return response()->json(['data' => $product->fresh()->load('category:id,name', 'variants', 'images', 'storeInventory')]);
     }
 
     public function destroy(Product $product): JsonResponse
@@ -122,8 +126,17 @@ class AdminProductController extends Controller
             'price_cents' => [$product ? 'sometimes' : 'required', 'integer', 'min:0'],
             'compare_at_price_cents' => ['sometimes', 'nullable', 'integer', 'min:0'],
             'inventory_quantity' => ['sometimes', 'integer', 'min:0'],
-            'image_url' => ['sometimes', 'nullable', 'url', 'max:500'],
+            'image_url' => ['sometimes', 'nullable', 'string', 'max:2048'],
             'is_active' => ['sometimes', 'boolean'],
+
+            // Extra gallery photos shown alongside image_url. A full replacement
+            // list, same convention as variants: an id updates that row, no id
+            // creates one, _delete removes it.
+            'images' => ['sometimes', 'array'],
+            'images.*.id' => ['sometimes', 'nullable', 'integer'],
+            'images.*._delete' => ['sometimes', 'boolean'],
+            'images.*.image_url' => ['required_with:images', 'string', 'max:2048'],
+            'images.*.sort_order' => ['sometimes', 'integer', 'min:0'],
 
             // Per-store stock. A full replacement of this product's rows: one
             // entry per (store, option). `variant_sku` null = the base product.
@@ -142,7 +155,7 @@ class AdminProductController extends Controller
             'variants.*.price_cents' => ['required_with:variants', 'integer', 'min:0'],
             'variants.*.compare_at_price_cents' => ['sometimes', 'nullable', 'integer', 'min:0'],
             'variants.*.inventory_quantity' => ['sometimes', 'integer', 'min:0'],
-            'variants.*.image_url' => ['sometimes', 'nullable', 'url', 'max:500'],
+            'variants.*.image_url' => ['sometimes', 'nullable', 'string', 'max:2048'],
             'variants.*.sort_order' => ['sometimes', 'integer', 'min:0'],
             'variants.*.is_active' => ['sometimes', 'boolean'],
         ]);
@@ -162,6 +175,60 @@ class AdminProductController extends Controller
         unset($data['variants']);
 
         return $variants;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<int, array<string, mixed>>|null
+     */
+    private function pullImages(array &$data): ?array
+    {
+        if (! array_key_exists('images', $data)) {
+            return null;
+        }
+
+        $images = $data['images'];
+        unset($data['images']);
+
+        return $images;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>|null  $rows
+     */
+    private function syncImages(Product $product, ?array $rows): void
+    {
+        if ($rows === null) {
+            return;
+        }
+
+        $keep = [];
+
+        foreach ($rows as $index => $row) {
+            $existing = ! empty($row['id'])
+                ? $product->images()->whereKey($row['id'])->first()
+                : null;
+
+            if (! empty($row['_delete'])) {
+                $existing?->delete();
+
+                continue;
+            }
+
+            $attributes = [
+                'image_url' => $row['image_url'],
+                'sort_order' => (int) ($row['sort_order'] ?? $index),
+            ];
+
+            if ($existing) {
+                $existing->update($attributes);
+                $keep[] = $existing->id;
+            } else {
+                $keep[] = $product->images()->create($attributes)->id;
+            }
+        }
+
+        $product->images()->whereNotIn('id', $keep)->delete();
     }
 
     /**

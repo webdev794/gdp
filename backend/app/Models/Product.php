@@ -46,6 +46,12 @@ class Product extends Model
         return $this->hasMany(ProductVariant::class)->orderBy('sort_order')->orderBy('id');
     }
 
+    /** Extra gallery photos, shown alongside the primary image_url. */
+    public function images(): HasMany
+    {
+        return $this->hasMany(ProductImage::class)->orderBy('sort_order')->orderBy('id');
+    }
+
     public function activeVariants(): HasMany
     {
         return $this->variants()->where('is_active', true);

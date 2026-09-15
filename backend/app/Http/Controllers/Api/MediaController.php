@@ -54,7 +54,7 @@ class MediaController extends Controller
 
         return response()->json([
             'data' => [
-                // Root-relative API path — frontend prefixes app base (/gdp/nextech_demo).
+                // Root-relative API path — frontend prefixes the app base (e.g. /gdp).
                 'url' => '/api/media/file/'.$path,
                 'path' => $path,
             ],

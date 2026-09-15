@@ -128,7 +128,7 @@ const ISSUE_LABELS = {
   delivery: 'Delivery message',
 }
 
-const EMPTY_PRODUCT = { category_id: '', name: '', sku: '', price: '', compare_at: '', inventory_quantity: 0, description: '', image_url: '', is_active: true, per_store_stock: false, store_stock: {}, variants: [] }
+const EMPTY_PRODUCT = { category_id: '', name: '', sku: '', price: '', compare_at: '', inventory_quantity: 0, description: '', image_url: '', is_active: true, per_store_stock: false, store_stock: {}, variants: [], images: [] }
 
 // Build the per-store stock grid ({ [storeId]: { is_stocked, base, variants: { [variantIndex]: qty } } })
 // from a product's store_inventory rows.
@@ -153,6 +153,7 @@ const variantRowsFrom = (product) => (product.variants ?? []).map((v) => ({
   id: v.id, label: v.label, sku: v.sku, price: (v.price_cents / 100).toFixed(2), compare_at: dollarsOrBlank(v.compare_at_price_cents),
   stock: v.inventory_quantity, image_url: v.image_url ?? '', is_active: v.is_active,
 }))
+const imageRowsFrom = (product) => (product.images ?? []).map((img) => ({ id: img.id, image_url: img.image_url }))
 const EMPTY_CATEGORY = { name: '', slug: '', sort_order: 0, is_active: true }
 const EMPTY_STORE = { name: '', line1: '', line2: '', city: '', state: '', postal_code: '', latitude: '', longitude: '', delivery_radius_km: 5, is_active: true }
 const riderFormFrom = (rider) => ({
@@ -1335,8 +1336,19 @@ export default function Admin({ token, onClose }) {
   async function saveProduct(event) {
     event.preventDefault()
     setMessage('')
-    const { id, price, compare_at: compareAt, variants, per_store_stock: perStore, store_stock: storeStockMap, ...rest } = productForm
+    const { id, price, compare_at: compareAt, variants, images, per_store_stock: perStore, store_stock: storeStockMap, ...rest } = productForm
     const payload = { ...rest, category_id: Number(rest.category_id), inventory_quantity: Number(rest.inventory_quantity), price_cents: Math.round(Number(price) * 100), compare_at_price_cents: String(compareAt).trim() ? Math.round(Number(compareAt) * 100) : null, image_url: rest.image_url?.trim() || null }
+
+    // Gallery images: a full replacement list, same shape as variants.
+    const imageRows = (images ?? []).filter((row) => row.id || !row._delete)
+    if (id || imageRows.length) {
+      payload.images = imageRows.map((row, index) => ({
+        ...(row.id ? { id: row.id } : {}),
+        ...(row._delete ? { _delete: true } : {}),
+        image_url: row.image_url,
+        sort_order: index,
+      }))
+    }
 
     // Per-store stock: a full grid of (store, option) rows. Off = single stock,
     // sent as [] so the backend drops any rows.
@@ -2023,31 +2035,52 @@ export default function Admin({ token, onClose }) {
                   : <label>Inventory<input type="number" min="0" value={productForm.inventory_quantity} onChange={(event) => setProductForm({ ...productForm, inventory_quantity: event.target.value })} /></label>}
                 <label className="admin-check"><input type="checkbox" checked={productForm.is_active} onChange={(event) => setProductForm({ ...productForm, is_active: event.target.checked })} /> Active</label>
               </div>
-              <label>Image
+              <label>Primary image <span className="muted">(shown on the product card)</span>
                 <div className="admin-image-field">
                   {productForm.image_url && <img src={mediaUrl(productForm.image_url)} alt="" className="admin-image-preview" onError={(event) => { event.currentTarget.style.display = 'none' }} />}
                   <input placeholder="Image URL, or upload →" value={productForm.image_url ?? ''} onChange={(event) => setProductForm({ ...productForm, image_url: event.target.value })} />
                   <input type="file" accept="image/*" disabled={imgBusy} onChange={(event) => uploadImage(event.target.files?.[0], (url) => setProductForm((form) => ({ ...form, image_url: url })))} />
+                  {imgBusy && <span className="muted"> uploading…</span>}
                   {productForm.image_url && <button type="button" className="act ghost" onClick={() => setProductForm({ ...productForm, image_url: '' })}>Clear</button>}
                 </div>
               </label>
               <label>Description<textarea rows="2" value={productForm.description ?? ''} onChange={(event) => setProductForm({ ...productForm, description: event.target.value })} /></label>
 
               <fieldset className="admin-fieldset">
+                <legend>Gallery images</legend>
+                <p className="muted">Extra photos shown in the product&rsquo;s image gallery on the storefront, in addition to the primary image above.</p>
+                {(productForm.images ?? []).map((row, index) => row._delete ? null : (
+                  <div className="admin-gallery-row" key={row.id ?? `new-${index}`}>
+                    {row.image_url && <img src={mediaUrl(row.image_url)} alt="" className="admin-gallery-thumb" onError={(event) => { event.currentTarget.style.display = 'none' }} />}
+                    <input name={`gallery_image_url_${index}`} placeholder="Image URL" value={row.image_url ?? ''} onChange={(event) => setProductForm({ ...productForm, images: productForm.images.map((r, i) => i === index ? { ...r, image_url: event.target.value } : r) })} />
+                    <input name={`gallery_image_file_${index}`} type="file" accept="image/*" disabled={imgBusy} onChange={(event) => uploadImage(event.target.files?.[0], (url) => setProductForm((form) => ({ ...form, images: form.images.map((r, i) => i === index ? { ...r, image_url: url } : r) })))} />
+                    {imgBusy && <span className="muted"> uploading…</span>}
+                    <button type="button" className="act danger" onClick={() => setProductForm({ ...productForm, images: row.id
+                      ? productForm.images.map((r, i) => i === index ? { ...r, _delete: true } : r)
+                      : productForm.images.filter((_, i) => i !== index) })}>Remove</button>
+                  </div>
+                ))}
+                <button type="button" className="act" onClick={() => setProductForm({ ...productForm, images: [...(productForm.images ?? []), { image_url: '' }] })}>Add image</button>
+              </fieldset>
+
+              <fieldset className="admin-fieldset">
                 <legend>Options / variants</legend>
                 <p className="muted">Leave empty for a single-price product. Add a row per variant &mdash; pack size, weight, colour, flavour, or a mix (e.g. &ldquo;1 kg&rdquo;, &ldquo;Red / Large&rdquo;). Each has its own price, compare-at price, stock, SKU and image.</p>
                 {(productForm.variants ?? []).map((row, index) => row._delete ? null : (
                   <div className="admin-variant-row" key={row.id ?? `new-${index}`}>
-                    <input placeholder="Label (1 kg, Red / Large…)" value={row.label} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, label: event.target.value } : r) })} />
-                    <input placeholder="SKU" value={row.sku} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, sku: event.target.value } : r) })} />
-                    <input type="number" min="0" step="0.01" placeholder="Price $" value={row.price} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, price: event.target.value } : r) })} />
-                    <input type="number" min="0" step="0.01" placeholder="Reg. $" value={row.compare_at ?? ''} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, compare_at: event.target.value } : r) })} />
-                    <input type="number" min="0" placeholder="Stock" value={row.stock} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, stock: event.target.value } : r) })} />
+                    <input name={`variant_label_${index}`} placeholder="Label (1 kg, Red / Large…)" value={row.label} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, label: event.target.value } : r) })} />
+                    <input name={`variant_sku_${index}`} placeholder="SKU" value={row.sku} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, sku: event.target.value } : r) })} />
+                    <input name={`variant_price_${index}`} type="number" min="0" step="0.01" placeholder="Price $" value={row.price} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, price: event.target.value } : r) })} />
+                    <input name={`variant_compare_at_${index}`} type="number" min="0" step="0.01" placeholder="Reg. $" value={row.compare_at ?? ''} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, compare_at: event.target.value } : r) })} />
+                    <input name={`variant_stock_${index}`} type="number" min="0" placeholder="Stock" value={row.stock} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, stock: event.target.value } : r) })} />
                     <span className="admin-variant-img">
-                      <input placeholder="Image URL" value={row.image_url} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, image_url: event.target.value } : r) })} />
-                      <input type="file" accept="image/*" disabled={imgBusy} onChange={(event) => uploadImage(event.target.files?.[0], (url) => setProductForm((form) => ({ ...form, variants: form.variants.map((r, i) => i === index ? { ...r, image_url: url } : r) })))} />
+                      <label className="admin-variant-img-label">Photo for this option only</label>
+                      {row.image_url && <img src={mediaUrl(row.image_url)} alt="" className="admin-gallery-thumb" onError={(event) => { event.currentTarget.style.display = 'none' }} />}
+                      <input name={`variant_image_url_${index}`} placeholder="Image URL" value={row.image_url} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, image_url: event.target.value } : r) })} />
+                      <input name={`variant_image_file_${index}`} type="file" accept="image/*" disabled={imgBusy} onChange={(event) => uploadImage(event.target.files?.[0], (url) => setProductForm((form) => ({ ...form, variants: form.variants.map((r, i) => i === index ? { ...r, image_url: url } : r) })))} />
+                      {imgBusy && <span className="muted"> uploading…</span>}
                     </span>
-                    <label className="admin-check"><input type="checkbox" checked={row.is_active} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, is_active: event.target.checked } : r) })} /> On</label>
+                    <label className="admin-check"><input name={`variant_active_${index}`} type="checkbox" checked={row.is_active} onChange={(event) => setProductForm({ ...productForm, variants: productForm.variants.map((r, i) => i === index ? { ...r, is_active: event.target.checked } : r) })} /> On</label>
                     <button type="button" className="act danger" onClick={() => setProductForm({ ...productForm, variants: row.id
                       ? productForm.variants.map((r, i) => i === index ? { ...r, _delete: true } : r)
                       : productForm.variants.filter((_, i) => i !== index) })}>Remove</button>
@@ -2099,7 +2132,7 @@ export default function Admin({ token, onClose }) {
               </fieldset>
 
               <div className="admin-form-actions">
-                <button className="act" type="submit">Save</button>
+                <button className="act" type="submit" disabled={imgBusy}>{imgBusy ? 'Uploading…' : 'Save'}</button>
                 <button className="act ghost" type="button" onClick={() => setProductForm(null)}>Cancel</button>
               </div>
             </form>
@@ -2121,7 +2154,7 @@ export default function Admin({ token, onClose }) {
                     <td>{packs || '—'}</td>
                     <td>{product.is_active ? 'Yes' : 'No'}</td>
                     <td className="admin-actions">
-                      <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ id: product.id, category_id: product.category_id, name: product.name, sku: product.sku, price: (product.price_cents / 100).toFixed(2), compare_at: dollarsOrBlank(product.compare_at_price_cents), inventory_quantity: product.inventory_quantity, description: product.description ?? '', image_url: product.image_url ?? '', is_active: product.is_active, per_store_stock: (product.store_inventory ?? []).length > 0, store_stock: storeStockFrom(product), variants: variantRowsFrom(product) }); scrollFormIntoView('admin-product-form') }}>Edit</button>
+                      <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ id: product.id, category_id: product.category_id, name: product.name, sku: product.sku, price: (product.price_cents / 100).toFixed(2), compare_at: dollarsOrBlank(product.compare_at_price_cents), inventory_quantity: product.inventory_quantity, description: product.description ?? '', image_url: product.image_url ?? '', is_active: product.is_active, per_store_stock: (product.store_inventory ?? []).length > 0, store_stock: storeStockFrom(product), variants: variantRowsFrom(product), images: imageRowsFrom(product) }); scrollFormIntoView('admin-product-form') }}>Edit</button>
                       <button className="act danger" type="button" onClick={() => removeProduct(product)}>Delete</button>
                     </td>
                   </tr>

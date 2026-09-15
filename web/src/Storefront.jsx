@@ -337,6 +337,8 @@ export default function Storefront() {
     } catch { return [] }
   })
   const [pickedVariant, setPickedVariant] = useState({})
+  const [detailProduct, setDetailProduct] = useState(null)
+  const [galleryIndex, setGalleryIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [offline, setOffline] = useState(false)
   const [pages, setPages] = useState([])
@@ -419,6 +421,17 @@ export default function Storefront() {
   const [supportUnread, setSupportUnread] = useState(0)
   const [supportNewImage, setSupportNewImage] = useState(null)
   const [supportReplyImage, setSupportReplyImage] = useState(null)
+
+  // With the background page still scrollable, its scrollbar stays on screen
+  // behind the overlay — that narrows the visible area on the right only,
+  // so a popup centered on the full window width reads as sitting left of
+  // centre. Locking body scroll while the product popup is open removes it.
+  useEffect(() => {
+    if (!detailProduct) return
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = previousOverflow }
+  }, [detailProduct])
 
   useEffect(() => {
     localStorage.setItem('gdp_cart', JSON.stringify(cart))
@@ -1541,7 +1554,7 @@ export default function Storefront() {
             const qty = cartQty[key] ?? 0
             const img = (chosen?.image_url) || product.image_url
             return <article className={stock === 0 ? 'pcard sold-out' : 'pcard'} key={product.id}>
-              <div className="pcard-img" aria-hidden>{stock === 0 && <span className="pcard-oos">Out of stock</span>}{onSale && stock !== 0 && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
+              <button className="pcard-img" type="button" aria-label={`View details for ${product.name}`} onClick={() => { setDetailProduct(product); setGalleryIndex(0) }}>{stock === 0 && <span className="pcard-oos">Out of stock</span>}{onSale && stock !== 0 && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</button>
               <p className="pcard-cat">{product.category?.name ?? 'Grocery'}</p>
               <h3>{variantTitle(product.name, variant?.label)}</h3>
               {hasVariants && <select className="pcard-variant" aria-label={`${product.name} option`} value={String(chosen?.id ?? '')} onChange={(event) => setPickedVariant((current) => ({ ...current, [product.id]: event.target.value }))}>{options.map((o) => <option key={o.id === '' ? 'base' : o.id} value={String(o.id)}>{o.label} — {price(o.price_cents)}</option>)}</select>}
@@ -1554,6 +1567,43 @@ export default function Storefront() {
       )}
       </>}
     </main>
+    {detailProduct && (() => {
+      const variants = detailProduct.variants ?? []
+      const hasVariants = variants.length > 0
+      const options = hasVariants
+        ? [{ id: '', label: detailProduct.name, price_cents: detailProduct.price_cents, compare_at_price_cents: detailProduct.compare_at_price_cents, inventory_quantity: detailProduct.inventory_quantity, image_url: detailProduct.image_url }, ...variants]
+        : []
+      const chosen = hasVariants
+        ? (options.find((o) => String(o.id) === String(pickedVariant[detailProduct.id] ?? '')) ?? options[0])
+        : null
+      const variant = chosen && chosen.id !== '' ? chosen : null
+      const unitPrice = chosen ? chosen.price_cents : detailProduct.price_cents
+      const compareAt = chosen ? chosen.compare_at_price_cents : detailProduct.compare_at_price_cents
+      const onSale = compareAt != null && compareAt > unitPrice
+      const pctOff = onSale ? Math.round((1 - unitPrice / compareAt) * 100) : 0
+      const stock = chosen ? chosen.inventory_quantity : detailProduct.inventory_quantity
+      const key = lineKey(detailProduct.id, variant?.id)
+      const qty = cartQty[key] ?? 0
+      const primaryImg = chosen?.image_url || detailProduct.image_url
+      // Primary (variant-aware) image first, then any extra gallery photos.
+      const gallery = [primaryImg, ...(detailProduct.images ?? []).map((im) => im.image_url)].filter(Boolean)
+      const activeImg = gallery[galleryIndex] ?? gallery[0]
+      return <div className="overlay" role="presentation" onClick={() => setDetailProduct(null)}><div className="auth-modal product-modal" role="dialog" aria-modal="true" aria-labelledby="pm-title" onClick={(event) => event.stopPropagation()}>
+        <button className="close-button" type="button" onClick={() => setDetailProduct(null)} aria-label="Close">x</button>
+        <div className="pm-gallery">
+          <div className="pm-main-img" aria-hidden>{stock === 0 && <span className="pcard-oos">Out of stock</span>}{onSale && stock !== 0 && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(detailProduct.name)}{activeImg && <img src={mediaUrl(activeImg)} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
+          {gallery.length > 1 && <div className="pm-thumbs">{gallery.map((src, index) => <button key={`${src}-${index}`} type="button" className={index === galleryIndex ? 'pm-thumb active' : 'pm-thumb'} aria-label={`Photo ${index + 1}`} onClick={() => setGalleryIndex(index)}><img src={mediaUrl(src)} alt="" /></button>)}</div>}
+        </div>
+        <p className="pcard-cat">{detailProduct.category?.name ?? 'Grocery'}</p>
+        <h2 id="pm-title">{variantTitle(detailProduct.name, variant?.label)}</h2>
+        {hasVariants && <select className="pcard-variant" aria-label={`${detailProduct.name} option`} value={String(chosen?.id ?? '')} onChange={(event) => setPickedVariant((current) => ({ ...current, [detailProduct.id]: event.target.value }))}>{options.map((o) => <option key={o.id === '' ? 'base' : o.id} value={String(o.id)}>{o.label} — {price(o.price_cents)}</option>)}</select>}
+        <div className="pm-price">{onSale ? <><strong className="on-sale">{price(unitPrice)}</strong><s>{price(compareAt)}</s></> : <strong>{price(unitPrice)}</strong>}</div>
+        {detailProduct.description && <p className="pm-desc">{detailProduct.description}</p>}
+        {qty === 0
+          ? <button className="checkout-button" type="button" disabled={stock === 0} onClick={() => add(detailProduct, variant)}>{stock === 0 ? 'Out of stock' : 'Add to cart'} <span aria-hidden>&#8594;</span></button>
+          : <span className="stepper pm-stepper"><button type="button" aria-label="Remove one" onClick={() => updateQuantity(key, -1)}>&minus;</button><b>{qty}</b><button type="button" aria-label="Add one" disabled={stock != null && qty >= stock} onClick={() => updateQuantity(key, 1)}>+</button></span>}
+      </div></div>
+    })()}
     {cartCount > 0 && <aside className={`cart-tray${trayDragging ? ' dragging' : ''}`} aria-live="polite" style={{ transform: `translateX(-50%) translateY(${trayLift}px)` }} onPointerDown={trayPointerDown} onPointerMove={trayPointerMove} onPointerUp={trayPointerUp} onPointerCancel={trayPointerUp}><div><strong>{cartCount} {cartCount === 1 ? 'item' : 'items'} in your cart</strong><span>{price(cartTotal)} subtotal</span></div><button type="button" onClick={() => setCartOpen(true)}>View cart <span>-&gt;</span></button></aside>}
     {cartOpen && <div className="overlay" role="presentation" onClick={() => setCartOpen(false)}><aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" onClick={(event) => event.stopPropagation()}><div className="drawer-header"><div><p className="eyebrow">Ready when you are</p><h2 id="cart-title">Your cart</h2></div><button className="close-button" type="button" onClick={() => setCartOpen(false)} aria-label="Close cart">x</button></div>{cart.length ? <><div className="drawer-items">{cartView.map((item) => <div className="drawer-item" key={item.key}><div className="mini-visual" aria-hidden>{productEmoji(item.name)}{item.image_url && <img src={mediaUrl(item.image_url)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div><div className="drawer-item-copy"><strong>{variantTitle(item.name, item.variantLabel)}</strong><span>{item.onSale ? <><strong className="on-sale">{price(item.unit)}</strong> <s>{price(item.reg)}</s></> : price(item.unit)}{item.quantity > 1 && <> &middot; {item.quantity} pcs = {item.onSale ? <><strong className="on-sale">{price(item.unit * item.quantity)}</strong> <s>{price(item.lineReg)}</s></> : price(item.unit * item.quantity)}</>}</span></div><div className="quantity"><button type="button" onClick={() => updateQuantity(item.key, -1)}>-</button><span>{item.quantity}</span><button type="button" onClick={() => updateQuantity(item.key, 1)}>+</button></div></div>)}</div><div className="drawer-summary"><div><span>Subtotal</span><span>{cartRegularTotal > est.sub ? <><s className="on-sale">{price(cartRegularTotal)}</s> {price(est.sub)}</> : price(est.sub)}</span></div><div><span>Delivery</span><span>{est.delivery === 0 ? 'FREE' : price(est.delivery)}</span></div><div><span>Handling</span><span>{price(est.handling)}</span></div>{est.smallCart > 0 && <div><span>Small cart fee</span><span>{price(est.smallCart)}</span></div>}<div><span>Tax</span><span>{price(est.tax)}</span></div><div className="drawer-summary-total"><strong>Estimated total</strong><strong>{price(est.total)}</strong></div></div>{fees.delivery_mode === 'distance' && serviceable?.delivery_fee_cents == null && <p className="drawer-nudge">Delivery fee is based on distance — set your location for the exact amount.</p>}{est.toFreeDelivery > 0 && <p className="drawer-nudge">Add {price(est.toFreeDelivery)} more for free delivery.</p>}{est.toNoSmallCart > 0 && <p className="drawer-nudge">Add {price(est.toNoSmallCart)} more to drop the {price(est.smallCart)} small-cart fee.</p>}<button className="checkout-button" type="button" onClick={() => { setCartOpen(false); setCheckoutOpen(true); setCheckoutStep('address'); setCheckoutMessage('') }}>Continue to checkout <span>-&gt;</span></button></> : <div className="empty-cart"><div className="empty-cart-mark">+</div><h3>Your cart is empty</h3><p>Find something good in the essentials below.</p><button type="button" onClick={() => setCartOpen(false)}>Keep shopping</button></div>}</aside></div>}
     {authMode && <div className="overlay" role="presentation" onClick={() => { setAuthMode(null); setOtpStage(null); setAuthTab('code'); setPwMode('signin') }}><div className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => { setAuthMode(null); setOtpStage(null); setAuthTab('code'); setPwMode('signin') }} aria-label="Close authentication">x</button><p className="eyebrow">A better grocery run</p>{otpStage ? <><h2 id="auth-title">Enter your code</h2><p className="auth-intro">We emailed a 6-digit code to {otpStage.email}. It expires in 10 minutes.</p><form onSubmit={submitOtp}><input required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength="8" placeholder="6-digit code" value={otpCode} onChange={(event) => setOtpCode(event.target.value.replace(/[^0-9]/g, ''))} /><button className="checkout-button" type="submit">Verify <span>-&gt;</span></button></form>{authMessage && <p className="auth-message">{authMessage}</p>}<button className="switch-auth" type="button" onClick={resendOtp}>Resend code</button><button className="switch-auth" type="button" onClick={() => { setOtpStage(null); setAuthMessage('') }}>Use a different email</button></> : <><h2 id="auth-title">Sign in or sign up</h2><div className="auth-tabs" role="tablist"><button type="button" role="tab" aria-selected={authTab === 'code'} className={authTab === 'code' ? 'auth-tab active' : 'auth-tab'} onClick={() => { setAuthTab('code'); setAuthMessage('') }}>Email code</button><button type="button" role="tab" aria-selected={authTab === 'password'} className={authTab === 'password' ? 'auth-tab active' : 'auth-tab'} onClick={() => { setAuthTab('password'); setAuthMessage('') }}>Password</button></div>{authTab === 'password' ? (() => {
@@ -1709,7 +1759,7 @@ export default function Storefront() {
             </label>)}
         <div className="issue-chips" role="radiogroup" aria-label="Issue type">{ISSUE_TYPES.map(([type, label]) => <button key={type} type="button" role="radio" aria-checked={supportForm.issue_type === type} className={supportForm.issue_type === type ? 'issue-chip active' : 'issue-chip'} onClick={() => setSupportForm({ ...supportForm, issue_type: type })}>{label}</button>)}</div>
         <textarea className="delivery-note" rows="3" maxLength="2000" placeholder="Tell us what happened" value={supportForm.message} onChange={(event) => setSupportForm({ ...supportForm, message: event.target.value })} />
-        <label className="chat-attach-field">{supportNewImage ? supportNewImage.name : 'Attach a photo (optional)'}<input type="file" accept="image/*" onChange={(event) => setSupportNewImage(event.target.files?.[0] ?? null)} />{supportNewImage && <button type="button" className="chat-attach-clear" onClick={(event) => { event.preventDefault(); setSupportNewImage(null) }}>Remove</button>}</label>
+        <label className="chat-attach-field">{supportNewImage ? supportNewImage.name : 'Attach a photo (optional)'}<input name="support_new_image" type="file" accept="image/*" onChange={(event) => setSupportNewImage(event.target.files?.[0] ?? null)} />{supportNewImage && <button type="button" className="chat-attach-clear" onClick={(event) => { event.preventDefault(); setSupportNewImage(null) }}>Remove</button>}</label>
         <button className="checkout-button" type="button" disabled={supportBusy} onClick={submitSupport}>Send <span>-&gt;</span></button>
         <button className="switch-auth" type="button" onClick={() => setSupportView('list')}>Back</button>
       </> : <>
@@ -1727,7 +1777,7 @@ export default function Storefront() {
         )}
         {supportReplyImage && <p className="chat-attach-selected">📷 {supportReplyImage.name} <button type="button" onClick={() => setSupportReplyImage(null)}>Remove</button></p>}
         <div className="chat-send">
-          <label className="chat-attach-btn" title="Attach a photo"><span aria-hidden>📷</span><input type="file" accept="image/*" onChange={(event) => setSupportReplyImage(event.target.files?.[0] ?? null)} /></label>
+          <label className="chat-attach-btn" title="Attach a photo"><span aria-hidden>📷</span><input name="support_reply_image" type="file" accept="image/*" onChange={(event) => setSupportReplyImage(event.target.files?.[0] ?? null)} /></label>
           <input placeholder="Type a message" value={supportReply} onChange={(event) => setSupportReply(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') sendSupportReply() }} />
           <button type="button" disabled={supportBusy || (!supportReply.trim() && !supportReplyImage)} onClick={sendSupportReply}>Send</button>
         </div>

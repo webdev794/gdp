@@ -44,6 +44,12 @@ class Branding
             $branding[$key] = trim((string) ($branding[$key] ?? ''));
         }
 
+        // logo_url / favicon_url go through the same legacy-URL rewrite as
+        // every other image — this is Setting-backed, not an Eloquent model
+        // attribute, so it never passed through PublicMedia until now.
+        $branding['logo_url'] = PublicMedia::url($branding['logo_url']) ?? '';
+        $branding['favicon_url'] = PublicMedia::url($branding['favicon_url']) ?? '';
+
         return $branding;
     }
 }

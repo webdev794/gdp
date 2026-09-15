@@ -25,8 +25,11 @@ class PublicMedia
             return $value;
         }
 
-        // /storage/products/x.png  or  /storage/app/public/products/x.png
-        if (preg_match('#^/storage/(?:app/public/)?(.+)$#', $value, $m)) {
+        // /storage/products/x.png, /storage/app/public/products/x.png, or a
+        // full absolute URL baked in before this fix existed (e.g.
+        // https://host/gdp/storage/products/x.png) — match the /storage/
+        // segment wherever it falls, not just at the very start of the value.
+        if (preg_match('~/storage/(?:app/public/)?([^?#]+)~', $value, $m)) {
             return '/api/media/file/'.$m[1];
         }
 

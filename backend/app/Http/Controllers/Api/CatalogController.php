@@ -64,6 +64,7 @@ class CatalogController extends Controller
             ->with([
                 'category',
                 'variants' => fn ($query) => $query->where('is_active', true),
+                'images',
                 'storeInventory',
             ])
             ->where('is_active', true)
@@ -100,6 +101,7 @@ class CatalogController extends Controller
         $product->load([
             'category',
             'variants' => fn ($query) => $query->where('is_active', true),
+            'images',
             'storeInventory',
         ]);
 

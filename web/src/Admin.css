@@ -320,9 +320,14 @@ button.admin-bell-more:hover{text-decoration:underline}
 .chat-send button:disabled{opacity:.5;cursor:not-allowed}
 .admin-variant-img{display:flex;flex-direction:column;gap:4px}
 .admin-variant-img input[type=file]{font-size:10px;padding:2px 0;border:0}
+.admin-variant-img-label{font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:#6b7264;font-weight:700}
 .admin-image-field{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .admin-image-field input[type=text],.admin-image-field>input:not([type]){flex:1 1 200px}
 .admin-image-preview{width:44px;height:44px;object-fit:cover;border:1px solid var(--line,#e4e7df);border-radius:6px}
+.admin-gallery-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px}
+.admin-gallery-row input[type=text],.admin-gallery-row>input:not([type]){flex:1 1 200px;padding:7px 9px;border:1px solid var(--line,#e4e7df);border-radius:6px;font:12px 'Okra',sans-serif}
+.admin-gallery-row input[type=file]{font-size:10px}
+.admin-gallery-thumb{width:44px;height:44px;object-fit:cover;border:1px solid var(--line,#e4e7df);border-radius:6px}
 .admin-color{display:grid;gap:8px;padding:12px;border:1px solid var(--line,#ccd4c2);border-radius:10px;background:#f6f8f4;font:11px 'Okra',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#3f463a}
 .admin-color>span{display:flex;gap:8px;align-items:center}
 .admin-color input[type=color]{flex:0 0 auto;width:46px;height:38px;padding:2px;border:1px solid var(--field,#93a08c);border-radius:8px;background:#fff;cursor:pointer}
