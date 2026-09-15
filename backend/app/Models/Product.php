@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PublicMedia;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -131,5 +132,10 @@ class Product extends Model
             ->orWhereHas('storeInventory', fn (Builder $r) => $r
                 ->where('store_id', $storeId)
                 ->where('is_stocked', true)));
+    }
+
+    public function getImageUrlAttribute(?string $value): ?string
+    {
+        return PublicMedia::url($value);
     }
 }
