@@ -43,6 +43,9 @@ Route::middleware('throttle:12,1')->group(function () {
 });
 
 Route::get('/config', ConfigController::class);
+
+// Public media stream — /api/media/file/{path} always hits PHP (unlike /storage/* on this host).
+Route::get('/media/file/{path}', [MediaController::class, 'show'])->where('path', '.*');
 Route::get('/delivery-eta', DeliveryController::class);
 
 Route::middleware('throttle:30,1')->group(function () {

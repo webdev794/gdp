@@ -7,21 +7,40 @@ use Illuminate\Support\Facades\Route;
 // /api/* (routes/api.php). Using a controller keeps `route:cache` working.
 Route::get('/', SpaController::class);
 
-// Serves files from storage/app/public without relying on `storage:link`.
-// The cPanel single-folder deployment (app root == web root, see
-// index.php's usePublicPath()) makes public_path('storage') resolve to the
-// exact same path as storage_path() itself, so the symlink `storage:link`
-// would create collides with the real storage/ directory and is silently a
-// no-op — and some shared hosts disable symlink() outright anyway. Without
-// this route, any /storage/... request falls through to the SPA fallback
-// below and "succeeds" with the homepage's HTML instead of the image.
+/**
+ * Legacy /storage/{path} → storage/app/public/{path}.
+ * Prefer /api/media/file/... on this host; keep this for old DB URLs when PHP is hit.
+ */
 Route::get('/storage/{path}', function (string $path) {
+    $path = str_replace('\\', '/', $path);
+    $path = ltrim($path, '/');
+
+    if ($path === '' || str_contains($path, '..')) {
+        abort(404);
+    }
+
+    $relative = preg_replace('#^(app/public/)+#', '', $path);
     $root = storage_path('app/public');
-    $file = realpath($root . '/' . $path);
+    $candidate = $root.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $relative);
 
-    abort_unless($file && str_starts_with($file, $root . DIRECTORY_SEPARATOR) && is_file($file), 404);
+    $file = realpath($candidate);
+    $rootReal = realpath($root);
 
-    return response()->file($file, ['Cache-Control' => 'public, max-age=31536000, immutable']);
+    if ($file !== false && $rootReal !== false) {
+        $fileNorm = str_replace('\\', '/', $file);
+        $rootNorm = rtrim(str_replace('\\', '/', $rootReal), '/');
+        if (! str_starts_with($fileNorm, $rootNorm.'/')) {
+            abort(404);
+        }
+    } else {
+        $file = $candidate;
+    }
+
+    abort_unless(is_file($file) && is_readable($file), 404);
+
+    return response()->file($file, [
+        'Cache-Control' => 'public, max-age=31536000, immutable',
+    ]);
 })->where('path', '.*');
 
 Route::fallback(SpaController::class);
