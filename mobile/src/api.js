@@ -87,8 +87,12 @@ export const api = {
     return request(`/products/${slug}${query ? `?${query}` : ''}`);
   },
 
-  addCartItem: (product_id, quantity, coords = {}) =>
-    request('/cart/items', { method: 'POST', body: { product_id, quantity, ...coords }, auth: true }),
+  addCartItem: (product_id, quantity, product_variant_id, coords = {}) =>
+    request('/cart/items', {
+      method: 'POST',
+      body: { product_id, quantity, product_variant_id: product_variant_id ?? undefined, ...coords },
+      auth: true,
+    }),
   clearCart: () => request('/cart', { method: 'DELETE', auth: true }),
 
   addresses: () => request('/addresses', { auth: true }),

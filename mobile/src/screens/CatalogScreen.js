@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -12,10 +12,12 @@ import {
 import * as Location from 'expo-location';
 import { api } from '../api';
 import { useApp } from '../state';
-import { colors, money } from '../theme';
+import { colors, money, saleInfo } from '../theme';
+import ProductThumb from '../components/ProductThumb';
 
 export default function CatalogScreen({ navigation }) {
   const { addToCart, cartCount, signOut, deliveryLocation, setDeliveryLocation } = useApp();
+  const addingRef = useRef(new Set()); // blocks a rapid double-tap/touch-bounce per product
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
   const [activeCategory, setActiveCategory] = useState(null);
@@ -129,7 +131,7 @@ export default function CatalogScreen({ navigation }) {
       <View style={styles.searchRow}>
         <TextInput
           style={styles.search}
-          placeholder="Search groceries"
+          placeholder="Search products"
           value={search}
           returnKeyType="search"
           onChangeText={setSearch}
@@ -160,7 +162,7 @@ export default function CatalogScreen({ navigation }) {
         data={[{ id: 'all', name: 'All items', slug: null }, ...categories]}
         keyExtractor={(item) => String(item.id)}
         style={styles.chipRow}
-        contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
+        contentContainerStyle={{ paddingHorizontal: 16, gap: 8, alignItems: 'center' }}
         renderItem={({ item }) => {
           const active = activeCategory === item.slug;
           return (
@@ -168,7 +170,7 @@ export default function CatalogScreen({ navigation }) {
               style={[styles.chip, active && styles.chipActive]}
               onPress={() => setActiveCategory(item.slug)}
             >
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>{item.name}</Text>
+              <Text style={[styles.chipText, active && styles.chipTextActive]} numberOfLines={1}>{item.name}</Text>
             </Pressable>
           );
         }}
@@ -184,27 +186,44 @@ export default function CatalogScreen({ navigation }) {
         contentContainerStyle={{ gap: 12, paddingVertical: 14, paddingBottom: 40 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={<Text style={styles.empty}>No products found.</Text>}
-        renderItem={({ item }) => (
-          <Pressable style={styles.card} onPress={() => navigation.navigate('Product', { slug: item.slug })}>
-            <View style={styles.thumb}>
-              <Text style={styles.thumbText}>
-                {item.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
-              </Text>
-            </View>
-            <Text style={styles.cat}>{item.category?.name ?? 'Grocery'}</Text>
-            <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
-            <View style={styles.cardBottom}>
-              <Text style={styles.price}>{money(item.price_cents)}</Text>
-              {item.out_of_stock ? (
-                <View style={[styles.add, styles.addOff]}><Text style={styles.addOffText}>Out of stock</Text></View>
-              ) : (
-                <Pressable style={styles.add} onPress={() => addToCart(item)}>
-                  <Text style={styles.addText}>Add</Text>
-                </Pressable>
-              )}
-            </View>
-          </Pressable>
-        )}
+        renderItem={({ item }) => {
+          const { onSale, pctOff } = saleInfo(item.price_cents, item.compare_at_price_cents);
+          return (
+            <Pressable style={styles.card} onPress={() => navigation.navigate('Product', { slug: item.slug })}>
+              <View>
+                <ProductThumb name={item.name} imageUrl={item.image_url} style={styles.thumb} textStyle={styles.thumbText} />
+                {onSale && !item.out_of_stock && (
+                  <View style={styles.saleBadge}>
+                    <Text style={styles.saleBadgeText}>{pctOff}% off</Text>
+                  </View>
+                )}
+              </View>
+              <Text style={styles.cat}>{item.category?.name ?? 'Uncategorized'}</Text>
+              <Text style={styles.name} numberOfLines={2}>{item.name}</Text>
+              <View style={styles.cardBottom}>
+                <View style={styles.priceRow}>
+                  <Text style={[styles.price, onSale && styles.priceOnSale]}>{money(item.price_cents)}</Text>
+                  {onSale && <Text style={styles.priceStrike}>{money(item.compare_at_price_cents)}</Text>}
+                </View>
+                {item.out_of_stock ? (
+                  <View style={[styles.add, styles.addOff]}><Text style={styles.addOffText}>Out of stock</Text></View>
+                ) : (
+                  <Pressable
+                    style={styles.add}
+                    onPress={() => {
+                      if (addingRef.current.has(item.id)) return;
+                      addingRef.current.add(item.id);
+                      addToCart(item);
+                      setTimeout(() => addingRef.current.delete(item.id), 400);
+                    }}
+                  >
+                    <Text style={styles.addText}>Add</Text>
+                  </Pressable>
+                )}
+              </View>
+            </Pressable>
+          );
+        }}
       />
     </View>
   );
@@ -234,7 +253,7 @@ const styles = StyleSheet.create({
   },
   locText: { fontSize: 12, color: colors.muted },
   locClear: { fontSize: 12, color: colors.brand, fontWeight: '700' },
-  chipRow: { marginTop: 12, flexGrow: 0 },
+  chipRow: { marginTop: 12, flexGrow: 0, height: 44 },
   chip: {
     borderWidth: 1,
     borderColor: colors.line,
@@ -265,10 +284,23 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   thumbText: { fontSize: 20, fontWeight: '800', color: colors.accent },
+  saleBadge: {
+    position: 'absolute',
+    top: 6,
+    left: 6,
+    backgroundColor: colors.danger,
+    borderRadius: 999,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+  },
+  saleBadgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
   cat: { fontSize: 10, color: colors.muted, textTransform: 'uppercase', letterSpacing: 0.5 },
   name: { fontSize: 14, fontWeight: '600', color: colors.ink, marginTop: 3, minHeight: 36 },
   cardBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  priceRow: { flexShrink: 1 },
   price: { fontSize: 15, fontWeight: '800', color: colors.ink },
+  priceOnSale: { color: colors.danger },
+  priceStrike: { fontSize: 11, color: colors.muted, textDecorationLine: 'line-through' },
   add: { backgroundColor: colors.brand, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 7 },
   addText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   addOff: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.line },

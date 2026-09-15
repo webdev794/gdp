@@ -72,6 +72,7 @@ export default function CheckoutScreen({ navigation }) {
         await api.addCartItem(
           item.id,
           item.quantity,
+          item.variantId,
           deliveryLocation ? { lat: deliveryLocation.lat, lng: deliveryLocation.lng } : {},
         );
       }

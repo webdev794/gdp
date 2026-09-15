@@ -13,6 +13,13 @@ export const colors = {
 
 export const money = (cents) => `$${((cents ?? 0) / 100).toFixed(2)}`;
 
+// A price is "on sale" when compareAt is set and higher than the current price.
+export function saleInfo(priceCents, compareAtCents) {
+  const onSale = compareAtCents != null && compareAtCents > priceCents;
+  const pctOff = onSale ? Math.round((1 - priceCents / compareAtCents) * 100) : 0;
+  return { onSale, pctOff };
+}
+
 export const STATUS_LABELS = {
   pending_payment: 'Awaiting payment',
   confirmed: 'Confirmed',

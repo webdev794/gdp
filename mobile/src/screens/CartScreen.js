@@ -1,7 +1,7 @@
 import React from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useApp } from '../state';
-import { colors, money } from '../theme';
+import { colors, money, saleInfo } from '../theme';
 
 export default function CartScreen({ navigation }) {
   const { cart, cartTotal, changeQuantity } = useApp();
@@ -21,26 +21,34 @@ export default function CartScreen({ navigation }) {
     <View style={styles.wrap}>
       <FlatList
         data={cart}
-        keyExtractor={(item) => String(item.id)}
+        keyExtractor={(item) => item.key ?? `${item.id}:${item.variantId ?? ''}`}
         contentContainerStyle={{ padding: 16, gap: 10 }}
-        renderItem={({ item }) => (
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.unit}>{money(item.price_cents)} each</Text>
+        renderItem={({ item }) => {
+          const key = item.key ?? `${item.id}:${item.variantId ?? ''}`;
+          const { onSale } = saleInfo(item.price_cents, item.compare_at_price_cents);
+          return (
+            <View style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.name}>{item.name}</Text>
+                {!!item.variantLabel && <Text style={styles.unit}>{item.variantLabel}</Text>}
+                <View style={styles.unitRow}>
+                  <Text style={[styles.unit, onSale && styles.unitOnSale]}>{money(item.price_cents)} each</Text>
+                  {onSale && <Text style={styles.unitStrike}>{money(item.compare_at_price_cents)}</Text>}
+                </View>
+              </View>
+              <View style={styles.stepper}>
+                <Pressable style={styles.stepBtn} onPress={() => changeQuantity(key, -1)}>
+                  <Text style={styles.stepText}>-</Text>
+                </Pressable>
+                <Text style={styles.qty}>{item.quantity}</Text>
+                <Pressable style={styles.stepBtn} onPress={() => changeQuantity(key, 1)}>
+                  <Text style={styles.stepText}>+</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.lineTotal}>{money(item.price_cents * item.quantity)}</Text>
             </View>
-            <View style={styles.stepper}>
-              <Pressable style={styles.stepBtn} onPress={() => changeQuantity(item.id, -1)}>
-                <Text style={styles.stepText}>-</Text>
-              </Pressable>
-              <Text style={styles.qty}>{item.quantity}</Text>
-              <Pressable style={styles.stepBtn} onPress={() => changeQuantity(item.id, 1)}>
-                <Text style={styles.stepText}>+</Text>
-              </Pressable>
-            </View>
-            <Text style={styles.lineTotal}>{money(item.price_cents * item.quantity)}</Text>
-          </View>
-        )}
+          );
+        }}
       />
 
       <View style={styles.footer}>
@@ -73,6 +81,9 @@ const styles = StyleSheet.create({
   },
   name: { fontSize: 14, fontWeight: '600', color: colors.ink },
   unit: { fontSize: 12, color: colors.muted, marginTop: 2 },
+  unitRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  unitOnSale: { color: colors.danger, fontWeight: '700' },
+  unitStrike: { fontSize: 11, color: colors.muted, textDecorationLine: 'line-through' },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   stepBtn: {
     width: 28,

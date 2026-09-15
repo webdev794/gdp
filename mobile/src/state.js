@@ -80,24 +80,37 @@ export function AppProvider({ children }) {
           setUser(await api.me());
         } catch {}
       },
-      addToCart(product) {
+      // variant is optional — omit it (or pass null) to add the base product.
+      // Cart lines are keyed by product+variant so different options of the
+      // same product sit in the cart as separate lines.
+      addToCart(product, variant) {
+        const key = `${product.id}:${variant?.id ?? ''}`;
         setCart((current) => {
-          const found = current.find((item) => item.id === product.id);
+          const found = current.find((item) => item.key === key);
           if (found) {
             return current.map((item) =>
-              item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+              item.key === key ? { ...item, quantity: item.quantity + 1 } : item
             );
           }
           return [
             ...current,
-            { id: product.id, name: product.name, price_cents: product.price_cents, quantity: 1 },
+            {
+              key,
+              id: product.id,
+              variantId: variant?.id ?? null,
+              variantLabel: variant?.label ?? null,
+              name: product.name,
+              price_cents: variant ? variant.price_cents : product.price_cents,
+              compare_at_price_cents: (variant ? variant.compare_at_price_cents : product.compare_at_price_cents) ?? null,
+              quantity: 1,
+            },
           ];
         });
       },
-      changeQuantity(id, delta) {
+      changeQuantity(key, delta) {
         setCart((current) =>
           current.flatMap((item) => {
-            if (item.id !== id) return [item];
+            if (item.key !== key) return [item];
             const quantity = item.quantity + delta;
             return quantity > 0 ? [{ ...item, quantity }] : [];
           })
