@@ -67,13 +67,14 @@ class SupportThread extends Model
      *                          recorded for later admin reference but never shown
      *                          to the customer, and doesn't count as a reply.
      */
-    public function post(?User $sender, string $body, bool $isStaff = false, bool $system = false, bool $internal = false): SupportMessage
+    public function post(?User $sender, string $body, bool $isStaff = false, bool $system = false, bool $internal = false, ?string $attachmentUrl = null): SupportMessage
     {
         $message = $this->messages()->create([
             'user_id' => $system ? null : $sender?->id,
             'is_staff' => $isStaff,
             'internal' => $internal,
             'body' => $body,
+            'attachment_url' => $attachmentUrl,
         ]);
 
         if (! $internal) {

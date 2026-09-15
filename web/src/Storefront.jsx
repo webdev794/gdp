@@ -417,6 +417,8 @@ export default function Storefront() {
   const [supportBusy, setSupportBusy] = useState(false)
   const [supportMsg, setSupportMsg] = useState('')
   const [supportUnread, setSupportUnread] = useState(0)
+  const [supportNewImage, setSupportNewImage] = useState(null)
+  const [supportReplyImage, setSupportReplyImage] = useState(null)
 
   useEffect(() => {
     localStorage.setItem('gdp_cart', JSON.stringify(cart))
@@ -1149,15 +1151,19 @@ export default function Storefront() {
 
   async function submitSupport() {
     if (supportForm.about_order && !supportForm.order_id) { setSupportMsg('Select which order this is about.'); return }
-    if (!supportForm.message.trim()) { setSupportMsg('Add a message describing the problem.'); return }
+    if (!supportForm.message.trim() && !supportNewImage) { setSupportMsg('Add a message describing the problem, or attach a photo.'); return }
     setSupportBusy(true); setSupportMsg('')
     try {
-      const body = { issue_type: supportForm.issue_type, message: supportForm.message.trim() }
-      if (supportForm.about_order && supportForm.order_id) body.order_id = Number(supportForm.order_id)
-      const response = await authPost('/support/threads', body)
+      const body = new FormData()
+      body.append('issue_type', supportForm.issue_type)
+      if (supportForm.message.trim()) body.append('message', supportForm.message.trim())
+      if (supportForm.about_order && supportForm.order_id) body.append('order_id', supportForm.order_id)
+      if (supportNewImage) body.append('image', supportNewImage)
+      const response = await fetch(`${API_URL}/support/threads`, { method: 'POST', headers: { Accept: 'application/json', Authorization: `Bearer ${localStorage.getItem('gdp_token')}` }, body })
       const data = await responseJson(response)
       if (!response.ok) throw new Error(data.message ?? 'Could not send your request.')
       setSupportForm({ about_order: false, order_id: '', issue_type: 'item_missing', message: '' })
+      setSupportNewImage(null)
       setSupportView(data.data)
       loadThreads()
     } catch (error) { setSupportMsg(error.message) } finally { setSupportBusy(false) }
@@ -1165,13 +1171,17 @@ export default function Storefront() {
 
   async function sendSupportReply() {
     const body = supportReply.trim()
-    if (!body || typeof supportView !== 'object' || !supportView) return
+    if ((!body && !supportReplyImage) || typeof supportView !== 'object' || !supportView) return
     setSupportBusy(true)
     try {
-      const response = await authPost(`/support/threads/${supportView.id}/messages`, { body })
+      const form = new FormData()
+      if (body) form.append('body', body)
+      if (supportReplyImage) form.append('image', supportReplyImage)
+      const response = await fetch(`${API_URL}/support/threads/${supportView.id}/messages`, { method: 'POST', headers: { Accept: 'application/json', Authorization: `Bearer ${localStorage.getItem('gdp_token')}` }, body: form })
       const data = await responseJson(response)
       if (!response.ok) throw new Error(data.message ?? 'Message not sent.')
       setSupportReply('')
+      setSupportReplyImage(null)
       setSupportView(data.data)
     } catch (error) { setSupportMsg(error.message) } finally { setSupportBusy(false) }
   }
@@ -1699,6 +1709,7 @@ export default function Storefront() {
             </label>)}
         <div className="issue-chips" role="radiogroup" aria-label="Issue type">{ISSUE_TYPES.map(([type, label]) => <button key={type} type="button" role="radio" aria-checked={supportForm.issue_type === type} className={supportForm.issue_type === type ? 'issue-chip active' : 'issue-chip'} onClick={() => setSupportForm({ ...supportForm, issue_type: type })}>{label}</button>)}</div>
         <textarea className="delivery-note" rows="3" maxLength="2000" placeholder="Tell us what happened" value={supportForm.message} onChange={(event) => setSupportForm({ ...supportForm, message: event.target.value })} />
+        <label className="chat-attach-field">{supportNewImage ? supportNewImage.name : 'Attach a photo (optional)'}<input type="file" accept="image/*" onChange={(event) => setSupportNewImage(event.target.files?.[0] ?? null)} />{supportNewImage && <button type="button" className="chat-attach-clear" onClick={(event) => { event.preventDefault(); setSupportNewImage(null) }}>Remove</button>}</label>
         <button className="checkout-button" type="button" disabled={supportBusy} onClick={submitSupport}>Send <span>-&gt;</span></button>
         <button className="switch-auth" type="button" onClick={() => setSupportView('list')}>Back</button>
       </> : <>
@@ -1710,11 +1721,16 @@ export default function Storefront() {
             ? <RiderRating orderId={chatOrder.id} existing={chatOrder.rider_review} source="chat" onSaved={(rv) => setOrders((current) => current.map((row) => row.id === chatOrder.id ? { ...row, rider_review: rv } : row))} />
             : null
         })()}
-        <div className="chat-log">{(supportView.messages ?? []).map((m) => <div key={m.id} className={`chat-msg ${m.is_staff ? 'staff' : m.user_id ? 'me' : 'system'}`}><span>{m.body}</span><em>{new Date(m.created_at).toLocaleString()}</em></div>)}</div>
+        <div className="chat-log">{(supportView.messages ?? []).map((m) => <div key={m.id} className={`chat-msg ${m.is_staff ? 'staff' : m.user_id ? 'me' : 'system'}`}>{m.attachment_url && <a href={mediaUrl(m.attachment_url)} target="_blank" rel="noreferrer"><img className="chat-attachment" src={mediaUrl(m.attachment_url)} alt="Attached photo" /></a>}{m.body && <span>{m.body}</span>}<em>{new Date(m.created_at).toLocaleString()}</em></div>)}</div>
         {supportView.issue_type !== 'delivery' && (supportView.rating != null || (supportView.messages ?? []).some((m) => m.is_staff)) && (
           <ChatRating key={supportView.id} thread={supportView} onSaved={(t) => { setSupportView(t); loadThreads() }} />
         )}
-        <div className="chat-send"><input placeholder="Type a message" value={supportReply} onChange={(event) => setSupportReply(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') sendSupportReply() }} /><button type="button" disabled={supportBusy || !supportReply.trim()} onClick={sendSupportReply}>Send</button></div>
+        {supportReplyImage && <p className="chat-attach-selected">📷 {supportReplyImage.name} <button type="button" onClick={() => setSupportReplyImage(null)}>Remove</button></p>}
+        <div className="chat-send">
+          <label className="chat-attach-btn" title="Attach a photo"><span aria-hidden>📷</span><input type="file" accept="image/*" onChange={(event) => setSupportReplyImage(event.target.files?.[0] ?? null)} /></label>
+          <input placeholder="Type a message" value={supportReply} onChange={(event) => setSupportReply(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') sendSupportReply() }} />
+          <button type="button" disabled={supportBusy || (!supportReply.trim() && !supportReplyImage)} onClick={sendSupportReply}>Send</button>
+        </div>
         <button className="end-chat-button" type="button" disabled={supportBusy} onClick={endChat}>End Chat</button>
         <button className="switch-auth" type="button" onClick={() => { setSupportView('list'); loadThreads() }}>All conversations</button>
       </>}

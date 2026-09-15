@@ -2,16 +2,22 @@
 
 namespace App\Models;
 
+use App\Support\PublicMedia;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SupportMessage extends Model
 {
-    protected $fillable = ['support_thread_id', 'user_id', 'is_staff', 'internal', 'body'];
+    protected $fillable = ['support_thread_id', 'user_id', 'is_staff', 'internal', 'body', 'attachment_url'];
 
     protected function casts(): array
     {
         return ['is_staff' => 'boolean', 'internal' => 'boolean'];
+    }
+
+    public function getAttachmentUrlAttribute(?string $value): ?string
+    {
+        return PublicMedia::url($value);
     }
 
     public function thread(): BelongsTo

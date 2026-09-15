@@ -25,7 +25,7 @@ class MediaUploadTest extends TestCase
         $path = $response->json('data.path');
         $this->assertStringStartsWith('products/', $path);
         Storage::disk('public')->assertExists($path);
-        $this->assertStringContainsString('/storage/products/', $response->json('data.url'));
+        $this->assertStringContainsString('/api/media/file/products/', $response->json('data.url'));
     }
 
     public function test_non_image_and_oversized_files_are_rejected(): void

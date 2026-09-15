@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\PublicMedia;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
@@ -17,6 +18,11 @@ class Banner extends Model
             'sort_order' => 'integer',
             'is_active' => 'boolean',
         ];
+    }
+
+    public function getImageUrlAttribute(?string $value): ?string
+    {
+        return PublicMedia::url($value);
     }
 
     public function scopeActive(Builder $query): Builder

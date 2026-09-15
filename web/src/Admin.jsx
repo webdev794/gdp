@@ -2983,7 +2983,8 @@ export default function Admin({ token, onClose }) {
             )}
             <div className="chat-log">{(thread.messages ?? []).map((m) => (
               <div key={m.id} className={`chat-msg ${m.internal ? 'internal' : m.is_staff && m.user_id ? 'staff' : m.user_id ? 'customer' : 'system'}`}>
-                <span>{m.internal && '🔒 '}{m.body}</span>
+                {m.attachment_url && <a href={mediaUrl(m.attachment_url)} target="_blank" rel="noreferrer"><img className="chat-attachment" src={mediaUrl(m.attachment_url)} alt="Customer photo" /></a>}
+                {m.body && <span>{m.internal && '🔒 '}{m.body}</span>}
                 <em>{m.internal ? 'Internal note — not visible to customer · ' : ''}{new Date(m.created_at).toLocaleString()}</em>
               </div>
             ))}</div>

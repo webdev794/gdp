@@ -312,6 +312,7 @@ button.admin-bell-more:hover{text-decoration:underline}
 .chat-msg.customer{align-self:flex-start;background:white;border:1px solid var(--line,#e4e7df)}
 .chat-msg.system{align-self:center;background:#e7eef6;color:#2f5a8a;font-size:11px;text-align:center}
 .chat-msg.internal{align-self:center;max-width:92%;background:#fbe4a8;color:#6b4f12;border:1px dashed #e9c96f;font-size:11px;text-align:center}
+.chat-attachment{display:block;max-width:200px;max-height:200px;border-radius:9px;margin-bottom:6px;cursor:zoom-in}
 .chat-send{display:flex;gap:8px;margin-bottom:6px}
 .chat-send input{flex:1;padding:9px 11px;border:1px solid var(--line,#e4e7df);border-radius:7px;font:13px 'Okra',sans-serif}
 .chat-send button{padding:0 16px;border:0;border-radius:9px;background:#141a12;color:#f3f5ef;font:11px 'Okra',sans-serif;text-transform:uppercase;cursor:pointer;transition:background .12s ease}
