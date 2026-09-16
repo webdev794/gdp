@@ -47,6 +47,9 @@ const FOOTER_SOCIALS = [
 ]
 
 const CATEGORY_EMOJI = [
+  [/health|fitness/i, '\u{1F4AA}'],
+  [/flagship/i, '\u{1F451}'],
+  [/\bcar\b|automotive|vehicle/i, '\u{1F697}'],
   [/paan/i, '\u{1F343}'],
   [/dairy|milk|cheese|bread.*egg|egg.*bread/i, '\u{1F95B}'],
   [/fruit|vegetable|veg\b|produce/i, '\u{1F966}'],
@@ -72,6 +75,12 @@ const CATEGORY_EMOJI = [
 function categoryEmoji(name = '') { return (CATEGORY_EMOJI.find(([re]) => re.test(name)) ?? [null, '\u{1F6D2}'])[1] }
 
 const PRODUCT_EMOJI = [
+  [/echo|speaker/i, '\u{1F50A}'], [/hue|bulb/i, '\u{1F4A1}'], [/smart plug/i, '\u{1F50C}'],
+  [/doorbell/i, '\u{1F514}'], [/robovac|robot vacuum/i, '\u{1F9F9}'], [/fitness band|vivosmart/i, '⌚'],
+  [/scale/i, '⚖️'], [/blood pressure/i, '\u{1FA7A}'], [/oximeter/i, '\u{1FA7A}'],
+  [/skipping rope/i, '\u{1FA80}'], [/fold|xperia|rog phone|pro max/i, '\u{1F4F1}'], [/xps.*plus/i, '\u{1F4BB}'],
+  [/gps navigator/i, '\u{1F5FA}️'], [/dash cam/i, '\u{1F4F9}'], [/fm transmitter/i, '\u{1F4FB}'],
+  [/backup camera/i, '\u{1F4F7}'], [/jump starter/i, '\u{1F50B}'],
   [/banana/i, '\u{1F34C}'], [/apple/i, '\u{1F34E}'], [/egg/i, '\u{1F95A}'], [/milk/i, '\u{1F95B}'],
   [/rice/i, '\u{1F35A}'], [/pasta|noodle|spaghetti/i, '\u{1F35D}'], [/bread|loaf|bun/i, '\u{1F35E}'],
   [/cheese/i, '\u{1F9C0}'], [/butter/i, '\u{1F9C8}'], [/yog[hu]|yoghurt/i, '\u{1F963}'],
@@ -363,6 +372,8 @@ export default function Storefront() {
   const mapRef = useRef(null)
   const markerRef = useRef(null)
   const mapNodeRef = useRef(null)
+  const homeCatsRef = useRef(null)
+  const homeCatsDrag = useRef({ down: false, moved: false, startX: 0, scrollLeft: 0 })
   const locationRef = useRef(null)
   const [cartOpen, setCartOpen] = useState(false)
   const [trayLift, setTrayLift] = useState(0) // px the cart pill is dragged up; snaps back to 0 on scroll
@@ -1469,6 +1480,19 @@ export default function Storefront() {
     }
   }
 
+  const productGrid = <div className="product-grid">{visibleProducts.map((product) => {
+    const { hasVariants, options, chosen, variant, unitPrice, compareAt, onSale, pctOff, stock, key, qty, img } = variantView(product)
+    return <article className={stock === 0 ? 'pcard sold-out' : 'pcard'} key={product.id}>
+      <button className="pcard-img" type="button" aria-label={`View details for ${product.name}`} onClick={() => { setDetailProduct(product); setGalleryIndex(0) }}>{stock === 0 && <span className="pcard-oos">Out of stock</span>}{onSale && stock !== 0 && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</button>
+      <p className="pcard-cat">{product.category?.name ?? 'Uncategorized'}</p>
+      <h3>{variantTitle(product.name, variant?.label)}</h3>
+      {hasVariants && <select className="pcard-variant" aria-label={`${product.name} option`} value={String(chosen?.id ?? '')} onChange={(event) => setPickedVariant((current) => ({ ...current, [product.id]: event.target.value }))}>{options.map((o) => <option key={o.id === '' ? 'base' : o.id} value={String(o.id)}>{o.label} — {price(o.price_cents)}</option>)}</select>}
+      <div className="pcard-foot"><span className="pcard-price">{onSale ? <><strong className="on-sale">{price(unitPrice)}</strong><s>{price(compareAt)}</s></> : <strong>{price(unitPrice)}</strong>}</span>{qty === 0
+        ? <button className="add-btn" type="button" disabled={stock === 0} onClick={() => add(product, variant)}>{stock === 0 ? 'OUT' : 'ADD'}</button>
+        : <span className="stepper"><button type="button" aria-label="Remove one" onClick={() => updateQuantity(key, -1)}>&minus;</button><b>{qty}</b><button type="button" aria-label="Add one" disabled={stock != null && qty >= stock} onClick={() => updateQuantity(key, 1)}>+</button></span>}</div>
+    </article>
+  })}{!visibleProducts.length && <p className="empty-state">Nothing here yet.</p>}</div>
+
   return <><div className="app-shell">
     <header className="topbar">
       <div className="topbar-row">
@@ -1510,10 +1534,10 @@ export default function Storefront() {
       {offline && <div className="api-note">Showing sample products while the API is offline.</div>}
       {outOfArea && <div className="area-note">{UNSERVICEABLE_MSG}</div>}
 
-      {(!searching && !activeCategory) ? (
+      {!searching ? (
         <>
           {loading && banners.length === 0 && homeTileList.length === 0 && <div className="empty-state">Loading…</div>}
-          {banners.length > 0 && (() => {
+          {!activeCategory && banners.length > 0 && (() => {
             const heroBanners = banners.filter((b) => b.placement !== 'strip')
             const stripBanners = banners.filter((b) => b.placement === 'strip')
             return (heroBanners.length > 0 || stripBanners.length > 0) && <section className="home-banners" aria-label="Offers">
@@ -1528,12 +1552,36 @@ export default function Storefront() {
             </section>
           })()}
 
-          {homeTileList.length > 0 && <section className="home-cats" aria-label="Shop by category">
-            {homeTileList.map((tile) => { const meta = tileMeta(tile); return <button className="home-cat" type="button" key={tile.id} onClick={() => openHomeTarget(tile)}>
-              <span className="home-cat-img" aria-hidden>{categoryEmoji(meta.label)}{tile.image_url && <img src={mediaUrl(tile.image_url)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
-              <span className="home-cat-label">{meta.label}</span>
-            </button> })}
+          {homeTileList.length > 0 && <section className="home-cats-wrap" aria-label="Shop by category">
+            <button type="button" className="home-cats-arrow home-cats-arrow-left" aria-label="Scroll categories left" onClick={() => homeCatsRef.current?.scrollBy({ left: -400, behavior: 'smooth' })}>&#8249;</button>
+            <div className="home-cats" ref={homeCatsRef}
+              onMouseDown={(event) => { homeCatsDrag.current = { down: true, moved: false, startX: event.pageX, scrollLeft: homeCatsRef.current.scrollLeft } }}
+              onMouseMove={(event) => {
+                const state = homeCatsDrag.current
+                if (!state.down) return
+                const delta = event.pageX - state.startX
+                if (Math.abs(delta) > 4) state.moved = true
+                event.preventDefault()
+                homeCatsRef.current.scrollLeft = state.scrollLeft - delta
+              }}
+              onMouseUp={() => { homeCatsDrag.current.down = false }}
+              onMouseLeave={() => { homeCatsDrag.current.down = false }}
+              onClickCapture={(event) => { if (homeCatsDrag.current.moved) { event.preventDefault(); event.stopPropagation(); homeCatsDrag.current.moved = false } }}
+            >
+              {homeTileList.map((tile) => { const meta = tileMeta(tile); const isActive = !!activeCategory && meta.label === activeCategory; return <button className={isActive ? 'home-cat active' : 'home-cat'} type="button" key={tile.id} onClick={() => (isActive ? setActiveCategory(null) : openHomeTarget(tile))}>
+                <span className="home-cat-img" aria-hidden>{categoryEmoji(meta.label)}{tile.image_url && <img src={mediaUrl(tile.image_url)} alt="" loading="lazy" draggable={false} onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
+                <span className="home-cat-label">{meta.label}</span>
+              </button> })}
+            </div>
+            <button type="button" className="home-cats-arrow home-cats-arrow-right" aria-label="Scroll categories right" onClick={() => homeCatsRef.current?.scrollBy({ left: 400, behavior: 'smooth' })}>&#8250;</button>
           </section>}
+
+          {products.length > 0 && (loading ? <div className="empty-state">Loading…</div> : (
+            <>
+              <div className="catalog-head"><h2>{activeCategory || 'All products'}</h2><span>{visibleProducts.length} items</span></div>
+              {productGrid}
+            </>
+          ))}
         </>
       ) : loading ? <div className="empty-state">Loading…</div> : (
         <>
@@ -1541,19 +1589,8 @@ export default function Storefront() {
             <button className="cat-tile" type="button" onClick={() => { setActiveCategory(null); setQuery('') }}><span className="cat-ico" aria-hidden>&#8592;</span>All</button>
             {categories.map((category) => <button className={activeCategory === category.name ? 'cat-tile active' : 'cat-tile'} type="button" key={category.id} onClick={() => { setActiveCategory(category.name); setQuery('') }}><span className="cat-ico" aria-hidden>{categoryEmoji(category.name)}{category.image_url && <img src={mediaUrl(category.image_url)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>{category.name}</button>)}
           </nav>
-          <div className="catalog-head"><h2>{searching ? `Results for “${query.trim()}”` : activeCategory}</h2><span>{visibleProducts.length} items</span></div>
-          <div className="product-grid">{visibleProducts.map((product) => {
-            const { hasVariants, options, chosen, variant, unitPrice, compareAt, onSale, pctOff, stock, key, qty, img } = variantView(product)
-            return <article className={stock === 0 ? 'pcard sold-out' : 'pcard'} key={product.id}>
-              <button className="pcard-img" type="button" aria-label={`View details for ${product.name}`} onClick={() => { setDetailProduct(product); setGalleryIndex(0) }}>{stock === 0 && <span className="pcard-oos">Out of stock</span>}{onSale && stock !== 0 && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</button>
-              <p className="pcard-cat">{product.category?.name ?? 'Uncategorized'}</p>
-              <h3>{variantTitle(product.name, variant?.label)}</h3>
-              {hasVariants && <select className="pcard-variant" aria-label={`${product.name} option`} value={String(chosen?.id ?? '')} onChange={(event) => setPickedVariant((current) => ({ ...current, [product.id]: event.target.value }))}>{options.map((o) => <option key={o.id === '' ? 'base' : o.id} value={String(o.id)}>{o.label} — {price(o.price_cents)}</option>)}</select>}
-              <div className="pcard-foot"><span className="pcard-price">{onSale ? <><strong className="on-sale">{price(unitPrice)}</strong><s>{price(compareAt)}</s></> : <strong>{price(unitPrice)}</strong>}</span>{qty === 0
-                ? <button className="add-btn" type="button" disabled={stock === 0} onClick={() => add(product, variant)}>{stock === 0 ? 'OUT' : 'ADD'}</button>
-                : <span className="stepper"><button type="button" aria-label="Remove one" onClick={() => updateQuantity(key, -1)}>&minus;</button><b>{qty}</b><button type="button" aria-label="Add one" disabled={stock != null && qty >= stock} onClick={() => updateQuantity(key, 1)}>+</button></span>}</div>
-            </article>
-          })}{!visibleProducts.length && <p className="empty-state">Nothing here yet.</p>}</div>
+          <div className="catalog-head"><h2>{`Results for “${query.trim()}”`}</h2><span>{visibleProducts.length} items</span></div>
+          {productGrid}
         </>
       )}
       </>}

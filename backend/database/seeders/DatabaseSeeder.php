@@ -967,6 +967,30 @@ MD,
             ['HP LaserJet Printer', 'hp-laserjet-printer', 'Crisp, fast black-and-white printing built for the home office.', 'GDP-PROD-052', 17900, null, 100, '/img/products/52.jpg', 'office-electronics'],
             ['Epson Portable Projector', 'epson-portable-projector', 'A compact projector that turns any wall into a big screen for movies or presentations.', 'GDP-PROD-053', 39900, null, 100, '/img/products/53.jpg', 'office-electronics'],
             ['Logitech Webcam C920', 'logitech-webcam-c920', 'Full HD 1080p video and clear audio, built for sharp video calls and streaming.', 'GDP-PROD-054', 6999, 7999, 100, '/img/products/54.jpg', 'office-electronics'],
+
+            ['Amazon Echo Dot (5th Gen)', 'amazon-echo-dot-5th-gen', 'A compact smart speaker with Alexa built in, for music, routines, and controlling the rest of your smart home.', 'GDP-PROD-055', 4999, null, 100, '/img/products/55.jpg', 'smart-home'],
+            ['Philips Hue Smart Bulb Starter Kit', 'philips-hue-smart-bulb-starter-kit', 'Millions of colours and app-controlled scenes, with a bridge included to get your smart lighting started.', 'GDP-PROD-056', 6999, null, 100, '/img/products/56.jpg', 'smart-home'],
+            ['TP-Link Kasa Smart Plug', 'tp-link-kasa-smart-plug', 'Turn any outlet smart — schedule, voice-control, or remotely switch appliances from your phone.', 'GDP-PROD-057', 1999, null, 100, '/img/products/57.jpg', 'smart-home'],
+            ['Ring Video Doorbell', 'ring-video-doorbell', 'See, hear, and speak to visitors from anywhere, with motion alerts sent straight to your phone.', 'GDP-PROD-058', 9999, null, 100, '/img/products/58.jpg', 'smart-home'],
+            ['Eufy RoboVac 11S Robot Vacuum', 'eufy-robovac-11s-robot-vacuum', 'A slim robot vacuum that slides under furniture and keeps floors clean on a schedule you set.', 'GDP-PROD-059', 19900, null, 100, '/img/products/59.jpg', 'smart-home'],
+
+            ['Garmin Vivosmart 5 Fitness Band', 'garmin-vivosmart-5-fitness-band', 'A slim fitness band with heart-rate tracking, sleep scores, and up to seven days of battery life.', 'GDP-PROD-060', 12900, null, 100, '/img/products/60.jpg', 'health-and-fitness-tech'],
+            ['Withings Body+ Smart Scale', 'withings-body-plus-smart-scale', 'Weight, body fat, and muscle mass synced automatically to your phone every time you step on.', 'GDP-PROD-061', 9900, null, 100, '/img/products/61.jpg', 'health-and-fitness-tech'],
+            ['Omron Digital Blood Pressure Monitor', 'omron-digital-blood-pressure-monitor', 'Clinically validated, one-button readings you can track at home between doctor visits.', 'GDP-PROD-062', 4999, null, 100, '/img/products/62.jpg', 'health-and-fitness-tech'],
+            ['Wellue Pulse Oximeter', 'wellue-pulse-oximeter', 'A fingertip sensor that reads blood oxygen and pulse rate in seconds, with an easy-read display.', 'GDP-PROD-063', 2999, null, 100, '/img/products/63.jpg', 'health-and-fitness-tech'],
+            ['Xiaomi Smart Skipping Rope', 'xiaomi-smart-skipping-rope', 'Counts jumps, calories, and workout time automatically, and syncs your session to a fitness app.', 'GDP-PROD-064', 1999, null, 100, '/img/products/64.jpg', 'health-and-fitness-tech'],
+
+            ['Apple iPhone 15 Pro Max', 'apple-iphone-15-pro-max', 'The largest, most capable iPhone — a titanium build, a 5x telephoto lens, and the A17 Pro chip.', 'GDP-PROD-065', 119900, null, 100, '/img/products/65.jpg', 'premium-and-flagship'],
+            ['Samsung Galaxy Z Fold 6', 'samsung-galaxy-z-fold-6', 'A phone that unfolds into a tablet, with a smoother hinge and multitasking built for a bigger screen.', 'GDP-PROD-066', 179900, null, 100, '/img/products/66.jpg', 'premium-and-flagship'],
+            ['Sony Xperia 1 VI', 'sony-xperia-1-vi', 'A creator-focused flagship with a versatile zoom lens system and pro-grade video controls.', 'GDP-PROD-067', 139900, null, 100, '/img/products/67.jpg', 'premium-and-flagship'],
+            ['Asus ROG Phone 8', 'asus-rog-phone-8', 'A gaming flagship with a 165Hz display, AirTrigger controls, and cooling built for long sessions.', 'GDP-PROD-068', 109900, null, 100, '/img/products/68.jpg', 'premium-and-flagship'],
+            ['Dell XPS 15 Plus', 'dell-xps-15-plus', 'A premium creator laptop with an edge-to-edge InfinityEdge display and serious rendering power.', 'GDP-PROD-069', 189900, null, 100, '/img/products/69.jpg', 'premium-and-flagship'],
+
+            ['Garmin DriveSmart 55 GPS Navigator', 'garmin-drivesmart-55-gps-navigator', 'Voice-activated turn-by-turn navigation with live traffic, built for the dashboard.', 'GDP-PROD-070', 19900, null, 100, '/img/products/70.jpg', 'car-electronics'],
+            ['Pioneer Bluetooth Car Stereo Receiver', 'pioneer-bluetooth-car-stereo-receiver', 'A touchscreen head unit upgrade with Bluetooth calling and streaming built in for any dashboard.', 'GDP-PROD-071', 8999, null, 100, '/img/products/71.jpg', 'car-electronics'],
+            ['iOttie Car Dashboard Phone Mount', 'iottie-car-dashboard-phone-mount', 'A one-hand, one-touch mount that holds your phone steady on the dash or windshield for hands-free navigation.', 'GDP-PROD-072', 2499, null, 100, '/img/products/72.jpg', 'car-electronics'],
+            ['Car Vent Air Purifier & Freshener', 'car-vent-air-purifier-freshener', 'Clips onto any air vent to filter odours and keep the cabin smelling fresh on every drive.', 'GDP-PROD-073', 1499, null, 100, '/img/products/73.jpg', 'car-electronics'],
+            ['Pioneer Digital Car Clock Gauge', 'pioneer-digital-car-clock-gauge', 'A dash-mounted digital clock and gauge that drops into any spare vent or console slot.', 'GDP-PROD-074', 2999, null, 100, '/img/products/74.jpg', 'car-electronics'],
         ];
 
         foreach ($products as [$name, $slug, $description, $sku, $price, $compareAt, $inventory, $image, $categorySlug]) {
