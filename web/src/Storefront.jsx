@@ -1704,7 +1704,7 @@ export default function Storefront() {
     {hasMorePages && <button type="button" className="see-more-btn" disabled={loadingMore} onClick={loadMoreProducts}>{loadingMore ? 'Loading…' : <>See more {seeMoreArrow}</>}</button>}
   </>
 
-  function categoryCarousel(scrollRef, dragRef, wrapRef, activeLabel, onSelect) {
+  function categoryCarousel(scrollRef, dragRef, wrapRef, activeLabel, onSelect, showRecommended) {
     return homeTileList.length > 0 && <section className="home-cats-wrap" aria-label="Shop by category" ref={wrapRef}>
       <button type="button" className="home-cats-arrow home-cats-arrow-left" aria-label="Scroll categories left" onClick={() => scrollRef.current?.scrollBy({ left: -400, behavior: 'smooth' })}><svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 6 9 12 15 18" /></svg></button>
       <div className="home-cats" ref={scrollRef}
@@ -1721,6 +1721,10 @@ export default function Storefront() {
         onMouseLeave={() => { dragRef.current.down = false }}
         onClickCapture={(event) => { if (dragRef.current.moved) { event.preventDefault(); event.stopPropagation(); dragRef.current.moved = false } }}
       >
+        {showRecommended && <button className={!activeLabel ? 'home-cat active' : 'home-cat'} type="button" onClick={() => onSelect(null)}>
+          <span className="home-cat-img" aria-hidden><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg></span>
+          <span className="home-cat-label">Recommended</span>
+        </button>}
         {homeTileList.map((tile) => { const meta = tileMeta(tile); const isActive = !!activeLabel && meta.label === activeLabel; return <button className={isActive ? 'home-cat active' : 'home-cat'} type="button" key={tile.id} onClick={() => onSelect(isActive ? null : tile)}>
           <span className="home-cat-img" aria-hidden>{categoryEmoji(meta.label)}{tile.image_url && <img src={mediaUrl(tile.image_url)} alt="" loading="lazy" draggable={false} onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
           <span className="home-cat-label">{meta.label}</span>
@@ -1806,7 +1810,7 @@ export default function Storefront() {
             </div>
           </section>}
 
-          {categoryCarousel(dealsCatsRef, dealsCatsDrag, dealsCatsWrapRef, dealsCategory, (tile) => setDealsCategory(tile ? tileMeta(tile).label : null))}
+          {categoryCarousel(dealsCatsRef, dealsCatsDrag, dealsCatsWrapRef, dealsCategory, (tile) => setDealsCategory(tile ? tileMeta(tile).label : null), true)}
 
           {dealsLoading ? <div className="empty-state">Loading…</div> : <>
             <div className="catalog-head"><h2>{dealsCategory || dealsLabel}</h2><span>{dealsProducts.length} items</span></div>
