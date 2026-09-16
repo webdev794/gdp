@@ -124,6 +124,8 @@ class AdminProductController extends Controller
             'inventory_quantity' => ['sometimes', 'integer', 'min:0'],
             'image_url' => ['sometimes', 'nullable', 'url', 'max:500'],
             'is_active' => ['sometimes', 'boolean'],
+            'deal_type' => ['sometimes', 'nullable', Rule::in(['lightning', 'unbeatable'])],
+            'is_exclusive_offer' => ['sometimes', 'boolean'],
 
             // Per-store stock. A full replacement of this product's rows: one
             // entry per (store, option). `variant_sku` null = the base product.

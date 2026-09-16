@@ -53,13 +53,17 @@ class FooterConfig
             }
         }
 
+        $defaults = config('footer');
+        $hex = fn ($value, string $default) => preg_match('/^#[0-9a-fA-F]{6}$/', (string) $value) ? $value : $default;
+
         return [
             'copyright' => $str($input['copyright'] ?? '', 160),
-            'note' => $str($input['note'] ?? '', 600),
             'app_store_url' => $str($input['app_store_url'] ?? '', 2048),
             'play_store_url' => $str($input['play_store_url'] ?? '', 2048),
             'socials' => $socials,
             'links' => $links,
+            'bg_color' => $hex($input['bg_color'] ?? null, $defaults['bg_color']),
+            'text_color' => $hex($input['text_color'] ?? null, $defaults['text_color']),
         ];
     }
 }

@@ -9,6 +9,7 @@ use App\Models\ProductVariant;
 use App\Support\StoreLocator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CatalogController extends Controller
 {
@@ -55,6 +56,7 @@ class CatalogController extends Controller
         $validated = $request->validate([
             'category' => ['sometimes', 'string', 'exists:categories,slug'],
             'search' => ['sometimes', 'string', 'min:2', 'max:100'],
+            'deal_type' => ['sometimes', Rule::in(['lightning', 'unbeatable'])],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
         ]);
 
@@ -86,11 +88,46 @@ class CatalogController extends Controller
                 'category',
                 fn ($categoryQuery) => $categoryQuery->where('slug', $validated['category'])
             ))
+            ->when(isset($validated['deal_type']), fn ($query) => $query->where('deal_type', $validated['deal_type']))
             ->orderBy('name')
             ->paginate($validated['per_page'] ?? 20)
             ->through(fn (Product $product) => $this->present($product, $storeId));
 
         return response()->json($products);
+    }
+
+    /**
+     * A small random sample of products tagged with a deal type, for the
+     * homepage deals strip. Re-rolled on every request — no caching — so a
+     * page refresh surfaces different products.
+     */
+    public function deals(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'deal_type' => ['required', Rule::in(['lightning', 'unbeatable'])],
+            'exclusive' => ['sometimes', 'boolean'],
+            'limit' => ['sometimes', 'integer', 'min:1', 'max:24'],
+        ]);
+
+        $storeId = $this->servingStoreId($request);
+
+        $products = Product::query()
+            ->with([
+                'category',
+                'variants' => fn ($query) => $query->where('is_active', true),
+                'storeInventory',
+            ])
+            ->where('is_active', true)
+            ->where('deal_type', $validated['deal_type'])
+            ->when($validated['exclusive'] ?? false, fn ($query) => $query->where('is_exclusive_offer', true))
+            ->visibleAtStore($storeId)
+            ->whereHas('category', fn ($query) => $query->where('is_active', true))
+            ->inRandomOrder()
+            ->limit($validated['limit'] ?? 3)
+            ->get()
+            ->map(fn (Product $product) => $this->present($product, $storeId));
+
+        return response()->json(['data' => $products]);
     }
 
     public function product(Request $request, Product $product): JsonResponse

@@ -794,6 +794,61 @@ For anything else, see the [Contact](/#/p/contact) page.
 *This is placeholder text for a demo store. Replace it with a responsible-disclosure policy reviewed by your security and legal teams, and set real scope, contact details and an effective date in Admin -> Pages.*
 MD,
             ],
+            [
+                'slug' => 'careers', 'title' => 'Careers', 'footer_group' => 'company', 'sort_order' => 4,
+                'sections' => [],
+                'content' => 'We\'re not hiring through this demo site, but a real deployment would list open roles here — engineering, operations, delivery riders and store staff.',
+            ],
+            [
+                'slug' => 'press', 'title' => 'Press', 'footer_group' => 'company', 'sort_order' => 5,
+                'sections' => [],
+                'content' => "Media enquiries: **press@nextech.example**.\n\nThis is a placeholder press page for a demo store — a real one would carry brand assets, recent coverage and a media contact.",
+            ],
+            [
+                'slug' => 'affiliate-program', 'title' => 'Affiliate Program', 'footer_group' => 'company', 'sort_order' => 6,
+                'sections' => [],
+                'content' => 'A placeholder page for a demo store. A real affiliate program would explain how partners can earn commission for referring customers, along with sign-up details.',
+            ],
+            [
+                'slug' => 'returns', 'title' => 'Return & Refund Policy', 'footer_group' => 'legal', 'sort_order' => 4,
+                'sections' => [],
+                'content' => "This is placeholder text for a demo store. A real policy would cover the return window, condition requirements, how to start a return, and how refunds are issued.\n\nSee the [Contact](/#/p/contact) page for support in the meantime.",
+            ],
+            [
+                'slug' => 'shipping-info', 'title' => 'Shipping Info', 'footer_group' => 'legal', 'sort_order' => 5,
+                'sections' => [],
+                'content' => 'This is placeholder text for a demo store. A real page would cover delivery areas, estimated delivery times, shipping fees, and order tracking.',
+            ],
+            [
+                'slug' => 'report-suspicious-activity', 'title' => 'Report Suspicious Activity', 'footer_group' => 'legal', 'sort_order' => 6,
+                'sections' => [],
+                'content' => "If something about an order, message or call claiming to be from NexTech looks suspicious, let us know at **security@nextech.example**.\n\nThis is a placeholder page for a demo store.",
+            ],
+            [
+                'slug' => 'support-center', 'title' => 'Support Center', 'footer_group' => 'help', 'sort_order' => 2,
+                'sections' => [],
+                'content' => "Need help with an order, payment or your account? Use the **Help** button in the app, or see [FAQs](/#/p/faqs) and [Contact us](/#/p/contact).\n\nThis is a placeholder page for a demo store.",
+            ],
+            [
+                'slug' => 'safety-center', 'title' => 'Safety Center', 'footer_group' => 'help', 'sort_order' => 3,
+                'sections' => [],
+                'content' => 'This is placeholder text for a demo store. A real safety center would cover rider and customer safety measures, verified deliveries, and how to report a safety concern.',
+            ],
+            [
+                'slug' => 'sitemap', 'title' => 'Sitemap', 'footer_group' => 'help', 'sort_order' => 4,
+                'sections' => [],
+                'content' => "A full sitemap would list every page on the site. This is a placeholder for a demo store — see the footer links, or browse [categories](/#/) from the homepage.",
+            ],
+            [
+                'slug' => 'privacy-choices', 'title' => 'Your Privacy Choices', 'footer_group' => 'bottom', 'sort_order' => 1,
+                'sections' => [],
+                'content' => "This is placeholder text for a demo store. A real page here would let visitors opt out of the sale or sharing of their personal information, as required by state privacy laws, and would link to the [Privacy Policy](/#/p/privacy) for full detail.",
+            ],
+            [
+                'slug' => 'ad-preferences', 'title' => 'Ad Preferences', 'footer_group' => 'bottom', 'sort_order' => 2,
+                'sections' => [],
+                'content' => 'This is placeholder text for a demo store. A real page here would let visitors manage personalised-advertising preferences and cookie-based tracking choices.',
+            ],
         ];
 
         foreach ($pages as $page) {

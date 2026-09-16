@@ -54,6 +54,7 @@ Route::middleware('throttle:30,1')->group(function () {
 });
 
 Route::get('/categories', [CatalogController::class, 'categories']);
+Route::get('/deals', [CatalogController::class, 'deals']);
 Route::get('/products', [CatalogController::class, 'products']);
 Route::get('/products/{product:slug}', [CatalogController::class, 'product']);
 

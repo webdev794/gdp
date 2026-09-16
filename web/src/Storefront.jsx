@@ -367,6 +367,23 @@ export default function Storefront() {
   const [stores, setStores] = useState([])
   const [banners, setBanners] = useState([])
   const [homeTiles, setHomeTiles] = useState([])
+  const [lightningDeals, setLightningDeals] = useState([])
+  const [unbeatableDeals, setUnbeatableDeals] = useState([])
+  const [dealsPage, setDealsPageState] = useState(null)
+  const [dealsCategory, setDealsCategory] = useState(null)
+  const [dealsExclusive, setDealsExclusive] = useState([])
+  const [dealsProducts, setDealsProducts] = useState([])
+  const [dealsProductPage, setDealsProductPage] = useState(0)
+  const [dealsHasMore, setDealsHasMore] = useState(false)
+  const [dealsLoading, setDealsLoading] = useState(true)
+  const [dealsLoadingMore, setDealsLoadingMore] = useState(false)
+  const dealsCatsRef = useRef(null)
+  const dealsCatsDrag = useRef({ down: false, moved: false, startX: 0, scrollLeft: 0 })
+  const dealsExclusiveRef = useRef(null)
+  const dealsExclusiveDrag = useRef({ down: false, moved: false, startX: 0, scrollLeft: 0 })
+  const homeCatsWrapRef = useRef(null)
+  const dealsCatsWrapRef = useRef(null)
+  const dealsExclusiveWrapRef = useRef(null)
   const [branding, setBranding] = useState(null)
   const [footer, setFooter] = useState(null)
   const mapRef = useRef(null)
@@ -374,6 +391,8 @@ export default function Storefront() {
   const mapNodeRef = useRef(null)
   const homeCatsRef = useRef(null)
   const homeCatsDrag = useRef({ down: false, moved: false, startX: 0, scrollLeft: 0 })
+  const productGridRef = useRef(null)
+  const [itemsPerRow, setItemsPerRow] = useState(4)
   const locationRef = useRef(null)
   const [cartOpen, setCartOpen] = useState(false)
   const [trayLift, setTrayLift] = useState(0) // px the cart pill is dragged up; snaps back to 0 on scroll
@@ -433,6 +452,24 @@ export default function Storefront() {
   useEffect(() => {
     localStorage.setItem('gdp_cart', JSON.stringify(cart))
   }, [cart])
+
+  // Recompute how many product cards fit per row so "See more" can reveal
+  // whole rows at a time, matching the CSS grid's own column math.
+  useEffect(() => {
+    const el = productGridRef.current
+    if (!el) return
+    const compute = () => {
+      if (window.innerWidth <= 640) { setItemsPerRow(2); return }
+      const cols = Math.max(1, Math.floor((el.clientWidth + 12) / (158 + 12)))
+      setItemsPerRow(cols)
+    }
+    compute()
+    const ro = new ResizeObserver(compute)
+    ro.observe(el)
+    window.addEventListener('resize', compute)
+    return () => { ro.disconnect(); window.removeEventListener('resize', compute) }
+  }, [products.length])
+
 
   // Prefill the checkout phone field from the account once it loads, without
   // clobbering anything the customer is mid-way through typing.
@@ -575,25 +612,147 @@ export default function Storefront() {
       .catch(() => { setOffline(true); setCategories(categoriesFallback) })
   }, [catalogQuery])
 
-  // The storefront filters the catalogue in memory (by category and search), so
-  // it needs every product — not just the API's first page. Walk the pages.
+  // A small random sample per deal type, for the homepage deals strip — the
+  // API re-rolls the sample on every request, so a refresh shows different
+  // products without any client-side shuffling.
+  useEffect(() => {
+    const sep = catalogQuery ? '&' : '?'
+    fetch(`${API_URL}/deals${catalogQuery}${sep}deal_type=lightning&limit=3`, { headers: { Accept: 'application/json' } })
+      .then(responseJson).then((data) => setLightningDeals(data.data ?? [])).catch(() => setLightningDeals([]))
+    fetch(`${API_URL}/deals${catalogQuery}${sep}deal_type=unbeatable&limit=3`, { headers: { Accept: 'application/json' } })
+      .then(responseJson).then((data) => setUnbeatableDeals(data.data ?? [])).catch(() => setUnbeatableDeals([]))
+  }, [catalogQuery])
+
+  // Deals page: a random exclusive-offer sample for this deal type, re-rolled
+  // whenever the page is (re)opened.
+  useEffect(() => {
+    if (!dealsPage) return
+    const sep = catalogQuery ? '&' : '?'
+    fetch(`${API_URL}/deals${catalogQuery}${sep}deal_type=${dealsPage}&exclusive=1&limit=18`, { headers: { Accept: 'application/json' } })
+      .then(responseJson).then((data) => setDealsExclusive(data.data ?? [])).catch(() => setDealsExclusive([]))
+  }, [dealsPage, catalogQuery])
+
+  const dealsCategorySlug = useMemo(
+    () => categories.find((c) => c.name === dealsCategory)?.slug ?? null,
+    [categories, dealsCategory],
+  )
+
+  const buildDealsProductsUrl = (page) => {
+    const params = new URLSearchParams()
+    params.set('deal_type', dealsPage)
+    if (dealsCategorySlug) params.set('category', dealsCategorySlug)
+    params.set('per_page', String(Math.min(50, Math.max(itemsPerRow * 8, 8))))
+    params.set('page', String(page))
+    const sep = catalogQuery ? '&' : '?'
+    return `${API_URL}/products${catalogQuery}${sep}${params.toString()}`
+  }
+
+  // Deals page: first page of products for this deal type (+ optional
+  // category filter from the carousel), re-fetched whenever either changes.
+  useEffect(() => {
+    if (!dealsPage) return
+    let cancelled = false
+    setDealsLoading(true)
+    setDealsProducts([])
+    setDealsProductPage(0)
+    setDealsHasMore(false)
+    fetch(buildDealsProductsUrl(1), { headers: { Accept: 'application/json' } })
+      .then((response) => { if (!response.ok) throw new Error('offline'); return responseJson(response) })
+      .then((data) => {
+        if (cancelled) return
+        setDealsProducts(data.data ?? [])
+        setDealsProductPage(1)
+        setDealsHasMore(1 < (data.last_page ?? 1))
+      })
+      .catch(() => { if (!cancelled) setDealsProducts([]) })
+      .finally(() => { if (!cancelled) setDealsLoading(false) })
+    return () => { cancelled = true }
+  }, [dealsPage, dealsCategorySlug, catalogQuery]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function loadMoreDealsProducts() {
+    if (dealsLoadingMore || !dealsHasMore) return
+    setDealsLoadingMore(true)
+    const nextPage = dealsProductPage + 1
+    fetch(buildDealsProductsUrl(nextPage), { headers: { Accept: 'application/json' } })
+      .then((response) => { if (!response.ok) throw new Error('offline'); return responseJson(response) })
+      .then((data) => {
+        setDealsProducts((prev) => prev.concat(data.data ?? []))
+        setDealsProductPage(nextPage)
+        setDealsHasMore(nextPage < (data.last_page ?? 1))
+      })
+      .catch(() => {})
+      .finally(() => setDealsLoadingMore(false))
+  }
+
+  // Debounce the search box so typing doesn't fire a request per keystroke —
+  // the product list is now paged server-side, not filtered from a local copy.
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(query.trim()), 300)
+    return () => clearTimeout(timer)
+  }, [query])
+
+  const activeCategorySlug = useMemo(
+    () => categories.find((c) => c.name === activeCategory)?.slug ?? null,
+    [categories, activeCategory],
+  )
+
+  // "See more" loads one page at a time instead of the whole catalogue, so the
+  // batch size roughly matches 8 rows of cards at the current column count.
+  const productsPerPage = () => Math.min(50, Math.max(itemsPerRow * 8, 8))
+  const buildProductsUrl = (page) => {
+    const params = new URLSearchParams()
+    if (debouncedQuery.length >= 2) params.set('search', debouncedQuery)
+    else if (activeCategorySlug) params.set('category', activeCategorySlug)
+    params.set('per_page', String(productsPerPage()))
+    params.set('page', String(page))
+    const sep = catalogQuery ? '&' : '?'
+    return `${API_URL}/products${catalogQuery}${sep}${params.toString()}`
+  }
+
+  const [productPage, setProductPage] = useState(0)
+  const [hasMorePages, setHasMorePages] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+
+  // Fetch only the first page for the active filter (category, search, or
+  // neither) — resets whenever the filter changes. Further pages are fetched
+  // on demand by loadMoreProducts(), below.
   useEffect(() => {
     let cancelled = false
-    const sep = catalogQuery ? '&' : '?'
-    const loadPage = (page, sofar) =>
-      fetch(`${API_URL}/products${catalogQuery}${sep}per_page=50&page=${page}`, { headers: { Accept: 'application/json' } })
-        .then((response) => { if (!response.ok) throw new Error('offline'); return responseJson(response) })
-        .then((data) => {
-          if (cancelled) return
-          const all = sofar.concat(data.data ?? [])
-          if (page < (data.last_page ?? 1)) return loadPage(page + 1, all)
-          setProducts(all)
-        })
-    loadPage(1, [])
+    setLoading(true)
+    setProducts([])
+    setProductPage(0)
+    setHasMorePages(false)
+    // The API rejects a search shorter than 2 chars; show nothing rather than
+    // fall through to an unfiltered fetch while the user is still typing.
+    if (debouncedQuery.length === 1) { setLoading(false); return undefined }
+    fetch(buildProductsUrl(1), { headers: { Accept: 'application/json' } })
+      .then((response) => { if (!response.ok) throw new Error('offline'); return responseJson(response) })
+      .then((data) => {
+        if (cancelled) return
+        setProducts(data.data ?? [])
+        setProductPage(1)
+        setHasMorePages(1 < (data.last_page ?? 1))
+      })
       .catch(() => { if (!cancelled) { setOffline(true); setProducts(fallbackProducts) } })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [catalogQuery])
+  }, [catalogQuery, activeCategorySlug, debouncedQuery]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function loadMoreProducts() {
+    if (loadingMore || !hasMorePages) return
+    setLoadingMore(true)
+    const nextPage = productPage + 1
+    fetch(buildProductsUrl(nextPage), { headers: { Accept: 'application/json' } })
+      .then((response) => { if (!response.ok) throw new Error('offline'); return responseJson(response) })
+      .then((data) => {
+        setProducts((prev) => prev.concat(data.data ?? []))
+        setProductPage(nextPage)
+        setHasMorePages(nextPage < (data.last_page ?? 1))
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false))
+  }
 
   // Content pages: load the footer list once, and keep the open page in sync
   // with a #/p/<slug> hash so links are shareable and Back works.
@@ -617,6 +776,27 @@ export default function Storefront() {
     window.addEventListener('hashchange', sync)
     return () => window.removeEventListener('hashchange', sync)
   }, [])
+
+  // Deals pages: #/deals/lightning or #/deals/unbeatable.
+  useEffect(() => {
+    const sync = () => {
+      const match = window.location.hash.match(/^#\/deals\/(lightning|unbeatable)$/)
+      setDealsPageState(match ? match[1] : null)
+      setDealsCategory(null)
+    }
+    sync()
+    window.addEventListener('hashchange', sync)
+    return () => window.removeEventListener('hashchange', sync)
+  }, [])
+
+  function openDeals(type) {
+    window.location.hash = `#/deals/${type}`
+    window.scrollTo({ top: 0 })
+  }
+  function closeDeals() {
+    if (window.location.hash) window.location.hash = ''
+    else setDealsPageState(null)
+  }
 
   function openPage(slug) {
     window.location.hash = `#/p/${slug}`
@@ -650,14 +830,9 @@ export default function Storefront() {
     ? 'Not available here yet'
     : fees.free_delivery_threshold_cents > 0 ? `Free shipping over ${price(fees.free_delivery_threshold_cents)}` : 'Free shipping'
 
-  const visibleProducts = useMemo(() => {
-    const term = query.trim().toLowerCase()
-    return products.filter((product) => {
-      const categoryMatch = term ? true : !activeCategory || product.category?.name === activeCategory
-      const textMatch = !term || [product.name, product.description, product.sku].filter(Boolean).some((value) => value.toLowerCase().includes(term))
-      return categoryMatch && textMatch
-    })
-  }, [activeCategory, products, query])
+  // Filtering (category / search) now happens server-side, page by page —
+  // `products` already holds exactly the rows for the active filter.
+  const visibleProducts = products
 
   const categoryCounts = useMemo(() => {
     const counts = {}
@@ -1480,7 +1655,36 @@ export default function Storefront() {
     }
   }
 
-  const productGrid = <div className="product-grid">{visibleProducts.map((product) => {
+  // Hide a carousel's arrow once it can't scroll further that way — checked
+  // on scroll, on resize, and whenever the underlying list changes.
+  useEffect(() => {
+    const pairs = [
+      [homeCatsRef, homeCatsWrapRef],
+      [dealsCatsRef, dealsCatsWrapRef],
+      [dealsExclusiveRef, dealsExclusiveWrapRef],
+    ]
+    const update = (scrollEl, wrapEl) => {
+      if (!scrollEl || !wrapEl) return
+      wrapEl.classList.toggle('at-start', scrollEl.scrollLeft <= 1)
+      wrapEl.classList.toggle('at-end', scrollEl.scrollLeft >= scrollEl.scrollWidth - scrollEl.clientWidth - 1)
+    }
+    const entries = pairs
+      .filter(([scrollRef]) => scrollRef.current)
+      .map(([scrollRef, wrapRef]) => {
+        const handler = () => update(scrollRef.current, wrapRef.current)
+        scrollRef.current.addEventListener('scroll', handler, { passive: true })
+        handler()
+        return { scrollRef, handler }
+      })
+    const onResize = () => entries.forEach(({ handler }) => handler())
+    window.addEventListener('resize', onResize)
+    return () => {
+      entries.forEach(({ scrollRef, handler }) => scrollRef.current?.removeEventListener('scroll', handler))
+      window.removeEventListener('resize', onResize)
+    }
+  }, [homeTileList.length, dealsCategory, dealsExclusive.length])
+
+  function productCard(product) {
     const { hasVariants, options, chosen, variant, unitPrice, compareAt, onSale, pctOff, stock, key, qty, img } = variantView(product)
     return <article className={stock === 0 ? 'pcard sold-out' : 'pcard'} key={product.id}>
       <button className="pcard-img" type="button" aria-label={`View details for ${product.name}`} onClick={() => { setDetailProduct(product); setGalleryIndex(0) }}>{stock === 0 && <span className="pcard-oos">Out of stock</span>}{onSale && stock !== 0 && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</button>
@@ -1491,7 +1695,40 @@ export default function Storefront() {
         ? <button className="add-btn" type="button" disabled={stock === 0} onClick={() => add(product, variant)}>{stock === 0 ? 'OUT' : 'ADD'}</button>
         : <span className="stepper"><button type="button" aria-label="Remove one" onClick={() => updateQuantity(key, -1)}>&minus;</button><b>{qty}</b><button type="button" aria-label="Add one" disabled={stock != null && qty >= stock} onClick={() => updateQuantity(key, 1)}>+</button></span>}</div>
     </article>
-  })}{!visibleProducts.length && <p className="empty-state">Nothing here yet.</p>}</div>
+  }
+
+  const seeMoreArrow = <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9" /></svg>
+
+  const productGrid = <>
+    <div className="product-grid" ref={productGridRef}>{visibleProducts.map(productCard)}{!visibleProducts.length && <p className="empty-state">Nothing here yet.</p>}</div>
+    {hasMorePages && <button type="button" className="see-more-btn" disabled={loadingMore} onClick={loadMoreProducts}>{loadingMore ? 'Loading…' : <>See more {seeMoreArrow}</>}</button>}
+  </>
+
+  function categoryCarousel(scrollRef, dragRef, wrapRef, activeLabel, onSelect) {
+    return homeTileList.length > 0 && <section className="home-cats-wrap" aria-label="Shop by category" ref={wrapRef}>
+      <button type="button" className="home-cats-arrow home-cats-arrow-left" aria-label="Scroll categories left" onClick={() => scrollRef.current?.scrollBy({ left: -400, behavior: 'smooth' })}><svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 6 9 12 15 18" /></svg></button>
+      <div className="home-cats" ref={scrollRef}
+        onMouseDown={(event) => { dragRef.current = { down: true, moved: false, startX: event.pageX, scrollLeft: scrollRef.current.scrollLeft } }}
+        onMouseMove={(event) => {
+          const state = dragRef.current
+          if (!state.down) return
+          const delta = event.pageX - state.startX
+          if (Math.abs(delta) > 4) state.moved = true
+          event.preventDefault()
+          scrollRef.current.scrollLeft = state.scrollLeft - delta
+        }}
+        onMouseUp={() => { dragRef.current.down = false }}
+        onMouseLeave={() => { dragRef.current.down = false }}
+        onClickCapture={(event) => { if (dragRef.current.moved) { event.preventDefault(); event.stopPropagation(); dragRef.current.moved = false } }}
+      >
+        {homeTileList.map((tile) => { const meta = tileMeta(tile); const isActive = !!activeLabel && meta.label === activeLabel; return <button className={isActive ? 'home-cat active' : 'home-cat'} type="button" key={tile.id} onClick={() => onSelect(isActive ? null : tile)}>
+          <span className="home-cat-img" aria-hidden>{categoryEmoji(meta.label)}{tile.image_url && <img src={mediaUrl(tile.image_url)} alt="" loading="lazy" draggable={false} onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
+          <span className="home-cat-label">{meta.label}</span>
+        </button> })}
+      </div>
+      <button type="button" className="home-cats-arrow home-cats-arrow-right" aria-label="Scroll categories right" onClick={() => scrollRef.current?.scrollBy({ left: 400, behavior: 'smooth' })}><svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 6 15 12 9 18" /></svg></button>
+    </section>
+  }
 
   return <><div className="app-shell">
     <header className="topbar">
@@ -1530,6 +1767,53 @@ export default function Storefront() {
                 : <div className="page-content" dangerouslySetInnerHTML={{ __html: renderMarkdown(pageView.content) }} />}</>}
         </article>
         )
+      })() : dealsPage ? (() => {
+        const dealsLabel = dealsPage === 'lightning' ? 'Lightning Deals' : 'Unbeatable Deals'
+        return <article className={`deals-page deals-page-${dealsPage}`}>
+          <button type="button" className="page-back" onClick={closeDeals}>&larr; Back to shopping</button>
+          <nav className="deals-breadcrumb" aria-label="Breadcrumb">
+            <a href={import.meta.env.BASE_URL || '/'}>Home</a> <span aria-hidden>&rsaquo;</span> <span>{dealsLabel}</span>
+          </nav>
+          <div className="deals-page-titlebar"><h1>{dealsLabel}</h1></div>
+
+          {dealsExclusive.length > 0 && <section className="deals-exclusive" aria-label="Exclusive offers">
+            <h2>Exclusive Offer</h2>
+            <div className="deals-exclusive-wrap" ref={dealsExclusiveWrapRef}>
+              <button type="button" className="home-cats-arrow home-cats-arrow-left" aria-label="Scroll left" onClick={() => dealsExclusiveRef.current?.scrollBy({ left: -(dealsExclusiveRef.current.clientWidth * 0.6), behavior: 'smooth' })}><svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 6 9 12 15 18" /></svg></button>
+              <div className="deals-grid deals-grid-lg" ref={dealsExclusiveRef}
+                onMouseDown={(event) => { dealsExclusiveDrag.current = { down: true, moved: false, startX: event.pageX, scrollLeft: dealsExclusiveRef.current.scrollLeft } }}
+                onMouseMove={(event) => {
+                  const state = dealsExclusiveDrag.current
+                  if (!state.down) return
+                  const delta = event.pageX - state.startX
+                  if (Math.abs(delta) > 4) state.moved = true
+                  event.preventDefault()
+                  dealsExclusiveRef.current.scrollLeft = state.scrollLeft - delta
+                }}
+                onMouseUp={() => { dealsExclusiveDrag.current.down = false }}
+                onMouseLeave={() => { dealsExclusiveDrag.current.down = false }}
+                onClickCapture={(event) => { if (dealsExclusiveDrag.current.moved) { event.preventDefault(); event.stopPropagation(); dealsExclusiveDrag.current.moved = false } }}
+              >
+                {dealsExclusive.map((product) => {
+                  const { unitPrice, img } = variantView(product)
+                  return <button type="button" className="deals-item" key={product.id} onClick={() => { setDetailProduct(product); setGalleryIndex(0) }}>
+                    <span className="deals-item-img" aria-hidden>{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
+                    <span className="deals-item-price">{price(unitPrice)}</span>
+                  </button>
+                })}
+              </div>
+              <button type="button" className="home-cats-arrow home-cats-arrow-right" aria-label="Scroll right" onClick={() => dealsExclusiveRef.current?.scrollBy({ left: dealsExclusiveRef.current.clientWidth * 0.6, behavior: 'smooth' })}><svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 6 15 12 9 18" /></svg></button>
+            </div>
+          </section>}
+
+          {categoryCarousel(dealsCatsRef, dealsCatsDrag, dealsCatsWrapRef, dealsCategory, (tile) => setDealsCategory(tile ? tileMeta(tile).label : null))}
+
+          {dealsLoading ? <div className="empty-state">Loading…</div> : <>
+            <div className="catalog-head"><h2>{dealsCategory || dealsLabel}</h2><span>{dealsProducts.length} items</span></div>
+            <div className="product-grid">{dealsProducts.map(productCard)}{!dealsProducts.length && <p className="empty-state">Nothing here yet.</p>}</div>
+            {dealsHasMore && <button type="button" className="see-more-btn" disabled={dealsLoadingMore} onClick={loadMoreDealsProducts}>{dealsLoadingMore ? 'Loading…' : <>View more {seeMoreArrow}</>}</button>}
+          </>}
+        </article>
       })() : <>
       {offline && <div className="api-note">Showing sample products while the API is offline.</div>}
       {outOfArea && <div className="area-note">{UNSERVICEABLE_MSG}</div>}
@@ -1537,6 +1821,25 @@ export default function Storefront() {
       {!searching ? (
         <>
           {loading && banners.length === 0 && homeTileList.length === 0 && <div className="empty-state">Loading…</div>}
+          {!activeCategory && (lightningDeals.length > 0 || unbeatableDeals.length > 0) && <section className="deals-strip" aria-label="Deals">
+            {[['lightning', 'Lightning Deals', lightningDeals], ['unbeatable', 'Unbeatable Deals', unbeatableDeals]].map(([key, label, deals]) => deals.length > 0 && (
+              <button type="button" className={`deals-col deals-${key}`} key={key} onClick={() => openDeals(key)}>
+                <div className="deals-head">
+                  <h3>{label}</h3>
+                  <svg aria-hidden width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 6 15 12 9 18" /></svg>
+                </div>
+                <div className="deals-grid">
+                  {deals.map((product) => {
+                    const { unitPrice, img } = variantView(product)
+                    return <span className="deals-item" key={product.id}>
+                      <span className="deals-item-img" aria-hidden>{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
+                      <span className="deals-item-price">{price(unitPrice)}</span>
+                    </span>
+                  })}
+                </div>
+              </button>
+            ))}
+          </section>}
           {!activeCategory && banners.length > 0 && (() => {
             const heroBanners = banners.filter((b) => b.placement !== 'strip')
             const stripBanners = banners.filter((b) => b.placement === 'strip')
@@ -1552,29 +1855,7 @@ export default function Storefront() {
             </section>
           })()}
 
-          {homeTileList.length > 0 && <section className="home-cats-wrap" aria-label="Shop by category">
-            <button type="button" className="home-cats-arrow home-cats-arrow-left" aria-label="Scroll categories left" onClick={() => homeCatsRef.current?.scrollBy({ left: -400, behavior: 'smooth' })}>&#8249;</button>
-            <div className="home-cats" ref={homeCatsRef}
-              onMouseDown={(event) => { homeCatsDrag.current = { down: true, moved: false, startX: event.pageX, scrollLeft: homeCatsRef.current.scrollLeft } }}
-              onMouseMove={(event) => {
-                const state = homeCatsDrag.current
-                if (!state.down) return
-                const delta = event.pageX - state.startX
-                if (Math.abs(delta) > 4) state.moved = true
-                event.preventDefault()
-                homeCatsRef.current.scrollLeft = state.scrollLeft - delta
-              }}
-              onMouseUp={() => { homeCatsDrag.current.down = false }}
-              onMouseLeave={() => { homeCatsDrag.current.down = false }}
-              onClickCapture={(event) => { if (homeCatsDrag.current.moved) { event.preventDefault(); event.stopPropagation(); homeCatsDrag.current.moved = false } }}
-            >
-              {homeTileList.map((tile) => { const meta = tileMeta(tile); const isActive = !!activeCategory && meta.label === activeCategory; return <button className={isActive ? 'home-cat active' : 'home-cat'} type="button" key={tile.id} onClick={() => (isActive ? setActiveCategory(null) : openHomeTarget(tile))}>
-                <span className="home-cat-img" aria-hidden>{categoryEmoji(meta.label)}{tile.image_url && <img src={mediaUrl(tile.image_url)} alt="" loading="lazy" draggable={false} onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
-                <span className="home-cat-label">{meta.label}</span>
-              </button> })}
-            </div>
-            <button type="button" className="home-cats-arrow home-cats-arrow-right" aria-label="Scroll categories right" onClick={() => homeCatsRef.current?.scrollBy({ left: 400, behavior: 'smooth' })}>&#8250;</button>
-          </section>}
+          {categoryCarousel(homeCatsRef, homeCatsDrag, homeCatsWrapRef, activeCategory, (tile) => (tile ? openHomeTarget(tile) : setActiveCategory(null)))}
 
           {products.length > 0 && (loading ? <div className="empty-state">Loading…</div> : (
             <>
@@ -1802,46 +2083,74 @@ export default function Storefront() {
       {supportMsg && <p className="auth-message">{supportMsg}</p>}
     </div></div>}
   </div>
-  <footer className="site-footer">
-    <div className="site-footer-cols">
-      {(pages.some((p) => p.show_in_footer) || (footer?.links?.length ?? 0) > 0) && <div>
-        <h4>Useful Links</h4>
-        <ul>
-          {pages.filter((p) => p.show_in_footer).map((p) => <li key={p.slug}><button type="button" onClick={() => openPage(p.slug)}>{p.title}</button></li>)}
-          {(footer?.links ?? []).map((link, index) => <li key={`fl-${index}`}><a href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a></li>)}
-        </ul>
-      </div>}
-      <div>
-        <div className="site-footer-cathead"><h4>Categories</h4><button type="button" className="site-footer-seeall" onClick={() => { setActiveCategory(null); setQuery(''); closePage(); window.scrollTo({ top: 0 }) }}>see all</button></div>
-        <ul className="site-footer-cats">{categories.slice(0, 24).map((c) => <li key={c.id}><button type="button" onClick={() => { closePage(); setActiveCategory(c.name); setQuery(''); window.scrollTo({ top: 0 }) }}>{c.name}</button></li>)}</ul>
+  <footer className="site-footer" style={{ '--footer-bg': footer?.bg_color, '--footer-text': footer?.text_color }}>
+    {(() => {
+      const footerPages = pages.filter((p) => p.show_in_footer)
+      const companyPages = footerPages.filter((p) => (p.footer_group ?? 'company') === 'company')
+      const helpPages = footerPages.filter((p) => p.footer_group === 'help')
+      const legalPages = footerPages.filter((p) => p.footer_group === 'legal')
+      const otherPages = footerPages.filter((p) => !['company', 'help', 'legal', 'bottom'].includes(p.footer_group ?? 'company'))
+      const customLinks = footer?.links ?? []
+      const hasApp = !!(footer?.app_store_url || footer?.play_store_url)
+      const hasSocials = FOOTER_SOCIALS.some(([key]) => footer?.socials?.[key])
+      return <div className="site-footer-cols">
+        {(companyPages.length > 0 || otherPages.length > 0 || customLinks.length > 0) && <div>
+          <h4>Company info</h4>
+          <ul>
+            {companyPages.map((p) => <li key={p.slug}><button type="button" onClick={() => openPage(p.slug)}>{p.title}</button></li>)}
+            {otherPages.map((p) => <li key={p.slug}><button type="button" onClick={() => openPage(p.slug)}>{p.title}</button></li>)}
+            {customLinks.map((link, index) => <li key={`fl-${index}`}><a href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a></li>)}
+          </ul>
+        </div>}
+        {legalPages.length > 0 && <div>
+          <h4>Customer service</h4>
+          <ul>{legalPages.map((p) => <li key={p.slug}><button type="button" onClick={() => openPage(p.slug)}>{p.title}</button></li>)}</ul>
+        </div>}
+        {helpPages.length > 0 && <div>
+          <h4>Help</h4>
+          <ul>{helpPages.map((p) => <li key={p.slug}><button type="button" onClick={() => openPage(p.slug)}>{p.title}</button></li>)}</ul>
+        </div>}
+        {(hasApp || hasSocials) && <div>
+          {hasApp && <>
+            <h4>Download the App</h4>
+            <div className="site-footer-app">
+              {footer?.app_store_url && <a className="app-badge" href={footer.app_store_url} target="_blank" rel="noopener noreferrer" aria-label="Download on the App Store">
+                <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path fill="currentColor" d="M17.05 12.53c-.03-2.79 2.28-4.13 2.38-4.19-1.3-1.9-3.32-2.16-4.04-2.19-1.72-.17-3.35 1.01-4.22 1.01-.87 0-2.21-.99-3.63-.96-1.87.03-3.59 1.09-4.55 2.76-1.94 3.37-.5 8.36 1.39 11.09.92 1.34 2.02 2.84 3.46 2.79 1.39-.06 1.91-.9 3.59-.9 1.67 0 2.15.9 3.62.87 1.49-.03 2.44-1.37 3.36-2.71 1.06-1.56 1.5-3.07 1.52-3.15-.03-.02-2.92-1.12-2.95-4.46zM14.28 4.38c.77-.93 1.29-2.23 1.15-3.52-1.11.04-2.45.74-3.24 1.67-.71.82-1.33 2.13-1.16 3.39 1.24.1 2.5-.63 3.25-1.54z"/></svg>
+                <span><small>Download on the</small><b>App Store</b></span>
+              </a>}
+              {footer?.play_store_url && <a className="app-badge" href={footer.play_store_url} target="_blank" rel="noopener noreferrer" aria-label="Get it on Google Play">
+                <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                  <path fill="#00E0FF" d="M3.3 2.06a1 1 0 0 0-.4.82v18.24a1 1 0 0 0 .4.82l10.2-9.94z"/>
+                  <path fill="#00E676" d="m17.53 8.53-3.42 3.33 3.42 3.33 4.06-2.35a1.02 1.02 0 0 0 0-1.96z"/>
+                  <path fill="#FFC107" d="M17.53 8.53 5.4 1.56a1.06 1.06 0 0 0-1.13.02l9.84 9.6z"/>
+                  <path fill="#FF3D47" d="M14.11 11.86 4.27 21.44a1.06 1.06 0 0 0 1.13.02l12.13-6.99z"/>
+                </svg>
+                <span><small>GET IT ON</small><b>Google Play</b></span>
+              </a>}
+            </div>
+          </>}
+          {hasSocials && <>
+            <h4>Connect with Us</h4>
+            <span className="site-footer-socials">
+              {FOOTER_SOCIALS.filter(([key]) => footer?.socials?.[key]).map(([key, label, path]) => (
+                <a key={key} href={footer.socials[key]} target="_blank" rel="noopener noreferrer" aria-label={label}>
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d={path} /></svg>
+                </a>
+              ))}
+            </span>
+          </>}
+        </div>}
       </div>
-    </div>
+    })()}
     <div className="site-footer-bottom">
       <span className="site-footer-copy">{(footer?.copyright || '© {year} NexTech').replace('{year}', String(new Date().getFullYear()))}</span>
-      {(footer?.app_store_url || footer?.play_store_url) && <span className="site-footer-app">
-        {footer?.app_store_url && <a className="app-badge" href={footer.app_store_url} target="_blank" rel="noopener noreferrer" aria-label="Download on the App Store">
-          <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path fill="currentColor" d="M17.05 12.53c-.03-2.79 2.28-4.13 2.38-4.19-1.3-1.9-3.32-2.16-4.04-2.19-1.72-.17-3.35 1.01-4.22 1.01-.87 0-2.21-.99-3.63-.96-1.87.03-3.59 1.09-4.55 2.76-1.94 3.37-.5 8.36 1.39 11.09.92 1.34 2.02 2.84 3.46 2.79 1.39-.06 1.91-.9 3.59-.9 1.67 0 2.15.9 3.62.87 1.49-.03 2.44-1.37 3.36-2.71 1.06-1.56 1.5-3.07 1.52-3.15-.03-.02-2.92-1.12-2.95-4.46zM14.28 4.38c.77-.93 1.29-2.23 1.15-3.52-1.11.04-2.45.74-3.24 1.67-.71.82-1.33 2.13-1.16 3.39 1.24.1 2.5-.63 3.25-1.54z"/></svg>
-          <span><small>Download on the</small><b>App Store</b></span>
-        </a>}
-        {footer?.play_store_url && <a className="app-badge" href={footer.play_store_url} target="_blank" rel="noopener noreferrer" aria-label="Get it on Google Play">
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-            <path fill="#00E0FF" d="M3.3 2.06a1 1 0 0 0-.4.82v18.24a1 1 0 0 0 .4.82l10.2-9.94z"/>
-            <path fill="#00E676" d="m17.53 8.53-3.42 3.33 3.42 3.33 4.06-2.35a1.02 1.02 0 0 0 0-1.96z"/>
-            <path fill="#FFC107" d="M17.53 8.53 5.4 1.56a1.06 1.06 0 0 0-1.13.02l9.84 9.6z"/>
-            <path fill="#FF3D47" d="M14.11 11.86 4.27 21.44a1.06 1.06 0 0 0 1.13.02l12.13-6.99z"/>
-          </svg>
-          <span><small>GET IT ON</small><b>Google Play</b></span>
-        </a>}
-      </span>}
-      {FOOTER_SOCIALS.some(([key]) => footer?.socials?.[key]) && <span className="site-footer-socials">
-        {FOOTER_SOCIALS.filter(([key]) => footer?.socials?.[key]).map(([key, label, path]) => (
-          <a key={key} href={footer.socials[key]} target="_blank" rel="noopener noreferrer" aria-label={label}>
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d={path} /></svg>
-          </a>
-        ))}
-      </span>}
+      {pages.filter((p) => p.show_in_footer && p.footer_group === 'bottom').map((p) => (
+        <button key={p.slug} type="button" className="site-footer-legal-link" onClick={() => openPage(p.slug)}>
+          {p.slug === 'privacy-choices' && <svg aria-hidden width="16" height="10" viewBox="0 0 32 20"><rect x="1" y="1" width="30" height="18" rx="9" fill="#0a5ad1" /><circle cx="10" cy="10" r="7" fill="#fff" /><path d="M20 6l6 8M26 6l-6 8" stroke="#fff" strokeWidth="2" strokeLinecap="round" /></svg>}
+          {p.title}
+        </button>
+      ))}
     </div>
-    {footer?.note && <p className="site-footer-note">{footer.note}</p>}
   </footer>
   </>
 }

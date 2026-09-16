@@ -65,7 +65,6 @@ class AdminSettingController extends Controller
     private const FOOTER_RULES = [
         'footer' => ['sometimes', 'array'],
         'footer.copyright' => ['sometimes', 'nullable', 'string', 'max:160'],
-        'footer.note' => ['sometimes', 'nullable', 'string', 'max:600'],
         'footer.app_store_url' => ['sometimes', 'nullable', 'string', 'max:2048'],
         'footer.play_store_url' => ['sometimes', 'nullable', 'string', 'max:2048'],
         'footer.socials' => ['sometimes', 'array'],
@@ -73,6 +72,8 @@ class AdminSettingController extends Controller
         'footer.links' => ['sometimes', 'array', 'max:12'],
         'footer.links.*.label' => ['nullable', 'string', 'max:40'],
         'footer.links.*.url' => ['nullable', 'string', 'max:2048'],
+        'footer.bg_color' => ['sometimes', 'nullable', 'string', 'max:7'],
+        'footer.text_color' => ['sometimes', 'nullable', 'string', 'max:7'],
     ];
 
     public function index(): JsonResponse

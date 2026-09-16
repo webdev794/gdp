@@ -120,7 +120,7 @@ const TAB_ICONS = {
 }
 const EMPTY_BRANDING = { store_name: '', tagline: '', logo_url: '', favicon_url: '', theme: 'light', layout_width: 'boxed', color_brand: '#1f7a3d', color_accent: '#ffd23f', color_heading: '#18211c' }
 const SOCIAL_PLATFORMS = [['facebook', 'Facebook'], ['x', 'X / Twitter'], ['instagram', 'Instagram'], ['linkedin', 'LinkedIn'], ['youtube', 'YouTube']]
-const EMPTY_FOOTER = { copyright: '© {year} NexTech', note: '', app_store_url: '', play_store_url: '', socials: { facebook: '', x: '', instagram: '', linkedin: '', youtube: '' }, links: [] }
+const EMPTY_FOOTER = { copyright: '© {year} NexTech', app_store_url: '', play_store_url: '', socials: { facebook: '', x: '', instagram: '', linkedin: '', youtube: '' }, links: [], bg_color: '#f3f5f2', text_color: '#18211c' }
 
 const ISSUE_LABELS = {
   item_missing: 'Item missing', item_damaged: 'Item damaged', wrong_item: 'Wrong item',
@@ -128,7 +128,7 @@ const ISSUE_LABELS = {
   delivery: 'Delivery message',
 }
 
-const EMPTY_PRODUCT = { category_id: '', name: '', sku: '', price: '', compare_at: '', inventory_quantity: 0, description: '', image_url: '', is_active: true, per_store_stock: false, store_stock: {}, variants: [] }
+const EMPTY_PRODUCT = { category_id: '', name: '', sku: '', price: '', compare_at: '', inventory_quantity: 0, description: '', image_url: '', is_active: true, per_store_stock: false, store_stock: {}, variants: [], deal_type: '', is_exclusive_offer: false }
 
 // Build the per-store stock grid ({ [storeId]: { is_stocked, base, variants: { [variantIndex]: qty } } })
 // from a product's store_inventory rows.
@@ -206,7 +206,8 @@ function riderStatusChip(rider) {
 }
 const EMPTY_BANNER = { image_url: '', headline: '', category_slug: '', link_url: '', placement: 'strip', sort_order: 0, is_active: true }
 const EMPTY_TILE = { title: '', image_url: '', category_slug: '', link_url: '', sort_order: 0, is_active: true }
-const EMPTY_PAGE = { title: '', slug: '', banner_image: '', content: '', sections: [], footer_group: 'useful_links', show_in_footer: true, is_published: true, sort_order: 0 }
+const EMPTY_PAGE = { title: '', slug: '', banner_image: '', content: '', sections: [], footer_group: 'company', show_in_footer: true, is_published: true, sort_order: 0 }
+const FOOTER_GROUP_LABELS = { company: 'Company info', legal: 'Customer service', help: 'Help', bottom: 'Lower footer', blog: 'Blog (not shown in footer columns)' }
 const sectionLabel = (type) => (SECTION_TYPES.find(([value]) => value === type) ?? [type, type])[1]
 
 // Reference rows for the "Formatting guide" tab. Each `code` is fed through the
@@ -962,11 +963,12 @@ export default function Admin({ token, onClose }) {
     event.preventDefault()
     const payload = {
       copyright: footerForm.copyright.trim(),
-      note: footerForm.note.trim(),
       app_store_url: footerForm.app_store_url.trim(),
       play_store_url: footerForm.play_store_url.trim(),
       socials: footerForm.socials,
       links: footerForm.links.filter((l) => l.label.trim() && l.url.trim()),
+      bg_color: footerForm.bg_color,
+      text_color: footerForm.text_color,
     }
     const saved = await saveSetting({ footer: payload })
     if (saved) {
@@ -2022,6 +2024,14 @@ export default function Admin({ token, onClose }) {
                   ? <label>Inventory<input type="text" value="Per store — see below" disabled title="This product tracks stock per store; the counts are in the Store stock section." /></label>
                   : <label>Inventory<input type="number" min="0" value={productForm.inventory_quantity} onChange={(event) => setProductForm({ ...productForm, inventory_quantity: event.target.value })} /></label>}
                 <label className="admin-check"><input type="checkbox" checked={productForm.is_active} onChange={(event) => setProductForm({ ...productForm, is_active: event.target.checked })} /> Active</label>
+                <label>Deal type
+                  <select value={productForm.deal_type ?? ''} onChange={(event) => setProductForm({ ...productForm, deal_type: event.target.value })}>
+                    <option value="">— none —</option>
+                    <option value="lightning">Lightning deals</option>
+                    <option value="unbeatable">Unbeatable deals</option>
+                  </select>
+                </label>
+                <label className="admin-check"><input type="checkbox" checked={!!productForm.is_exclusive_offer} onChange={(event) => setProductForm({ ...productForm, is_exclusive_offer: event.target.checked })} /> Exclusive Offer</label>
               </div>
               <label>Image
                 <div className="admin-image-field">
@@ -2121,7 +2131,7 @@ export default function Admin({ token, onClose }) {
                     <td>{packs || '—'}</td>
                     <td>{product.is_active ? 'Yes' : 'No'}</td>
                     <td className="admin-actions">
-                      <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ id: product.id, category_id: product.category_id, name: product.name, sku: product.sku, price: (product.price_cents / 100).toFixed(2), compare_at: dollarsOrBlank(product.compare_at_price_cents), inventory_quantity: product.inventory_quantity, description: product.description ?? '', image_url: product.image_url ?? '', is_active: product.is_active, per_store_stock: (product.store_inventory ?? []).length > 0, store_stock: storeStockFrom(product), variants: variantRowsFrom(product) }); scrollFormIntoView('admin-product-form') }}>Edit</button>
+                      <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ id: product.id, category_id: product.category_id, name: product.name, sku: product.sku, price: (product.price_cents / 100).toFixed(2), compare_at: dollarsOrBlank(product.compare_at_price_cents), inventory_quantity: product.inventory_quantity, description: product.description ?? '', image_url: product.image_url ?? '', is_active: product.is_active, per_store_stock: (product.store_inventory ?? []).length > 0, store_stock: storeStockFrom(product), variants: variantRowsFrom(product), deal_type: product.deal_type ?? '', is_exclusive_offer: !!product.is_exclusive_offer }); scrollFormIntoView('admin-product-form') }}>Edit</button>
                       <button className="act danger" type="button" onClick={() => removeProduct(product)}>Delete</button>
                     </td>
                   </tr>
@@ -2499,7 +2509,14 @@ export default function Admin({ token, onClose }) {
               <div className="admin-form-grid">
                 <label>Title<input required maxLength="160" value={pageForm.title} onChange={(event) => setPageForm({ ...pageForm, title: event.target.value })} /></label>
                 <label>Slug (optional)<input value={pageForm.slug} placeholder="auto from title" onChange={(event) => setPageForm({ ...pageForm, slug: event.target.value })} /></label>
-                <label>Footer group<input value={pageForm.footer_group} onChange={(event) => setPageForm({ ...pageForm, footer_group: event.target.value })} /></label>
+                <label>Footer placement
+                  <select value={pageForm.footer_group} onChange={(event) => setPageForm({ ...pageForm, footer_group: event.target.value })}>
+                    <option value="company">Upper footer — Company info</option>
+                    <option value="legal">Upper footer — Customer service</option>
+                    <option value="help">Upper footer — Help</option>
+                    <option value="bottom">Lower footer (legal links bar)</option>
+                  </select>
+                </label>
                 <label>Sort order<input type="number" min="0" max="9999" value={pageForm.sort_order} onChange={(event) => setPageForm({ ...pageForm, sort_order: event.target.value })} /></label>
                 <label className="admin-check"><input type="checkbox" checked={pageForm.show_in_footer} onChange={(event) => setPageForm({ ...pageForm, show_in_footer: event.target.checked })} /> Show in footer</label>
                 <label className="admin-check"><input type="checkbox" checked={pageForm.is_published} onChange={(event) => setPageForm({ ...pageForm, is_published: event.target.checked })} /> Published</label>
@@ -2652,7 +2669,7 @@ export default function Admin({ token, onClose }) {
                   <tr key={page.id}>
                     <td>{page.title}</td>
                     <td><code>{page.slug}</code></td>
-                    <td>{page.footer_group}</td>
+                    <td>{FOOTER_GROUP_LABELS[page.footer_group] ?? page.footer_group}</td>
                     <td>{page.show_in_footer ? 'Yes' : 'No'}</td>
                     <td>{page.is_published ? 'Yes' : <span className="muted">Draft</span>}</td>
                     <td className="admin-actions">
@@ -2706,8 +2723,25 @@ export default function Admin({ token, onClose }) {
                 <label>App Store URL<input value={footerForm.app_store_url} onChange={(event) => setFooterForm({ ...footerForm, app_store_url: event.target.value })} placeholder="https://apps.apple.com/…" /></label>
                 <label>Google Play URL<input value={footerForm.play_store_url} onChange={(event) => setFooterForm({ ...footerForm, play_store_url: event.target.value })} placeholder="https://play.google.com/…" /></label>
               </div>
-              <label>Disclaimer / note<textarea rows="3" maxLength="600" value={footerForm.note} onChange={(event) => setFooterForm({ ...footerForm, note: event.target.value })} /></label>
               <p className="muted"><code>{'{year}'}</code> in the copyright line is replaced with the current year.</p>
+
+              <fieldset className="admin-fieldset">
+                <legend>Colours</legend>
+                <div className="admin-form-grid admin-color-grid">
+                  {[
+                    ['bg_color', 'Background', 'The footer’s own background — set a dark colour for a dark footer'],
+                    ['text_color', 'Text', 'Headings, links and copy throughout the footer'],
+                  ].map(([key, label, hint]) => (
+                    <label key={key} className="admin-color">{label}
+                      <span>
+                        <input type="color" value={footerForm[key]} aria-label={`${label} colour`} onChange={(event) => setFooterForm({ ...footerForm, [key]: event.target.value })} />
+                        <input value={footerForm[key]} maxLength="7" spellCheck="false" aria-label={`${label} hex`} onChange={(event) => setFooterForm({ ...footerForm, [key]: event.target.value })} />
+                      </span>
+                      <em className="admin-color-hint">{hint}</em>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
 
               <fieldset className="admin-fieldset">
                 <legend>Social links</legend>

@@ -10,10 +10,14 @@
 return [
     // "{year}" is replaced with the current year by the storefront.
     'copyright' => env('FOOTER_COPYRIGHT', '© {year} NexTech'),
-    'note' => env('FOOTER_NOTE', 'NexTech is a demo storefront. Prices, delivery estimates and content pages are illustrative and set by the store operator in the admin console.'),
 
     'app_store_url' => env('FOOTER_APP_STORE_URL', ''),
     'play_store_url' => env('FOOTER_PLAY_STORE_URL', ''),
+
+    // Footer colors — override the storefront's default light footer with any
+    // hex color, e.g. a dark footer like large marketplace sites use.
+    'bg_color' => env('FOOTER_BG_COLOR', '#f3f5f2'),
+    'text_color' => env('FOOTER_TEXT_COLOR', '#18211c'),
 
     // Only the platforms in this list are rendered; a blank url hides that icon.
     'socials' => [
