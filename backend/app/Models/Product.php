@@ -26,6 +26,9 @@ class Product extends Model
         'is_active',
         'deal_type',
         'is_exclusive_offer',
+        'rating_avg',
+        'rating_count',
+        'units_sold',
     ];
 
     protected function casts(): array
@@ -36,6 +39,9 @@ class Product extends Model
             'inventory_quantity' => 'integer',
             'is_active' => 'boolean',
             'is_exclusive_offer' => 'boolean',
+            'rating_avg' => 'float',
+            'rating_count' => 'integer',
+            'units_sold' => 'integer',
         ];
     }
 

@@ -28,8 +28,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        $this->ensureCaBundle();
-        $this->applyStoredStripeCredentials();
+       // $this->ensureCaBundle();
+       // $this->applyStoredStripeCredentials();
+        if (! $this->app->runningInConsole()) {
+            $this->applyStoredStripeCredentials();
+        }
     }
 
     /**

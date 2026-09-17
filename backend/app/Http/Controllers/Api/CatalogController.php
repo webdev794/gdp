@@ -57,6 +57,7 @@ class CatalogController extends Controller
             'category' => ['sometimes', 'string', 'exists:categories,slug'],
             'search' => ['sometimes', 'string', 'min:2', 'max:100'],
             'deal_type' => ['sometimes', Rule::in(['lightning', 'unbeatable'])],
+            'exclusive' => ['sometimes', 'boolean'],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:50'],
         ]);
 
@@ -89,6 +90,7 @@ class CatalogController extends Controller
                 fn ($categoryQuery) => $categoryQuery->where('slug', $validated['category'])
             ))
             ->when(isset($validated['deal_type']), fn ($query) => $query->where('deal_type', $validated['deal_type']))
+            ->when($validated['exclusive'] ?? false, fn ($query) => $query->where('is_exclusive_offer', true))
             ->orderBy('name')
             ->paginate($validated['per_page'] ?? 20)
             ->through(fn (Product $product) => $this->present($product, $storeId));

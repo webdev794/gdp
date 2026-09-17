@@ -1051,10 +1051,21 @@ MD,
         foreach ($products as [$name, $slug, $description, $sku, $price, $compareAt, $inventory, $image, $categorySlug]) {
             $category = Category::where('slug', $categorySlug)->first();
 
+            // Deterministic "random" from the SKU, so a reseed gives every
+            // product the same dummy rating instead of a new one each time.
+            // ~85% of products get a rating (skewed positive, like a real
+            // storefront); the rest are left unrated to exercise that case.
+            $hash = crc32($sku);
+            $hasRating = $hash % 100 < 85;
+            $ratingAvg = $hasRating ? round(3.5 + (($hash >> 8) % 151) / 100, 2) : null;
+            $ratingCount = $hasRating ? 3 + ($hash % 797) : 0;
+            $unitsSold = 2 + (($hash >> 16) % 14998);
+
             Product::updateOrCreate(['sku' => $sku], [
                 'name' => $name, 'slug' => $slug, 'description' => $description,
                 'price_cents' => $price, 'compare_at_price_cents' => $compareAt,
                 'inventory_quantity' => $inventory, 'image_url' => $image, 'category_id' => $category->id,
+                'rating_avg' => $ratingAvg, 'rating_count' => $ratingCount, 'units_sold' => $unitsSold,
             ]);
         }
     }

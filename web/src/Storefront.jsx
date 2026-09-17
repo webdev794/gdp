@@ -392,7 +392,7 @@ export default function Storefront() {
   const homeCatsRef = useRef(null)
   const homeCatsDrag = useRef({ down: false, moved: false, startX: 0, scrollLeft: 0 })
   const productGridRef = useRef(null)
-  const [itemsPerRow, setItemsPerRow] = useState(4)
+  const [itemsPerRow, setItemsPerRow] = useState(() => (window.innerWidth <= 640 ? 2 : 5))
   const locationRef = useRef(null)
   const [cartOpen, setCartOpen] = useState(false)
   const [trayLift, setTrayLift] = useState(0) // px the cart pill is dragged up; snaps back to 0 on scroll
@@ -453,22 +453,18 @@ export default function Storefront() {
     localStorage.setItem('gdp_cart', JSON.stringify(cart))
   }, [cart])
 
-  // Recompute how many product cards fit per row so "See more" can reveal
-  // whole rows at a time, matching the CSS grid's own column math.
+  // How many product cards fit per row so "See more" can reveal whole rows
+  // at a time. The grid is a fixed 5-column desktop / 2-column mobile layout
+  // (see .product-grid in StorefrontBase.css), so this mirrors that
+  // breakpoint directly instead of measuring the DOM — a DOM measurement
+  // taken before the grid's first paint would race the very first product
+  // fetch (which reads itemsPerRow to size its per_page) and could lock in
+  // the wrong count for the rest of that page's life.
   useEffect(() => {
-    const el = productGridRef.current
-    if (!el) return
-    const compute = () => {
-      if (window.innerWidth <= 640) { setItemsPerRow(2); return }
-      const cols = Math.max(1, Math.floor((el.clientWidth + 12) / (158 + 12)))
-      setItemsPerRow(cols)
-    }
-    compute()
-    const ro = new ResizeObserver(compute)
-    ro.observe(el)
+    const compute = () => setItemsPerRow(window.innerWidth <= 640 ? 2 : 5)
     window.addEventListener('resize', compute)
-    return () => { ro.disconnect(); window.removeEventListener('resize', compute) }
-  }, [products.length])
+    return () => window.removeEventListener('resize', compute)
+  }, [])
 
 
   // Prefill the checkout phone field from the account once it loads, without
@@ -626,7 +622,7 @@ export default function Storefront() {
   // Deals page: a random exclusive-offer sample for this deal type, re-rolled
   // whenever the page is (re)opened.
   useEffect(() => {
-    if (!dealsPage) return
+    if (dealsPage !== 'lightning') { setDealsExclusive([]); return }
     const sep = catalogQuery ? '&' : '?'
     fetch(`${API_URL}/deals${catalogQuery}${sep}deal_type=${dealsPage}&exclusive=1&limit=18`, { headers: { Accept: 'application/json' } })
       .then(responseJson).then((data) => setDealsExclusive(data.data ?? [])).catch(() => setDealsExclusive([]))
@@ -639,7 +635,8 @@ export default function Storefront() {
 
   const buildDealsProductsUrl = (page) => {
     const params = new URLSearchParams()
-    params.set('deal_type', dealsPage)
+    if (dealsPage === 'exclusive') params.set('exclusive', '1')
+    else params.set('deal_type', dealsPage)
     if (dealsCategorySlug) params.set('category', dealsCategorySlug)
     params.set('per_page', String(Math.min(50, Math.max(itemsPerRow * 8, 8))))
     params.set('page', String(page))
@@ -780,7 +777,7 @@ export default function Storefront() {
   // Deals pages: #/deals/lightning or #/deals/unbeatable.
   useEffect(() => {
     const sync = () => {
-      const match = window.location.hash.match(/^#\/deals\/(lightning|unbeatable)$/)
+      const match = window.location.hash.match(/^#\/deals\/(lightning|unbeatable|exclusive)$/)
       setDealsPageState(match ? match[1] : null)
       setDealsCategory(null)
     }
@@ -1684,16 +1681,37 @@ export default function Storefront() {
     }
   }, [homeTileList.length, dealsCategory, dealsExclusive.length])
 
+  // Five stars, each filled in proportion to how close `rating` is to that
+  // star's position — e.g. rating 3.4 renders 3 full stars and a ~40% fourth.
+  function starIcons(rating, keyPrefix) {
+    return [0, 1, 2, 3, 4].map((i) => {
+      const fillPct = Math.max(0, Math.min(1, rating - i)) * 100
+      const gradId = `${keyPrefix}-${i}`
+      return <svg key={i} aria-hidden width="11" height="11" viewBox="0 0 24 24">
+        <defs><linearGradient id={gradId}><stop offset={`${fillPct}%`} stopColor="currentColor" /><stop offset={`${fillPct}%`} stopColor="transparent" /></linearGradient></defs>
+        <path d="M12 2l2.9 6.4 7 .8-5.2 4.8 1.4 6.9L12 17.6 5.9 20.9l1.4-6.9L2.1 9.2l7-.8z" fill={`url(#${gradId})`} stroke="currentColor" strokeWidth="1" strokeLinejoin="round" />
+      </svg>
+    })
+  }
+
   function productCard(product) {
     const { hasVariants, options, chosen, variant, unitPrice, compareAt, onSale, pctOff, stock, key, qty, img } = variantView(product)
     return <article className={stock === 0 ? 'pcard sold-out' : 'pcard'} key={product.id}>
-      <button className="pcard-img" type="button" aria-label={`View details for ${product.name}`} onClick={() => { setDetailProduct(product); setGalleryIndex(0) }}>{stock === 0 && <span className="pcard-oos">Out of stock</span>}{onSale && stock !== 0 && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</button>
+      <button className="pcard-img" type="button" aria-label={`View details for ${product.name}`} onClick={() => { setDetailProduct(product); setGalleryIndex(0) }}>{stock === 0 && <span className="pcard-oos">Out of stock</span>}{onSale && stock !== 0 && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}{product.description && <span className="pcard-desc-tip">{product.description}</span>}</button>
       <p className="pcard-cat">{product.category?.name ?? 'Uncategorized'}</p>
       <h3>{variantTitle(product.name, variant?.label)}</h3>
       {hasVariants && <select className="pcard-variant" aria-label={`${product.name} option`} value={String(chosen?.id ?? '')} onChange={(event) => setPickedVariant((current) => ({ ...current, [product.id]: event.target.value }))}>{options.map((o) => <option key={o.id === '' ? 'base' : o.id} value={String(o.id)}>{o.label} — {price(o.price_cents)}</option>)}</select>}
       <div className="pcard-foot"><span className="pcard-price">{onSale ? <><strong className="on-sale">{price(unitPrice)}</strong><s>{price(compareAt)}</s></> : <strong>{price(unitPrice)}</strong>}</span>{qty === 0
         ? <button className="add-btn" type="button" disabled={stock === 0} onClick={() => add(product, variant)}>{stock === 0 ? 'OUT' : 'ADD'}</button>
         : <span className="stepper"><button type="button" aria-label="Remove one" onClick={() => updateQuantity(key, -1)}>&minus;</button><b>{qty}</b><button type="button" aria-label="Add one" disabled={stock != null && qty >= stock} onClick={() => updateQuantity(key, 1)}>+</button></span>}</div>
+      {(product.units_sold > 0 || product.rating_count > 0) && <p className="pcard-rating">
+        {product.units_sold > 0 && <span className="pcard-sold">{product.units_sold} sold</span>}
+        {product.units_sold > 0 && product.rating_count > 0 && <span className="pcard-rating-sep">|</span>}
+        {product.rating_count > 0 && <span className="pcard-rating-single">
+          <svg aria-hidden width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.4 7 .8-5.2 4.8 1.4 6.9L12 17.6 5.9 20.9l1.4-6.9L2.1 9.2l7-.8z" /></svg>
+          {Number(product.rating_avg).toFixed(1)}({product.rating_count})
+        </span>}
+      </p>}
     </article>
   }
 
@@ -1704,8 +1722,8 @@ export default function Storefront() {
     {hasMorePages && <button type="button" className="see-more-btn" disabled={loadingMore} onClick={loadMoreProducts}>{loadingMore ? 'Loading…' : <>See more {seeMoreArrow}</>}</button>}
   </>
 
-  function categoryCarousel(scrollRef, dragRef, wrapRef, activeLabel, onSelect, showRecommended) {
-    return homeTileList.length > 0 && <section className="home-cats-wrap" aria-label="Shop by category" ref={wrapRef}>
+  function categoryCarousel(scrollRef, dragRef, wrapRef, activeLabel, onSelect, showRecommended, pillStyle) {
+    return homeTileList.length > 0 && <section className={pillStyle ? 'home-cats-wrap home-cats-wrap-pill' : 'home-cats-wrap'} aria-label="Shop by category" ref={wrapRef}>
       <button type="button" className="home-cats-arrow home-cats-arrow-left" aria-label="Scroll categories left" onClick={() => scrollRef.current?.scrollBy({ left: -400, behavior: 'smooth' })}><svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 6 9 12 15 18" /></svg></button>
       <div className="home-cats" ref={scrollRef}
         onMouseDown={(event) => { dragRef.current = { down: true, moved: false, startX: event.pageX, scrollLeft: scrollRef.current.scrollLeft } }}
@@ -1721,14 +1739,19 @@ export default function Storefront() {
         onMouseLeave={() => { dragRef.current.down = false }}
         onClickCapture={(event) => { if (dragRef.current.moved) { event.preventDefault(); event.stopPropagation(); dragRef.current.moved = false } }}
       >
-        {showRecommended && <button className={!activeLabel ? 'home-cat active' : 'home-cat'} type="button" onClick={() => onSelect(null)}>
+        {showRecommended && (pillStyle ? <button className={!activeLabel ? 'home-cat-pill active' : 'home-cat-pill'} type="button" onClick={() => onSelect(null)}>Recommended</button> : <button className={!activeLabel ? 'home-cat active' : 'home-cat'} type="button" onClick={() => onSelect(null)}>
           <span className="home-cat-img" aria-hidden><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg></span>
           <span className="home-cat-label">Recommended</span>
-        </button>}
-        {homeTileList.map((tile) => { const meta = tileMeta(tile); const isActive = !!activeLabel && meta.label === activeLabel; return <button className={isActive ? 'home-cat active' : 'home-cat'} type="button" key={tile.id} onClick={() => onSelect(isActive ? null : tile)}>
+        </button>)}
+        {homeTileList.map((tile) => {
+          const meta = tileMeta(tile)
+          const isActive = !!activeLabel && meta.label === activeLabel
+          if (pillStyle) return <button className={isActive ? 'home-cat-pill active' : 'home-cat-pill'} type="button" key={tile.id} onClick={() => onSelect(isActive ? null : tile)}>{meta.label}</button>
+          return <button className={isActive ? 'home-cat active' : 'home-cat'} type="button" key={tile.id} onClick={() => onSelect(isActive ? null : tile)}>
           <span className="home-cat-img" aria-hidden>{categoryEmoji(meta.label)}{tile.image_url && <img src={mediaUrl(tile.image_url)} alt="" loading="lazy" draggable={false} onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
           <span className="home-cat-label">{meta.label}</span>
-        </button> })}
+        </button>
+        })}
       </div>
       <button type="button" className="home-cats-arrow home-cats-arrow-right" aria-label="Scroll categories right" onClick={() => scrollRef.current?.scrollBy({ left: 400, behavior: 'smooth' })}><svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 6 15 12 9 18" /></svg></button>
     </section>
@@ -1772,7 +1795,7 @@ export default function Storefront() {
         </article>
         )
       })() : dealsPage ? (() => {
-        const dealsLabel = dealsPage === 'lightning' ? 'Lightning Deals' : 'Unbeatable Deals'
+        const dealsLabel = dealsPage === 'lightning' ? 'Lightning Deals' : dealsPage === 'unbeatable' ? 'Unbeatable Deals' : 'Exclusive Offer'
         return <article className={`deals-page deals-page-${dealsPage}`}>
           <button type="button" className="page-back" onClick={closeDeals}>&larr; Back to shopping</button>
           <nav className="deals-breadcrumb" aria-label="Breadcrumb">
@@ -1780,8 +1803,8 @@ export default function Storefront() {
           </nav>
           <div className="deals-page-titlebar"><h1>{dealsLabel}</h1></div>
 
-          {dealsExclusive.length > 0 && <section className="deals-exclusive" aria-label="Exclusive offers">
-            <h2>Exclusive Offer</h2>
+          {dealsPage === 'lightning' && dealsExclusive.length > 0 && <section className="deals-exclusive" aria-label="Exclusive offers">
+            <div className="deals-exclusive-head"><h2>Exclusive Offer</h2><button type="button" className="deals-see-all" onClick={() => openDeals('exclusive')}>See all <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 6 15 12 9 18" /></svg></button></div>
             <div className="deals-exclusive-wrap" ref={dealsExclusiveWrapRef}>
               <button type="button" className="home-cats-arrow home-cats-arrow-left" aria-label="Scroll left" onClick={() => dealsExclusiveRef.current?.scrollBy({ left: -(dealsExclusiveRef.current.clientWidth * 0.6), behavior: 'smooth' })}><svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 6 9 12 15 18" /></svg></button>
               <div className="deals-grid deals-grid-lg" ref={dealsExclusiveRef}
@@ -1803,6 +1826,10 @@ export default function Storefront() {
                   return <button type="button" className="deals-item" key={product.id} onClick={() => { setDetailProduct(product); setGalleryIndex(0) }}>
                     <span className="deals-item-img" aria-hidden>{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
                     <span className="deals-item-price">{price(unitPrice)}</span>
+                    {product.rating_count > 0 && <span className="deals-item-rating">
+                      <span className="deals-item-stars">{starIcons(Number(product.rating_avg), `dstar-${product.id}`)}</span>
+                      <span className="deals-item-rating-count">{product.rating_count}</span>
+                    </span>}
                   </button>
                 })}
               </div>
@@ -1810,11 +1837,11 @@ export default function Storefront() {
             </div>
           </section>}
 
-          {categoryCarousel(dealsCatsRef, dealsCatsDrag, dealsCatsWrapRef, dealsCategory, (tile) => setDealsCategory(tile ? tileMeta(tile).label : null), true)}
+          {dealsPage !== 'exclusive' && categoryCarousel(dealsCatsRef, dealsCatsDrag, dealsCatsWrapRef, dealsCategory, (tile) => setDealsCategory(tile ? tileMeta(tile).label : null), true)}
 
           {dealsLoading ? <div className="empty-state">Loading…</div> : <>
-            <div className="catalog-head"><h2>{dealsCategory || dealsLabel}</h2><span>{dealsProducts.length} items</span></div>
-            <div className="product-grid">{dealsProducts.map(productCard)}{!dealsProducts.length && <p className="empty-state">Nothing here yet.</p>}</div>
+            <div className="catalog-head"><h2>{dealsCategory || ''}</h2><span>{dealsProducts.length} items</span></div>
+            <div className="product-grid" ref={productGridRef}>{dealsProducts.map(productCard)}{!dealsProducts.length && <p className="empty-state">Nothing here yet.</p>}</div>
             {dealsHasMore && <button type="button" className="see-more-btn" disabled={dealsLoadingMore} onClick={loadMoreDealsProducts}>{dealsLoadingMore ? 'Loading…' : <>View more {seeMoreArrow}</>}</button>}
           </>}
         </article>
@@ -1838,6 +1865,10 @@ export default function Storefront() {
                     return <span className="deals-item" key={product.id}>
                       <span className="deals-item-img" aria-hidden>{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
                       <span className="deals-item-price">{price(unitPrice)}</span>
+                      {product.rating_count > 0 && <span className="deals-strip-rating">
+                        <span className="deals-strip-stars">{starIcons(Number(product.rating_avg), `sstar-${product.id}`)}</span>
+                        <span className="deals-strip-rating-count">{product.rating_count}</span>
+                      </span>}
                     </span>
                   })}
                 </div>
@@ -1859,7 +1890,7 @@ export default function Storefront() {
             </section>
           })()}
 
-          {categoryCarousel(homeCatsRef, homeCatsDrag, homeCatsWrapRef, activeCategory, (tile) => (tile ? openHomeTarget(tile) : setActiveCategory(null)))}
+          {categoryCarousel(homeCatsRef, homeCatsDrag, homeCatsWrapRef, activeCategory, (tile) => (tile ? openHomeTarget(tile) : setActiveCategory(null)), false, true)}
 
           {products.length > 0 && (loading ? <div className="empty-state">Loading…</div> : (
             <>
