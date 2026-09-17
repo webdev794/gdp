@@ -94,7 +94,7 @@ button{cursor:pointer}
 }
 
 /* category rail (home view) — Blinkit-style: icon square + label, single scrollable row */
-.home-cats-wrap{position:relative;margin:20px 0 8px}
+.home-cats-wrap{position:relative;margin:20px 0}
 .home-cats{display:flex;gap:18px 10px;overflow-x:auto;margin:0 52px;padding-bottom:6px;scrollbar-width:none;cursor:grab;user-select:none}
 .home-cats::-webkit-scrollbar{display:none}
 .deals-page .home-cats-wrap{margin:34px 0 8px}
@@ -172,7 +172,8 @@ button{cursor:pointer}
 .pcard-img:hover .pcard-desc-tip{opacity:1}
 .pcard.sold-out .pcard-img,.pcard.sold-out h3,.pcard.sold-out .pcard-price{opacity:.5}
 .pcard.sold-out .add-btn{border-color:var(--muted);color:var(--muted);background:transparent}
-.add-btn{border:1px solid var(--green);color:var(--green);background:var(--lime);font-weight:600;font-size:13px;padding:7px 16px;border-radius:9px;letter-spacing:.02em}
+.add-btn{border:1.5px solid #000;color:#000;font-weight:700;background:var(--lime);font-size:13px;padding:7px 16px;border-radius:999px;letter-spacing:.02em;display:inline-flex;align-items:center;justify-content:center}
+.add-btn-icon{width:20px;height:20px;fill:currentColor}
 .add-btn:hover{background:#dff0d8}
 .stepper{display:flex;align-items:center;background:var(--green);border-radius:9px;overflow:hidden}
 .stepper button{border:0;background:0;color:#fff;font-size:18px;width:30px;height:33px;line-height:1;font-weight:600}

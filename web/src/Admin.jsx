@@ -153,7 +153,7 @@ const variantRowsFrom = (product) => (product.variants ?? []).map((v) => ({
   id: v.id, label: v.label, sku: v.sku, price: (v.price_cents / 100).toFixed(2), compare_at: dollarsOrBlank(v.compare_at_price_cents),
   stock: v.inventory_quantity, image_url: v.image_url ?? '', is_active: v.is_active,
 }))
-const EMPTY_CATEGORY = { name: '', slug: '', sort_order: 0, is_active: true }
+const EMPTY_CATEGORY = { name: '', slug: '', image_url: '', sort_order: 0, is_active: true }
 const EMPTY_STORE = { name: '', line1: '', line2: '', city: '', state: '', postal_code: '', latitude: '', longitude: '', delivery_radius_km: 5, is_active: true }
 const riderFormFrom = (rider) => ({
   id: rider.id,
@@ -2152,6 +2152,16 @@ export default function Admin({ token, onClose }) {
           {categoryForm && (
             <form id="admin-category-form" className="admin-form" onSubmit={saveCategory}>
               <h3>{categoryForm.id ? `Edit category #${categoryForm.id}` : 'New category'}</h3>
+              <div className="admin-image-field">
+                {categoryForm.image_url
+                  ? <img className="admin-banner-thumb" src={mediaUrl(categoryForm.image_url)} alt="" />
+                  : <div className="admin-banner-thumb placeholder">category image</div>}
+                <div>
+                  <label>Image URL<input value={categoryForm.image_url} onChange={(event) => setCategoryForm({ ...categoryForm, image_url: event.target.value })} /></label>
+                  <input type="file" accept="image/*" disabled={imgBusy} onChange={(event) => uploadImage(event.target.files?.[0], (url) => setCategoryForm((form) => ({ ...form, image_url: url })))} />
+                  {imgBusy && <span className="muted"> uploading…</span>}
+                </div>
+              </div>
               <div className="admin-form-grid">
                 <label>Name<input required value={categoryForm.name} onChange={(event) => setCategoryForm({ ...categoryForm, name: event.target.value })} /></label>
                 <label>Slug (optional)<input value={categoryForm.slug ?? ''} onChange={(event) => setCategoryForm({ ...categoryForm, slug: event.target.value })} /></label>
@@ -2167,17 +2177,18 @@ export default function Admin({ token, onClose }) {
 
           {listBusy.categories && categories.length === 0 ? <Loading>Loading categories…</Loading> : categories.length === 0 ? <p className="admin-empty">No categories.</p> : (
             <table className="admin-table">
-              <thead><tr><th>Name</th><th>Slug</th><th>Products</th><th>Sort</th><th>Active</th><th></th></tr></thead>
+              <thead><tr><th>Image</th><th>Name</th><th>Slug</th><th>Products</th><th>Sort</th><th>Active</th><th></th></tr></thead>
               <tbody>
                 {pageSlice(categories, categoriesPage).map((category) => (
                   <tr key={category.id}>
+                    <td>{category.image_url ? <img className="admin-banner-thumb" src={mediaUrl(category.image_url)} alt="" /> : <span className="muted">—</span>}</td>
                     <td>{category.name}</td>
                     <td>{category.slug}</td>
                     <td>{category.products_count ?? 0}</td>
                     <td>{category.sort_order}</td>
                     <td>{category.is_active ? 'Yes' : 'No'}</td>
                     <td className="admin-actions">
-                      <button className="act" type="button" onClick={() => { setCategoryForm({ id: category.id, name: category.name, slug: category.slug, sort_order: category.sort_order, is_active: category.is_active }); scrollFormIntoView('admin-category-form') }}>Edit</button>
+                      <button className="act" type="button" onClick={() => { setCategoryForm({ id: category.id, name: category.name, slug: category.slug, image_url: category.image_url ?? '', sort_order: category.sort_order, is_active: category.is_active }); scrollFormIntoView('admin-category-form') }}>Edit</button>
                       <button className="act danger" type="button" onClick={() => removeCategory(category)}>Delete</button>
                     </td>
                   </tr>
@@ -2443,22 +2454,12 @@ export default function Admin({ token, onClose }) {
           <h3 className="admin-subhead">Category tiles</h3>
           <div className="admin-toolbar">
             <button className="act" type="button" onClick={() => { setTileForm({ ...EMPTY_TILE }); scrollFormIntoView('admin-tile-form') }}>New tile</button>
-            <span className="muted">The homepage shows these in order — first three as large cards, the rest as a grid. Leave the title or image blank to use the category&rsquo;s own. With no active tiles the homepage lists every category.</span>
+            <span className="muted">The homepage shows these in order — first three as large cards, the rest as a grid. Leave the title blank to use the category&rsquo;s own; edit category images in the Categories tab. With no active tiles the homepage lists every category.</span>
           </div>
 
           {tileForm && (
             <form id="admin-tile-form" className="admin-form" onSubmit={saveTile}>
               <h3>{tileForm.id ? `Edit tile #${tileForm.id}` : 'New tile'}</h3>
-              <div className="admin-image-field">
-                {tileForm.image_url
-                  ? <img className="admin-banner-thumb" src={mediaUrl(tileForm.image_url)} alt="" />
-                  : <div className="admin-banner-thumb placeholder">category image</div>}
-                <div>
-                  <label>Custom image URL (optional)<input value={tileForm.image_url} onChange={(event) => setTileForm({ ...tileForm, image_url: event.target.value })} placeholder="blank = use the category image" /></label>
-                  <input type="file" accept="image/*" disabled={imgBusy} onChange={(event) => uploadImage(event.target.files?.[0], (url) => setTileForm((form) => ({ ...form, image_url: url })))} />
-                  {imgBusy && <span className="muted"> uploading…</span>}
-                </div>
-              </div>
               <div className="admin-form-grid">
                 <label>Category<select value={tileForm.category_slug} onChange={(event) => setTileForm({ ...tileForm, category_slug: event.target.value })}><option value="">— none (use link) —</option>{categories.map((c) => <option key={c.id} value={c.slug}>{c.name}</option>)}</select></label>
                 <label>Custom title (optional)<input maxLength="120" value={tileForm.title} onChange={(event) => setTileForm({ ...tileForm, title: event.target.value })} placeholder="blank = category name" /></label>
@@ -2477,9 +2478,11 @@ export default function Admin({ token, onClose }) {
             <table className="admin-table">
               <thead><tr><th>Image</th><th>Title</th><th>Target</th><th>Order</th><th>Active</th><th></th></tr></thead>
               <tbody>
-                {homeTiles.map((tile) => (
+                {homeTiles.map((tile) => {
+                  const tileImage = tile.image_url || categories.find((c) => c.slug === tile.category_slug)?.image_url
+                  return (
                   <tr key={tile.id}>
-                    <td>{tile.image_url ? <img className="admin-banner-thumb" src={mediaUrl(tile.image_url)} alt="" /> : <span className="muted">category</span>}</td>
+                    <td>{tileImage ? <img className="admin-banner-thumb" src={mediaUrl(tileImage)} alt="" /> : <span className="muted">—</span>}</td>
                     <td>{tile.title || <span className="muted">category name</span>}</td>
                     <td>{tile.category_slug ? `#${tile.category_slug}` : (tile.link_url || <span className="muted">—</span>)}</td>
                     <td>{tile.sort_order}</td>
@@ -2489,7 +2492,8 @@ export default function Admin({ token, onClose }) {
                       <button className="act danger" type="button" onClick={() => removeTile(tile)}>Delete</button>
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           )}

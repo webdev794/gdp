@@ -1633,7 +1633,7 @@ export default function Storefront() {
   function openHomeTarget(target) {
     if (target.category_slug) {
       const cat = categories.find((c) => c.slug === target.category_slug)
-      if (cat) { setActiveCategory(cat.name); setQuery(''); window.scrollTo({ top: 0, behavior: 'smooth' }); return }
+      if (cat) { setActiveCategory(cat.name); setQuery(''); return }
     }
     if (target.link_url) window.open(target.link_url, '_blank', 'noopener')
   }
@@ -1702,7 +1702,7 @@ export default function Storefront() {
       <h3>{variantTitle(product.name, variant?.label)}</h3>
       {hasVariants && <select className="pcard-variant" aria-label={`${product.name} option`} value={String(chosen?.id ?? '')} onChange={(event) => setPickedVariant((current) => ({ ...current, [product.id]: event.target.value }))}>{options.map((o) => <option key={o.id === '' ? 'base' : o.id} value={String(o.id)}>{o.label} — {price(o.price_cents)}</option>)}</select>}
       <div className="pcard-foot"><span className="pcard-price">{onSale ? <><strong className="on-sale">{price(unitPrice)}</strong><s>{price(compareAt)}</s></> : <strong>{price(unitPrice)}</strong>}</span>{qty === 0
-        ? <button className="add-btn" type="button" disabled={stock === 0} onClick={() => add(product, variant)}>{stock === 0 ? 'OUT' : 'ADD'}</button>
+        ? <button className="add-btn" type="button" disabled={stock === 0} onClick={() => add(product, variant)}>{stock === 0 ? 'OUT' : <svg aria-hidden viewBox="0 0 1024 1024" className="add-btn-icon"><path d="M409.7 752.4c31.8 0 57.6 25.8 57.5 57.6 0 31.8-25.8 57.6-57.5 57.6-31.8 0-57.6-25.8-57.6-57.6 0-31.8 25.8-57.6 57.6-57.6z m327.5 0c31.8 0 57.6 25.8 57.6 57.6 0 31.8-25.8 57.6-57.6 57.6-31.8 0-57.6-25.8-57.5-57.6 0-31.8 25.8-57.6 57.5-57.6z m-541-563.2c21.6 0 40.7 4.8 60.2 16.6 20.9 12.6 37 31.5 47.1 55.9l3.6 9.7 1.5 6.2 18.5 113.1 31.4 199.2c2.9 17.9 17.5 31.7 35.1 33.7l4.9 0.3 347.2 0c18.3 0 34.2-12.3 39.1-30.1l1.1-5.2 48.6-260.5c4.5-24.3 27.9-40.4 52.3-35.8 22.3 4.2 37.9 24.3 36.5 47.1l-0.7 5.1-48.4 259.5c-9.7 60.2-59.9 105.6-120.8 109.2l-7.7 0.3-347.2 0c-63.8 0-118.1-46.2-128.5-109.4l-36.3-230.3-12.4-76.3-1-2.5c-2.1-4.9-4.7-8.4-7.5-10.6l-2.7-1.9c-3.3-2-6.8-3.1-10.1-3.5l-3.8-0.2-85.3 0c-24.7 0-44.8-20.1-44.8-44.8 0-22.7 16.9-41.7 39.6-44.5l5.2-0.3 85.3 0z m382.2-1.2c22.7 0 41.7 16.9 44.5 39.6l0.3 5.2 0 66.1 66.2 0c23.1 0 42.1 17.5 44.5 39.9l0.3 4.9c0 22.7-16.9 41.7-39.6 44.5l-5.2 0.3-66.2 0 0 66.1c0 23.1-17.5 42.1-39.9 44.6l-4.9 0.2c-22.7 0-41.7-16.9-44.4-39.5l-0.4-5.3 0-66.1-66.1 0c-23.1 0-42.1-17.5-44.5-39.9l-0.3-4.9c0-22.7 16.9-41.7 39.6-44.5l5.2-0.3 66.1 0 0-66.1c0-23.1 17.5-42.1 40-44.6l4.8-0.2z" /></svg>}</button>
         : <span className="stepper"><button type="button" aria-label="Remove one" onClick={() => updateQuantity(key, -1)}>&minus;</button><b>{qty}</b><button type="button" aria-label="Add one" disabled={stock != null && qty >= stock} onClick={() => updateQuantity(key, 1)}>+</button></span>}</div>
       {(product.units_sold > 0 || product.rating_count > 0) && <p className="pcard-rating">
         {product.units_sold > 0 && <span className="pcard-sold">{product.units_sold} sold</span>}
@@ -1739,7 +1739,7 @@ export default function Storefront() {
         onMouseLeave={() => { dragRef.current.down = false }}
         onClickCapture={(event) => { if (dragRef.current.moved) { event.preventDefault(); event.stopPropagation(); dragRef.current.moved = false } }}
       >
-        {showRecommended && (pillStyle ? <button className={!activeLabel ? 'home-cat-pill active' : 'home-cat-pill'} type="button" onClick={() => onSelect(null)}>Recommended</button> : <button className={!activeLabel ? 'home-cat active' : 'home-cat'} type="button" onClick={() => onSelect(null)}>
+        {showRecommended && (pillStyle ? <button className="home-cat-pill" type="button" onClick={() => onSelect(null)}>Recommended</button> : <button className="home-cat" type="button" onClick={() => onSelect(null)}>
           <span className="home-cat-img" aria-hidden><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg></span>
           <span className="home-cat-label">Recommended</span>
         </button>)}
@@ -1852,7 +1852,7 @@ export default function Storefront() {
       {!searching ? (
         <>
           {loading && banners.length === 0 && homeTileList.length === 0 && <div className="empty-state">Loading…</div>}
-          {!activeCategory && (lightningDeals.length > 0 || unbeatableDeals.length > 0) && <section className="deals-strip" aria-label="Deals">
+          {(lightningDeals.length > 0 || unbeatableDeals.length > 0) && <section className="deals-strip" aria-label="Deals">
             {[['lightning', 'Lightning Deals', lightningDeals], ['unbeatable', 'Unbeatable Deals', unbeatableDeals]].map(([key, label, deals]) => deals.length > 0 && (
               <button type="button" className={`deals-col deals-${key}`} key={key} onClick={() => openDeals(key)}>
                 <div className="deals-head">
@@ -1875,26 +1875,11 @@ export default function Storefront() {
               </button>
             ))}
           </section>}
-          {!activeCategory && banners.length > 0 && (() => {
-            const heroBanners = banners.filter((b) => b.placement !== 'strip')
-            const stripBanners = banners.filter((b) => b.placement === 'strip')
-            return (heroBanners.length > 0 || stripBanners.length > 0) && <section className="home-banners" aria-label="Offers">
-              {heroBanners.map((banner) => <button className="home-hero" type="button" key={banner.id} onClick={() => openHomeTarget(banner)}>
-                <img src={mediaUrl(banner.image_url)} alt={banner.headline || 'Featured offer'} loading="eager" />
-              </button>)}
-              {stripBanners.length > 0 && <div className="home-strip">
-                {stripBanners.map((banner) => <button className="home-strip-card" type="button" key={banner.id} onClick={() => openHomeTarget(banner)}>
-                  <img src={mediaUrl(banner.image_url)} alt={banner.headline || 'Offer'} loading="lazy" />
-                </button>)}
-              </div>}
-            </section>
-          })()}
 
-          {categoryCarousel(homeCatsRef, homeCatsDrag, homeCatsWrapRef, activeCategory, (tile) => (tile ? openHomeTarget(tile) : setActiveCategory(null)), false, true)}
+          {categoryCarousel(homeCatsRef, homeCatsDrag, homeCatsWrapRef, activeCategory, (tile) => (tile ? openHomeTarget(tile) : setActiveCategory(null)), true, true)}
 
           {products.length > 0 && (loading ? <div className="empty-state">Loading…</div> : (
             <>
-              <div className="catalog-head"><h2>{activeCategory || 'All products'}</h2><span>{visibleProducts.length} items</span></div>
               {productGrid}
             </>
           ))}

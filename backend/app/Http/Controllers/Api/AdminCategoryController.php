@@ -61,7 +61,7 @@ class AdminCategoryController extends Controller
             'name' => [$category ? 'sometimes' : 'required', 'string', 'max:120'],
             'slug' => ['sometimes', 'nullable', 'string', 'max:140', 'alpha_dash', Rule::unique('categories')->ignore($category?->id)],
             'description' => ['sometimes', 'nullable', 'string', 'max:1000'],
-            'image_url' => ['sometimes', 'nullable', 'url', 'max:500'],
+            'image_url' => ['sometimes', 'nullable', 'string', 'max:2048'],
             'is_active' => ['sometimes', 'boolean'],
             'sort_order' => ['sometimes', 'integer', 'min:0'],
         ]);
