@@ -669,7 +669,7 @@ export default function Admin({ token, onClose }) {
             const id = ratingKey(r)
             const tone = r.rating <= 2 ? 'bad' : r.rating === 3 ? 'mid' : 'good'
             const stars = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating)
-            const who = r.source === 'chat' ? 'Chat rating' : r.source === 'site' ? 'Site feedback' : 'Delivery rating'
+            const who = r.source === 'chat' ? 'Chat rating' : 'Delivery rating'
             setRatingToasts((cur) => [
               ...cur,
               { id, tone, text: `${stars} ${who}${r.order_id ? ` — order #${r.order_id}` : ''}${r.comment ? ` — “${r.comment}”` : ''}`, orderId: r.order_id },
@@ -1607,8 +1607,8 @@ export default function Admin({ token, onClose }) {
                         <h5>Negative feedback (7 days)</h5>
                         {visibleNegativeFeedback.slice(0, BELL_ITEM_CAP).map((f) => (
                           <div className="admin-bell-row" key={fbKey(f)}>
-                            <button type="button" className="admin-bell-item danger" onClick={() => f.order_id && openOrderById(f.order_id)}>
-                              {'★'.repeat(f.rating)}{'☆'.repeat(5 - f.rating)} {f.source === 'site' ? `Site feedback${f.rider_name ? ` — ${f.rider_name}` : ''}` : `Order #${f.order_id}${f.source === 'chat' ? ' · chat' : ' · delivery'}`}{f.comment ? ` — “${f.comment}”` : ''}
+                            <button type="button" className="admin-bell-item danger" onClick={() => openOrderById(f.order_id)}>
+                              {'★'.repeat(f.rating)}{'☆'.repeat(5 - f.rating)} Order #{f.order_id}{f.source === 'chat' ? ' · chat' : ' · delivery'}{f.comment ? ` — “${f.comment}”` : ''}
                             </button>
                             <button type="button" className="admin-bell-x" title="Dismiss" onClick={(event) => { event.stopPropagation(); dismissNotif(fbKey(f)) }}>×</button>
                           </div>
