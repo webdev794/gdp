@@ -9,6 +9,13 @@ import './Storefront.css'
 import './Checkout.css'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api'
+const FEEDBACK_OPTIONS = [
+  { value: 1, label: 'Very poor' },
+  { value: 2, label: 'Poor' },
+  { value: 3, label: 'Fair' },
+  { value: 4, label: 'Good' },
+  { value: 5, label: 'Excellent' },
+]
 const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) : null
 const fallbackProducts = [
   { id: 1, name: 'Apple iPhone 15 Pro', price_cents: 99900, category: { name: 'Mobiles & Smartphones' }, image_url: '/img/products/1.webp' },
@@ -336,6 +343,10 @@ export default function Storefront() {
   const [products, setProducts] = useState([])
   const [query, setQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState(null)
+  const [showBackToTop, setShowBackToTop] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackRating, setFeedbackRating] = useState(null)
+  const [feedbackSent, setFeedbackSent] = useState(false)
   const [cart, setCart] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('gdp_cart') ?? '[]')
@@ -345,8 +356,9 @@ export default function Storefront() {
     } catch { return [] }
   })
   const [pickedVariant, setPickedVariant] = useState({})
-  const [detailProduct, setDetailProduct] = useState(null)
+  const [productView, setProductView] = useState(null) // product | 'loading' | null
   const [galleryIndex, setGalleryIndex] = useState(0)
+  const [reviewsExpanded, setReviewsExpanded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [offline, setOffline] = useState(false)
   const [pages, setPages] = useState([])
@@ -443,7 +455,7 @@ export default function Storefront() {
   const [ordersMessage, setOrdersMessage] = useState('')
   const [supportView, setSupportView] = useState(null) // null | 'list' | 'new' | thread object
   const [threads, setThreads] = useState([])
-  const [supportForm, setSupportForm] = useState({ about_order: false, order_id: '', issue_type: 'item_missing', message: '' })
+  const [supportForm, setSupportForm] = useState({ about_order: false, order_id: '', issue_type: 'other', message: '' })
   const [supportReply, setSupportReply] = useState('')
   const [supportBusy, setSupportBusy] = useState(false)
   const [supportMsg, setSupportMsg] = useState('')
@@ -774,6 +786,25 @@ export default function Storefront() {
     return () => window.removeEventListener('hashchange', sync)
   }, [])
 
+  // Product detail page: #/product/<slug>.
+  useEffect(() => {
+    const sync = () => {
+      const match = window.location.hash.match(/^#\/product\/([a-z0-9-]+)$/)
+      if (!match) { setProductView(null); return }
+      const slug = match[1]
+      setProductView((current) => (current && current !== 'loading' && current.slug === slug ? current : 'loading'))
+      setGalleryIndex(0)
+      setReviewsExpanded(false)
+      fetch(`${API_URL}/products/${slug}`, { headers: { Accept: 'application/json' } })
+        .then(responseJson)
+        .then((data) => setProductView(data.data ?? null))
+        .catch(() => setProductView(null))
+    }
+    sync()
+    window.addEventListener('hashchange', sync)
+    return () => window.removeEventListener('hashchange', sync)
+  }, [])
+
   // Deals pages: #/deals/lightning or #/deals/unbeatable.
   useEffect(() => {
     const sync = () => {
@@ -784,6 +815,14 @@ export default function Storefront() {
     sync()
     window.addEventListener('hashchange', sync)
     return () => window.removeEventListener('hashchange', sync)
+  }, [])
+
+  // Show the floating "back to top" button once the page has scrolled down.
+  useEffect(() => {
+    const onScroll = () => setShowBackToTop(window.scrollY > 400)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   function openDeals(type) {
@@ -802,6 +841,15 @@ export default function Storefront() {
   function closePage() {
     if (window.location.hash) window.location.hash = ''
     else setPageView(null)
+  }
+
+  function openProduct(product) {
+    window.location.hash = `#/product/${product.slug || product.id}`
+    window.scrollTo({ top: 0 })
+  }
+  function closeProduct() {
+    if (window.location.hash) window.location.hash = ''
+    else setProductView(null)
   }
 
   const searching = query.trim().length > 0
@@ -1896,6 +1944,40 @@ export default function Storefront() {
       )}
       </>}
     </main>
+    <div className="side-toolbar" role="toolbar">
+      <button type="button" className={supportUnread ? 'side-toolbar-btn has-dot' : 'side-toolbar-btn'} onClick={() => openSupport()} aria-label="Messages">
+        <svg aria-hidden viewBox="0 0 1024 1024"><path d="M802.9 169.9c73.3 0 132.7 59.4 132.7 132.6l0 387.5c0 73.3-59.4 132.7-132.7 132.7l-178.8-0.1-53.8 67.5c-24.2 30.3-67.2 36.7-99 15.9l-5.8-4.2c-4.3-3.5-8.3-7.4-11.8-11.7l-53.9-67.5-178.7 0.1c-70.6 0-128.4-55.2-132.4-124.9l-0.3-7.8 0-387.5c0-73.3 59.4-132.7 132.7-132.6z m0 79.1l-581.8 0c-29.6 0-53.5 24-53.5 53.5l0 387.5c0 29.6 24 53.5 53.5 53.6l216.8 0 74.1 92.6 74.1-92.6 216.8 0c29.6 0 53.5-24 53.5-53.6l0-387.5c0-29.6-24-53.5-53.5-53.5z m-290.9 193.2c32.6 0 59.1 26.4 59.1 59.1 0 32.6-26.4 59.1-59.1 59-32.6 0-59.1-26.4-59.1-59 0-32.6 26.4-59.1 59.1-59.1z m-196.9 0c32.6 0 59.1 26.4 59.1 59.1 0 32.6-26.4 59.1-59.1 59-32.6 0-59.1-26.4-59.1-59 0-32.6 26.4-59.1 59.1-59.1z m393.8 0c32.6 0 59.1 26.4 59.1 59.1 0 32.6-26.4 59.1-59.1 59-32.6 0-59.1-26.4-59.1-59 0-32.6 26.4-59.1 59.1-59.1z" /></svg>
+        {supportUnread ? <i className="side-toolbar-dot" aria-hidden /> : null}
+      </button>
+      <button type="button" className="side-toolbar-btn" onClick={() => { setFeedbackOpen(true); setFeedbackRating(null); setFeedbackSent(false) }} aria-label="Feedback">
+        <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+      </button>
+      {showBackToTop && <button type="button" className="side-toolbar-btn" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Back to top">
+        <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15" /></svg>
+        <span>Top</span>
+      </button>}
+    </div>
+    {feedbackOpen && <div className="overlay" role="presentation" onClick={() => setFeedbackOpen(false)}><div className="auth-modal feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-title" onClick={(event) => event.stopPropagation()}>
+      <button className="close-button" type="button" onClick={() => setFeedbackOpen(false)} aria-label="Close feedback">x</button>
+      {feedbackSent ? <><h2 id="feedback-title">Thanks for the feedback!</h2><p className="auth-intro">We&rsquo;ll use it to keep improving.</p></> : <>
+        <h2 id="feedback-title">We are here to improve your experience!</h2>
+        <p className="auth-intro">Your feedback matters! Please tell us what you think of our website below.</p>
+        <p className="feedback-question">How do you feel about your visit on our site today?</p>
+        <div className="feedback-scale" role="radiogroup" aria-label="Rate your visit">
+          {FEEDBACK_OPTIONS.map((option) => <button type="button" key={option.value} className={feedbackRating === option.value ? 'feedback-option active' : 'feedback-option'} role="radio" aria-checked={feedbackRating === option.value} onClick={() => setFeedbackRating(option.value)}>
+            <span className="feedback-dot" aria-hidden />
+            <span>{option.label}</span>
+          </button>)}
+        </div>
+        <button className="checkout-button feedback-submit" type="button" disabled={!feedbackRating} onClick={async () => {
+          const token = localStorage.getItem('gdp_token')
+          try {
+            await fetch(`${API_URL}/site-feedback`, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ rating: feedbackRating }) })
+          } catch { /* best-effort */ }
+          setFeedbackSent(true)
+        }}>Share with {branding?.store_name || 'NexTech'}</button>
+      </>}
+    </div></div>}
     {detailProduct && (() => {
       const { hasVariants, options, chosen, variant, unitPrice, compareAt, onSale, pctOff, stock, key, qty } = variantView(detailProduct)
       const images = galleryImages(detailProduct)
@@ -1910,8 +1992,8 @@ export default function Storefront() {
         <div className="product-modal" role="dialog" aria-modal="true" aria-labelledby="pm-title" onClick={(event) => event.stopPropagation()}>
           <button className="close-button" type="button" onClick={() => setDetailProduct(null)} aria-label="Close details">x</button>
           <div className="pm-gallery">
+            {images.length > 1 && <div className="pm-thumbs">{images.map((url, i) => <button type="button" key={url} className={i === galleryIndex ? 'pm-thumb active' : 'pm-thumb'} onMouseEnter={() => setGalleryIndex(i)} onClick={() => setGalleryIndex(i)} aria-label={`Photo ${i + 1}`}><img src={mediaUrl(url)} alt="" /></button>)}</div>}
             <div className="pm-main-img" aria-hidden>{stock === 0 && <span className="pcard-oos">Out of stock</span>}{onSale && stock !== 0 && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(detailProduct.name)}{activeImg && <img src={mediaUrl(activeImg)} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
-            {images.length > 1 && <div className="pm-thumbs">{images.map((url, i) => <button type="button" key={url} className={i === galleryIndex ? 'pm-thumb active' : 'pm-thumb'} onClick={() => setGalleryIndex(i)} aria-label={`Photo ${i + 1}`}><img src={mediaUrl(url)} alt="" /></button>)}</div>}
           </div>
           <div className="pm-info">
             <p className="pcard-cat">{detailProduct.category?.name ?? 'Uncategorized'}</p>
@@ -2062,26 +2144,28 @@ export default function Storefront() {
     {supportView && <div className="overlay" role="presentation" onClick={() => setSupportView(null)}><div className="auth-modal support-modal" role="dialog" aria-modal="true" aria-labelledby="support-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setSupportView(null)} aria-label="Close support">x</button><p className="eyebrow">We&rsquo;re here to help</p>
       {supportView === 'list' ? <>
         <h2 id="support-title">Support</h2>
-        <button className="checkout-button" type="button" onClick={() => { setSupportForm({ about_order: false, order_id: '', issue_type: 'item_missing', message: '' }); setSupportView('new') }}>New request <span>-&gt;</span></button>
+        <button className="checkout-button support-new-btn" type="button" onClick={() => { setSupportForm({ about_order: false, order_id: '', issue_type: 'other', message: '' }); setSupportView('new') }}>New request <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 6 15 12 9 18" /></svg></button>
         {threads.length === 0 ? <p className="auth-intro">No conversations yet.</p> : <ul className="support-list">{threads.map((t) => <li key={t.id}><button type="button" onClick={() => openThread(t.id)}><strong>{issueLabel(t.issue_type)}{t.order_id ? ` · Order #${t.order_id}` : ''}</strong><span>{t.status === 'resolved' ? 'Resolved' : 'Open'} · {t.last_message_at ? new Date(t.last_message_at).toLocaleDateString() : ''}</span></button></li>)}</ul>}
       </> : supportView === 'new' ? <>
         <h2 id="support-title">New request</h2>
         <p className="pay-methods-label">Is this about an order?</p>
         <div className="issue-chips" role="radiogroup" aria-label="Is this about an order?">
-          <button type="button" role="radio" aria-checked={!supportForm.about_order} className={!supportForm.about_order ? 'issue-chip active' : 'issue-chip'} onClick={() => setSupportForm({ ...supportForm, about_order: false, order_id: '' })}>General question</button>
-          <button type="button" role="radio" aria-checked={supportForm.about_order} className={supportForm.about_order ? 'issue-chip active' : 'issue-chip'} onClick={() => setSupportForm({ ...supportForm, about_order: true })}>About an order</button>
+          <button type="button" role="radio" aria-checked={!supportForm.about_order} className={!supportForm.about_order ? 'issue-chip active' : 'issue-chip'} onClick={() => setSupportForm({ ...supportForm, about_order: false, order_id: '', issue_type: 'other' })}>General question</button>
+          <button type="button" role="radio" aria-checked={supportForm.about_order} className={supportForm.about_order ? 'issue-chip active' : 'issue-chip'} onClick={() => setSupportForm({ ...supportForm, about_order: true, issue_type: 'item_missing' })}>About an order</button>
         </div>
-        {supportForm.about_order && (orders.length === 0
-          ? <p className="auth-intro">You have no orders yet.</p>
-          : <label className="support-field">Which order?
-              <select value={supportForm.order_id} onChange={(event) => setSupportForm({ ...supportForm, order_id: event.target.value })}>
-                <option value="">Select an order…</option>
-                {orders.map((o) => <option key={o.id} value={o.id}>Order #{o.id} · {price(o.total_cents)}</option>)}
-              </select>
-            </label>)}
-        <div className="issue-chips" role="radiogroup" aria-label="Issue type">{ISSUE_TYPES.map(([type, label]) => <button key={type} type="button" role="radio" aria-checked={supportForm.issue_type === type} className={supportForm.issue_type === type ? 'issue-chip active' : 'issue-chip'} onClick={() => setSupportForm({ ...supportForm, issue_type: type })}>{label}</button>)}</div>
+        {supportForm.about_order && <>
+          {orders.length === 0
+            ? <p className="auth-intro">You have no orders yet.</p>
+            : <label className="support-field">Which order?
+                <select value={supportForm.order_id} onChange={(event) => setSupportForm({ ...supportForm, order_id: event.target.value })}>
+                  <option value="">Select an order…</option>
+                  {orders.map((o) => <option key={o.id} value={o.id}>Order #{o.id} · {price(o.total_cents)}</option>)}
+                </select>
+              </label>}
+          <div className="issue-chips" role="radiogroup" aria-label="Issue type">{ISSUE_TYPES.map(([type, label]) => <button key={type} type="button" role="radio" aria-checked={supportForm.issue_type === type} className={supportForm.issue_type === type ? 'issue-chip active' : 'issue-chip'} onClick={() => setSupportForm({ ...supportForm, issue_type: type })}>{label}</button>)}</div>
+        </>}
         <textarea className="delivery-note" rows="3" maxLength="2000" placeholder="Tell us what happened" value={supportForm.message} onChange={(event) => setSupportForm({ ...supportForm, message: event.target.value })} />
-        <button className="checkout-button" type="button" disabled={supportBusy} onClick={submitSupport}>Send <span>-&gt;</span></button>
+        <button className="checkout-button support-new-btn" type="button" disabled={supportBusy} onClick={submitSupport}>Send <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 6 15 12 9 18" /></svg></button>
         <button className="switch-auth" type="button" onClick={() => setSupportView('list')}>Back</button>
       </> : <>
         <h2 id="support-title">{issueLabel(supportView.issue_type)}{supportView.order_id ? ` · Order #${supportView.order_id}` : ''}</h2>

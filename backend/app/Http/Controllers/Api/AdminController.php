@@ -9,6 +9,7 @@ use App\Models\OrderItem;
 use App\Models\OrderRefund;
 use App\Models\Product;
 use App\Models\RiderReview;
+use App\Models\SiteFeedback;
 use App\Models\SupportThread;
 use App\Models\User;
 use App\Support\CustomerNames;
@@ -115,7 +116,8 @@ class AdminController extends Controller
 
         $riderFeedbackQuery = RiderReview::query()->where('rating', '<=', 2)->where('created_at', '>=', $since);
         $chatFeedbackQuery = SupportThread::query()->whereNotNull('rating')->where('rating', '<=', 2)->where('rated_at', '>=', $since);
-        $negativeFeedbackTotal = $riderFeedbackQuery->clone()->count() + $chatFeedbackQuery->clone()->count();
+        $siteFeedbackQuery = SiteFeedback::query()->where('rating', '<=', 2)->where('created_at', '>=', $since);
+        $negativeFeedbackTotal = $riderFeedbackQuery->clone()->count() + $chatFeedbackQuery->clone()->count() + $siteFeedbackQuery->clone()->count();
 
         $riderFeedback = $riderFeedbackQuery->with('rider:id,name')->latest()->limit($sampleSize)->get()
             ->map(fn (RiderReview $r) => [
@@ -138,7 +140,17 @@ class AdminController extends Controller
                 'at' => $t->rated_at,
             ]);
 
-        $negativeFeedback = $riderFeedback->concat($chatFeedback)->sortByDesc('at')->take($sampleSize)->values();
+        $siteFeedback = $siteFeedbackQuery->with('user:id,name')->latest()->limit($sampleSize)->get()
+            ->map(fn (SiteFeedback $f) => [
+                'source' => 'site',
+                'order_id' => null,
+                'rating' => $f->rating,
+                'comment' => null,
+                'rider_name' => $f->user?->name,
+                'at' => $f->created_at,
+            ]);
+
+        $negativeFeedback = $riderFeedback->concat($chatFeedback)->concat($siteFeedback)->sortByDesc('at')->take($sampleSize)->values();
 
         // Every recent rating, good or bad — not a standing "needs attention"
         // list (that's negative_feedback above), just enough for the admin
@@ -163,7 +175,16 @@ class AdminController extends Controller
                 'rider_name' => null,
                 'at' => $t->rated_at,
             ]);
-        $recentRatings = $allRiderRatings->concat($allChatRatings)->sortByDesc('at')->take($sampleSize)->values();
+        $allSiteRatings = SiteFeedback::query()->with('user:id,name')->latest()->limit($sampleSize)->get()
+            ->map(fn (SiteFeedback $f) => [
+                'source' => 'site',
+                'order_id' => null,
+                'rating' => $f->rating,
+                'comment' => null,
+                'rider_name' => $f->user?->name,
+                'at' => $f->created_at,
+            ]);
+        $recentRatings = $allRiderRatings->concat($allChatRatings)->concat($allSiteRatings)->sortByDesc('at')->take($sampleSize)->values();
 
         $giftCardsQuery = GiftCard::query()->where('created_at', '>=', $since);
         $refundsQuery = OrderRefund::query()->where('created_at', '>=', $since);
