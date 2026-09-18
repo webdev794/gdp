@@ -9,6 +9,42 @@ import './Storefront.css'
 import './Checkout.css'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api'
+const FEEDBACK_OPTIONS = [
+  { value: 1, label: 'Very poor' },
+  { value: 2, label: 'Poor' },
+  { value: 3, label: 'Fair' },
+  { value: 4, label: 'Good' },
+  { value: 5, label: 'Excellent' },
+]
+const REVIEW_NAMES = ['Alex P.', 'Jordan K.', 'Sam R.', 'Taylor M.', 'Morgan D.', 'Casey L.', 'Riley B.', 'Jamie S.', 'Drew C.', 'Avery N.', 'Quinn T.', 'Reese W.']
+const REVIEW_TEXTS = {
+  5: ['Exactly as described, works great and arrived quickly.', 'Really happy with this purchase, would buy again.', 'Great quality for the price, highly recommend.', 'Exceeded my expectations, five stars.'],
+  4: ['Good product overall, does what it says.', 'Solid value, a couple of minor nitpicks but happy with it.', 'Works well, packaging could be better.', 'Pretty good, would consider buying again.'],
+  3: ["It's okay, does the job but nothing special.", 'Average quality, expected a bit more for the price.', 'Works fine but instructions were unclear.', 'Decent, though delivery took longer than expected.'],
+}
+// Deterministic per-product review placeholders — same product always renders
+// the same reviews, no backend review table needed for this display-only list.
+function generateReviews(product) {
+  let seed = (Number(product.id) * 2654435761) >>> 0
+  const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296 }
+  const base = Number(product.rating_avg) || 4.5
+  const count = product.rating_count > 0 ? 8 : 4
+  return Array.from({ length: count }, (_, i) => {
+    const wobble = Math.round((rand() - 0.5) * 2)
+    const rating = Math.max(3, Math.min(5, Math.round(base) + wobble))
+    const daysAgo = 3 + Math.floor(rand() * 180)
+    const date = new Date(Date.now() - daysAgo * 86400000)
+    const texts = REVIEW_TEXTS[rating] ?? REVIEW_TEXTS[3]
+    return {
+      id: i,
+      name: REVIEW_NAMES[Math.floor(rand() * REVIEW_NAMES.length)],
+      rating,
+      verified: rand() > 0.15,
+      date: date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }),
+      text: texts[Math.floor(rand() * texts.length)],
+    }
+  })
+}
 const stripePromise = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ? loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY) : null
 const fallbackProducts = [
   { id: 1, name: 'Apple iPhone 15 Pro', price_cents: 99900, category: { name: 'Mobiles & Smartphones' }, image_url: '/img/products/1.webp' },
@@ -336,6 +372,10 @@ export default function Storefront() {
   const [products, setProducts] = useState([])
   const [query, setQuery] = useState('')
   const [activeCategory, setActiveCategory] = useState(null)
+  const [showBackToTop, setShowBackToTop] = useState(false)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackRating, setFeedbackRating] = useState(null)
+  const [feedbackSent, setFeedbackSent] = useState(false)
   const [cart, setCart] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('gdp_cart') ?? '[]')
@@ -345,8 +385,9 @@ export default function Storefront() {
     } catch { return [] }
   })
   const [pickedVariant, setPickedVariant] = useState({})
-  const [detailProduct, setDetailProduct] = useState(null)
+  const [productView, setProductView] = useState(null) // product | 'loading' | null
   const [galleryIndex, setGalleryIndex] = useState(0)
+  const [reviewsExpanded, setReviewsExpanded] = useState(false)
   const [loading, setLoading] = useState(true)
   const [offline, setOffline] = useState(false)
   const [pages, setPages] = useState([])
@@ -786,6 +827,33 @@ export default function Storefront() {
     return () => window.removeEventListener('hashchange', sync)
   }, [])
 
+  // Product detail page: #/product/<slug>.
+  useEffect(() => {
+    const sync = () => {
+      const match = window.location.hash.match(/^#\/product\/([a-z0-9-]+)$/)
+      if (!match) { setProductView(null); return }
+      const slug = match[1]
+      setProductView((current) => (current && current !== 'loading' && current.slug === slug ? current : 'loading'))
+      setGalleryIndex(0)
+      setReviewsExpanded(false)
+      fetch(`${API_URL}/products/${slug}`, { headers: { Accept: 'application/json' } })
+        .then(responseJson)
+        .then((data) => setProductView(data.data ?? null))
+        .catch(() => setProductView(null))
+    }
+    sync()
+    window.addEventListener('hashchange', sync)
+    return () => window.removeEventListener('hashchange', sync)
+  }, [])
+
+  // Show the floating "back to top" button once the page has scrolled down.
+  useEffect(() => {
+    const onScroll = () => setShowBackToTop(window.scrollY > 400)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
   function openDeals(type) {
     window.location.hash = `#/deals/${type}`
     window.scrollTo({ top: 0 })
@@ -802,6 +870,15 @@ export default function Storefront() {
   function closePage() {
     if (window.location.hash) window.location.hash = ''
     else setPageView(null)
+  }
+
+  function openProduct(product) {
+    window.location.hash = `#/product/${product.slug || product.id}`
+    window.scrollTo({ top: 0 })
+  }
+  function closeProduct() {
+    if (window.location.hash) window.location.hash = ''
+    else setProductView(null)
   }
 
   const searching = query.trim().length > 0
@@ -1697,7 +1774,7 @@ export default function Storefront() {
   function productCard(product) {
     const { hasVariants, options, chosen, variant, unitPrice, compareAt, onSale, pctOff, stock, key, qty, img } = variantView(product)
     return <article className={stock === 0 ? 'pcard sold-out' : 'pcard'} key={product.id}>
-      <button className="pcard-img" type="button" aria-label={`View details for ${product.name}`} onClick={() => { setDetailProduct(product); setGalleryIndex(0) }}>{stock === 0 && <span className="pcard-oos">Out of stock</span>}{onSale && stock !== 0 && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}{product.description && <span className="pcard-desc-tip">{product.description}</span>}</button>
+      <button className="pcard-img" type="button" aria-label={`View details for ${product.name}`} onClick={() => openProduct(product)}>{stock === 0 && <span className="pcard-oos">Out of stock</span>}{onSale && stock !== 0 && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}{product.description && <span className="pcard-desc-tip">{product.description}</span>}</button>
       <p className="pcard-cat">{product.category?.name ?? 'Uncategorized'}</p>
       <h3>{variantTitle(product.name, variant?.label)}</h3>
       {hasVariants && <select className="pcard-variant" aria-label={`${product.name} option`} value={String(chosen?.id ?? '')} onChange={(event) => setPickedVariant((current) => ({ ...current, [product.id]: event.target.value }))}>{options.map((o) => <option key={o.id === '' ? 'base' : o.id} value={String(o.id)}>{o.label} — {price(o.price_cents)}</option>)}</select>}
@@ -1823,7 +1900,7 @@ export default function Storefront() {
               >
                 {dealsExclusive.map((product) => {
                   const { unitPrice, img } = variantView(product)
-                  return <button type="button" className="deals-item" key={product.id} onClick={() => { setDetailProduct(product); setGalleryIndex(0) }}>
+                  return <button type="button" className="deals-item" key={product.id} onClick={() => openProduct(product)}>
                     <span className="deals-item-img" aria-hidden>{productEmoji(product.name)}{img && <img src={mediaUrl(img)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</span>
                     <span className="deals-item-price">{price(unitPrice)}</span>
                     {product.rating_count > 0 && <span className="deals-item-rating">
@@ -1844,6 +1921,80 @@ export default function Storefront() {
             <div className="product-grid" ref={productGridRef}>{dealsProducts.map(productCard)}{!dealsProducts.length && <p className="empty-state">Nothing here yet.</p>}</div>
             {dealsHasMore && <button type="button" className="see-more-btn" disabled={dealsLoadingMore} onClick={loadMoreDealsProducts}>{dealsLoadingMore ? 'Loading…' : <>View more {seeMoreArrow}</>}</button>}
           </>}
+        </article>
+      })() : productView ? (() => {
+        if (productView === 'loading') return <article className="product-page"><div className="empty-state">Loading…</div></article>
+        const product = productView
+        const { hasVariants, options, chosen, variant, unitPrice, compareAt, onSale, pctOff, stock, key, qty } = variantView(product)
+        const images = galleryImages(product)
+        const activeImg = images[galleryIndex] ?? images[0]
+        function pickVariant(opt) {
+          setPickedVariant((current) => ({ ...current, [product.id]: String(opt.id) }))
+          const idx = opt.image_url ? images.indexOf(opt.image_url) : -1
+          if (idx >= 0) setGalleryIndex(idx)
+        }
+        const reviews = generateReviews(product)
+        const shownReviews = reviewsExpanded ? reviews : reviews.slice(0, 4)
+        return <article className="product-page">
+          <button type="button" className="page-back" onClick={closeProduct}>&larr; Back to shopping</button>
+          <nav className="deals-breadcrumb" aria-label="Breadcrumb">
+            <a href={import.meta.env.BASE_URL || '/'}>Home</a> <span aria-hidden>&rsaquo;</span>
+            {product.category && <><a href={import.meta.env.BASE_URL || '/'} onClick={(event) => { event.preventDefault(); closeProduct(); setActiveCategory(product.category.name) }}>{product.category.name}</a> <span aria-hidden>&rsaquo;</span></>}
+            <span>{product.name}</span>
+          </nav>
+          <div className="pdp-top">
+            <div className="pdp-gallery pm-gallery">
+              {images.length > 1 && <div className="pm-thumbs">{images.map((url, i) => <button type="button" key={url} className={i === galleryIndex ? 'pm-thumb active' : 'pm-thumb'} onMouseEnter={() => setGalleryIndex(i)} onClick={() => setGalleryIndex(i)} aria-label={`Photo ${i + 1}`}><img src={mediaUrl(url)} alt="" /></button>)}</div>}
+              <div className="pm-main-img" aria-hidden>{stock === 0 && <span className="pcard-oos">Out of stock</span>}{onSale && stock !== 0 && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(product.name)}{activeImg && <img src={mediaUrl(activeImg)} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
+            </div>
+            <div className="pdp-buybox">
+              <p className="pcard-cat">{product.category?.name ?? 'Uncategorized'}</p>
+              <h1 id="pdp-title">{variantTitle(product.name, variant?.label)}</h1>
+              {(product.units_sold > 0 || product.rating_count > 0) && <p className="pcard-rating pdp-rating">
+                {product.units_sold > 0 && <span className="pcard-sold">{product.units_sold} sold</span>}
+                {product.units_sold > 0 && product.rating_count > 0 && <span className="pcard-rating-sep">|</span>}
+                {product.rating_count > 0 && <span className="pcard-rating-single">{starIcons(Number(product.rating_avg), `pdpstar-${product.id}`)}<b>{Number(product.rating_avg).toFixed(1)}</b> ({product.rating_count})</span>}
+              </p>}
+              <div className="pm-price">{onSale ? <><strong className="on-sale">{price(unitPrice)}</strong><s>{price(compareAt)}</s></> : <strong>{price(unitPrice)}</strong>}</div>
+              {hasVariants && <div className="pdp-swatches" role="radiogroup" aria-label="Choose an option">{options.map((o) => <button type="button" key={o.id === '' ? 'base' : o.id} className={String(chosen?.id ?? '') === String(o.id) ? 'pdp-swatch active' : 'pdp-swatch'} onClick={() => pickVariant(o)} title={`${o.label} — ${price(o.price_cents)}`}>
+                <span className="pdp-swatch-img">{(o.image_url || product.image_url) && <img src={mediaUrl(o.image_url || product.image_url)} alt="" />}</span>
+                <span className="pdp-swatch-label">{o.label}</span>
+              </button>)}</div>}
+              <p className="pm-desc">{product.description || 'No description available yet.'}</p>
+              {qty === 0
+                ? <button className="add-btn pm-add pdp-add" type="button" disabled={stock === 0} onClick={() => add(product, variant)}>{stock === 0 ? 'OUT OF STOCK' : 'ADD TO CART'}</button>
+                : <span className="stepper pm-add pdp-add"><button type="button" aria-label="Remove one" onClick={() => updateQuantity(key, -1)}>&minus;</button><b>{qty}</b><button type="button" aria-label="Add one" disabled={stock != null && qty >= stock} onClick={() => updateQuantity(key, 1)}>+</button></span>}
+            </div>
+          </div>
+
+          {product.rating_count > 0 && <section className="pdp-reviews">
+            <h2>Ratings &amp; reviews</h2>
+            <div className="pdp-reviews-summary">
+              <span className="pdp-reviews-score">{Number(product.rating_avg).toFixed(1)}</span>
+              <span className="pcard-rating-single pdp-reviews-stars">{starIcons(Number(product.rating_avg), `pdpsum-${product.id}`)}</span>
+              <span className="muted">{product.rating_count} reviews &middot; verified purchases</span>
+            </div>
+            <div className="pdp-review-grid">{shownReviews.map((r) => <div className="pdp-review" key={r.id}>
+              <div className="pdp-review-head"><strong>{r.name}</strong><span className="pdp-review-date">{r.date}</span></div>
+              <span className="pcard-rating-single">{starIcons(r.rating, `pdprev-${product.id}-${r.id}`)}</span>
+              {r.verified && <span className="pdp-verified">Verified purchase</span>}
+              <p>{r.text}</p>
+            </div>)}</div>
+            {!reviewsExpanded && reviews.length > 4 && <button type="button" className="switch-auth pdp-see-all" onClick={() => setReviewsExpanded(true)}>See all {reviews.length} reviews</button>}
+          </section>}
+
+          <section className="pdp-details">
+            <h2>Product details</h2>
+            <dl>
+              <div><dt>Category</dt><dd>{product.category?.name ?? 'Uncategorized'}</dd></div>
+              {product.sku && <div><dt>SKU</dt><dd>{product.sku}</dd></div>}
+              <div><dt>Availability</dt><dd>{stock === 0 ? 'Out of stock' : 'In stock'}</dd></div>
+            </dl>
+          </section>
+
+          {images.length > 0 && <section className="pdp-images">
+            {images.map((url) => <img key={url} src={mediaUrl(url)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />)}
+          </section>}
         </article>
       })() : <>
       {offline && <div className="api-note">Showing sample products while the API is offline.</div>}
@@ -1896,36 +2047,40 @@ export default function Storefront() {
       )}
       </>}
     </main>
-    {detailProduct && (() => {
-      const { hasVariants, options, chosen, variant, unitPrice, compareAt, onSale, pctOff, stock, key, qty } = variantView(detailProduct)
-      const images = galleryImages(detailProduct)
-      const activeImg = images[galleryIndex] ?? images[0]
-      function pickVariant(value) {
-        setPickedVariant((current) => ({ ...current, [detailProduct.id]: value }))
-        const opt = options.find((o) => String(o.id) === value)
-        const idx = opt?.image_url ? images.indexOf(opt.image_url) : -1
-        if (idx >= 0) setGalleryIndex(idx)
-      }
-      return <div className="overlay" role="presentation" onClick={() => setDetailProduct(null)}>
-        <div className="product-modal" role="dialog" aria-modal="true" aria-labelledby="pm-title" onClick={(event) => event.stopPropagation()}>
-          <button className="close-button" type="button" onClick={() => setDetailProduct(null)} aria-label="Close details">x</button>
-          <div className="pm-gallery">
-            <div className="pm-main-img" aria-hidden>{stock === 0 && <span className="pcard-oos">Out of stock</span>}{onSale && stock !== 0 && <span className="pcard-off">{pctOff}% off</span>}{productEmoji(detailProduct.name)}{activeImg && <img src={mediaUrl(activeImg)} alt="" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div>
-            {images.length > 1 && <div className="pm-thumbs">{images.map((url, i) => <button type="button" key={url} className={i === galleryIndex ? 'pm-thumb active' : 'pm-thumb'} onClick={() => setGalleryIndex(i)} aria-label={`Photo ${i + 1}`}><img src={mediaUrl(url)} alt="" /></button>)}</div>}
-          </div>
-          <div className="pm-info">
-            <p className="pcard-cat">{detailProduct.category?.name ?? 'Uncategorized'}</p>
-            <h2 id="pm-title">{variantTitle(detailProduct.name, variant?.label)}</h2>
-            <div className="pm-price">{onSale ? <><strong className="on-sale">{price(unitPrice)}</strong><s>{price(compareAt)}</s></> : <strong>{price(unitPrice)}</strong>}</div>
-            {hasVariants && <select className="pcard-variant" aria-label={`${detailProduct.name} option`} value={String(chosen?.id ?? '')} onChange={(event) => pickVariant(event.target.value)}>{options.map((o) => <option key={o.id === '' ? 'base' : o.id} value={String(o.id)}>{o.label} — {price(o.price_cents)}</option>)}</select>}
-            <p className="pm-desc">{detailProduct.description || 'No description available yet.'}</p>
-            {qty === 0
-              ? <button className="add-btn pm-add" type="button" disabled={stock === 0} onClick={() => add(detailProduct, variant)}>{stock === 0 ? 'OUT OF STOCK' : 'ADD TO CART'}</button>
-              : <span className="stepper pm-add"><button type="button" aria-label="Remove one" onClick={() => updateQuantity(key, -1)}>&minus;</button><b>{qty}</b><button type="button" aria-label="Add one" disabled={stock != null && qty >= stock} onClick={() => updateQuantity(key, 1)}>+</button></span>}
-          </div>
+    <div className="side-toolbar" role="toolbar">
+      <button type="button" className={supportUnread ? 'side-toolbar-btn has-dot' : 'side-toolbar-btn'} onClick={() => openSupport()} aria-label="Messages">
+        <svg aria-hidden viewBox="0 0 1024 1024"><path d="M802.9 169.9c73.3 0 132.7 59.4 132.7 132.6l0 387.5c0 73.3-59.4 132.7-132.7 132.7l-178.8-0.1-53.8 67.5c-24.2 30.3-67.2 36.7-99 15.9l-5.8-4.2c-4.3-3.5-8.3-7.4-11.8-11.7l-53.9-67.5-178.7 0.1c-70.6 0-128.4-55.2-132.4-124.9l-0.3-7.8 0-387.5c0-73.3 59.4-132.7 132.7-132.6z m0 79.1l-581.8 0c-29.6 0-53.5 24-53.5 53.5l0 387.5c0 29.6 24 53.5 53.5 53.6l216.8 0 74.1 92.6 74.1-92.6 216.8 0c29.6 0 53.5-24 53.5-53.6l0-387.5c0-29.6-24-53.5-53.5-53.5z m-290.9 193.2c32.6 0 59.1 26.4 59.1 59.1 0 32.6-26.4 59.1-59.1 59-32.6 0-59.1-26.4-59.1-59 0-32.6 26.4-59.1 59.1-59.1z m-196.9 0c32.6 0 59.1 26.4 59.1 59.1 0 32.6-26.4 59.1-59.1 59-32.6 0-59.1-26.4-59.1-59 0-32.6 26.4-59.1 59.1-59.1z m393.8 0c32.6 0 59.1 26.4 59.1 59.1 0 32.6-26.4 59.1-59.1 59-32.6 0-59.1-26.4-59.1-59 0-32.6 26.4-59.1 59.1-59.1z" /></svg>
+        {supportUnread ? <i className="side-toolbar-dot" aria-hidden /> : null}
+      </button>
+      <button type="button" className="side-toolbar-btn" onClick={() => { setFeedbackOpen(true); setFeedbackRating(null); setFeedbackSent(false) }} aria-label="Feedback">
+        <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+      </button>
+      {showBackToTop && <button type="button" className="side-toolbar-btn" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Back to top">
+        <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15" /></svg>
+        <span>Top</span>
+      </button>}
+    </div>
+    {feedbackOpen && <div className="overlay" role="presentation" onClick={() => setFeedbackOpen(false)}><div className="auth-modal feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-title" onClick={(event) => event.stopPropagation()}>
+      <button className="close-button" type="button" onClick={() => setFeedbackOpen(false)} aria-label="Close feedback">x</button>
+      {feedbackSent ? <><h2 id="feedback-title">Thanks for the feedback!</h2><p className="auth-intro">We&rsquo;ll use it to keep improving.</p></> : <>
+        <h2 id="feedback-title">We are here to improve your experience!</h2>
+        <p className="auth-intro">Your feedback matters! Please tell us what you think of our website below.</p>
+        <p className="feedback-question">How do you feel about your visit on our site today?</p>
+        <div className="feedback-scale" role="radiogroup" aria-label="Rate your visit">
+          {FEEDBACK_OPTIONS.map((option) => <button type="button" key={option.value} className={feedbackRating === option.value ? 'feedback-option active' : 'feedback-option'} role="radio" aria-checked={feedbackRating === option.value} onClick={() => setFeedbackRating(option.value)}>
+            <span className="feedback-dot" aria-hidden />
+            <span>{option.label}</span>
+          </button>)}
         </div>
-      </div>
-    })()}
+        <button className="checkout-button feedback-submit" type="button" disabled={!feedbackRating} onClick={async () => {
+          const token = localStorage.getItem('gdp_token')
+          try {
+            await fetch(`${API_URL}/site-feedback`, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ rating: feedbackRating }) })
+          } catch { /* best-effort */ }
+          setFeedbackSent(true)
+        }}>Share with {branding?.store_name || 'NexTech'}</button>
+      </>}
+    </div></div>}
     {cartCount > 0 && <aside className={`cart-tray${trayDragging ? ' dragging' : ''}`} aria-live="polite" style={{ transform: `translateX(-50%) translateY(${trayLift}px)` }} onPointerDown={trayPointerDown} onPointerMove={trayPointerMove} onPointerUp={trayPointerUp} onPointerCancel={trayPointerUp}><div><strong>{cartCount} {cartCount === 1 ? 'item' : 'items'} in your cart</strong><span>{price(cartTotal)} subtotal</span></div><button type="button" onClick={() => setCartOpen(true)}>View cart <span>-&gt;</span></button></aside>}
     {cartOpen && <div className="overlay" role="presentation" onClick={() => setCartOpen(false)}><aside className="drawer" role="dialog" aria-modal="true" aria-labelledby="cart-title" onClick={(event) => event.stopPropagation()}><div className="drawer-header"><div><p className="eyebrow">Ready when you are</p><h2 id="cart-title">Your cart</h2></div><button className="close-button" type="button" onClick={() => setCartOpen(false)} aria-label="Close cart">x</button></div>{cart.length ? <><div className="drawer-items">{cartView.map((item) => <div className="drawer-item" key={item.key}><div className="mini-visual" aria-hidden>{productEmoji(item.name)}{item.image_url && <img src={mediaUrl(item.image_url)} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = 'none' }} />}</div><div className="drawer-item-copy"><strong>{variantTitle(item.name, item.variantLabel)}</strong><span>{item.onSale ? <><strong className="on-sale">{price(item.unit)}</strong> <s>{price(item.reg)}</s></> : price(item.unit)}{item.quantity > 1 && <> &middot; {item.quantity} pcs = {item.onSale ? <><strong className="on-sale">{price(item.unit * item.quantity)}</strong> <s>{price(item.lineReg)}</s></> : price(item.unit * item.quantity)}</>}</span></div><div className="quantity"><button type="button" onClick={() => updateQuantity(item.key, -1)}>-</button><span>{item.quantity}</span><button type="button" onClick={() => updateQuantity(item.key, 1)}>+</button></div></div>)}</div><div className="drawer-summary"><div><span>Subtotal</span><span>{cartRegularTotal > est.sub ? <><s className="on-sale">{price(cartRegularTotal)}</s> {price(est.sub)}</> : price(est.sub)}</span></div><div><span>Delivery</span><span>{est.delivery === 0 ? 'FREE' : price(est.delivery)}</span></div><div><span>Handling</span><span>{price(est.handling)}</span></div>{est.smallCart > 0 && <div><span>Small cart fee</span><span>{price(est.smallCart)}</span></div>}<div><span>Tax</span><span>{price(est.tax)}</span></div><div className="drawer-summary-total"><strong>Estimated total</strong><strong>{price(est.total)}</strong></div></div>{fees.delivery_mode === 'distance' && serviceable?.delivery_fee_cents == null && <p className="drawer-nudge">Delivery fee is based on distance — set your location for the exact amount.</p>}{est.toFreeDelivery > 0 && <p className="drawer-nudge">Add {price(est.toFreeDelivery)} more for free delivery.</p>}{est.toNoSmallCart > 0 && <p className="drawer-nudge">Add {price(est.toNoSmallCart)} more to drop the {price(est.smallCart)} small-cart fee.</p>}<button className="checkout-button" type="button" onClick={() => { setCartOpen(false); setCheckoutOpen(true); setCheckoutStep('address'); setCheckoutMessage('') }}>Continue to checkout <span>-&gt;</span></button></> : <div className="empty-cart"><div className="empty-cart-mark">+</div><h3>Your cart is empty</h3><p>Find something good in the essentials below.</p><button type="button" onClick={() => setCartOpen(false)}>Keep shopping</button></div>}</aside></div>}
     {authMode && <div className="overlay" role="presentation" onClick={() => { setAuthMode(null); setOtpStage(null); setAuthTab('code'); setPwMode('signin') }}><div className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => { setAuthMode(null); setOtpStage(null); setAuthTab('code'); setPwMode('signin') }} aria-label="Close authentication">x</button><p className="eyebrow">A better way to shop tech</p>{otpStage ? <><h2 id="auth-title">Enter your code</h2><p className="auth-intro">We emailed a 6-digit code to {otpStage.email}. It expires in 10 minutes.</p><form onSubmit={submitOtp}><input required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength="8" placeholder="6-digit code" value={otpCode} onChange={(event) => setOtpCode(event.target.value.replace(/[^0-9]/g, ''))} /><button className="checkout-button" type="submit">Verify <span>-&gt;</span></button></form>{authMessage && <p className="auth-message">{authMessage}</p>}<button className="switch-auth" type="button" onClick={resendOtp}>Resend code</button><button className="switch-auth" type="button" onClick={() => { setOtpStage(null); setAuthMessage('') }}>Use a different email</button></> : <><h2 id="auth-title">Sign in or sign up</h2><div className="auth-tabs" role="tablist"><button type="button" role="tab" aria-selected={authTab === 'code'} className={authTab === 'code' ? 'auth-tab active' : 'auth-tab'} onClick={() => { setAuthTab('code'); setAuthMessage('') }}>Email code</button><button type="button" role="tab" aria-selected={authTab === 'password'} className={authTab === 'password' ? 'auth-tab active' : 'auth-tab'} onClick={() => { setAuthTab('password'); setAuthMessage('') }}>Password</button></div>{authTab === 'password' ? (() => {

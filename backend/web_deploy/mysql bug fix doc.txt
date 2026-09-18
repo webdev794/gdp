@@ -1,0 +1,76 @@
+Delete this one file, then start MySQL:
+
+text
+D:\xampp8-2-12\mysql\data\aria_log_control
+That's it. This single file is what caused your entire outage.
+---
+Repaired MySQL's crashed mysql.proxies_priv system table with aria_chk -r, then restarted mysqld — no code changes needed on my end this time.
+
+
+:: === MySQL crashed-table repair (XAMPP MariaDB) ===
+:: Use when http://127.0.0.1:5173/# hangs on "Loading" and
+:: D:\xampp8-2-12\mysql\data\mysql_error.log shows a line like:
+::   Table '.\mysql\<tablename>' is marked as crashed
+::
+:: 1) Check the log first to find <tablename>:
+notepad D:\xampp8-2-12\mysql\data\mysql_error.log
+
+:: 2) Stop MySQL (must be fully stopped before repairing)
+taskkill /F /IM mysqld.exe
+
+:: 3) Repair ONLY the one crashed table (replace <tablename>)
+::    Do NOT run mysqlcheck --auto-repair --all-databases — that
+::    can crash the server mid-repair.
+cd /d D:\xampp8-2-12\mysql\data\mysql
+D:\xampp8-2-12\mysql\bin\aria_chk.exe -r <tablename>
+
+:: 4) Start MySQL again
+D:\xampp8-2-12\mysql_start.bat
+
+:: 5) Verify it's actually responding (not just running)
+D:\xampp8-2-12\mysql\bin\mysqladmin.exe -h127.0.0.1 -P3306 -uroot ping
+
+-----
+
+Manual steps to fix the issue (based on the provided details):
+
+Open Notepad and check the MySQL error log to confirm the problem:
+notepad D:\xampp8-2-12\mysql\data\mysql_error.log
+Look for a line mentioning a crashed table (e.g. Table '.\mysql\<tablename>' is marked as crashed).
+Fully stop MySQL (force-kill the process if needed):
+taskkill /F /IM mysqld.exe
+Delete the problematic control file:
+Delete this exact file:
+D:\xampp8-2-12\mysql\data\aria_log_control
+(Optional but recommended if a specific table was marked as crashed) Repair only that one table:
+Open Command Prompt
+Run:textcd /d D:\xampp8-2-12\mysql\data\mysql
+D:\xampp8-2-12\mysql\bin\aria_chk.exe -r <tablename>(Replace <tablename> with the actual table name from the error log, e.g. proxies_priv)
+
+Start MySQL again:
+D:\xampp8-2-12\mysql_start.bat
+Verify that MySQL is responding:
+D:\xampp8-2-12\mysql\bin\mysqladmin.exe -h127.0.0.1 -P3306 -uroot ping
+
+Notes:
+
+Do not run a full mysqlcheck --auto-repair --all-databases — it can cause further problems.
+The single file aria_log_control is often the root cause of the outage.
+After these steps, your application (e.g. the page at http://127.0.0.1:5173/#) should load normally again.
+how to find problemetic table?2 / 2Here’s the simplest way to find the problematic (crashed) table:
+Steps
+
+Open the MySQL error log with Notepad:textnotepad D:\xampp8-2-12\mysql\data\mysql_error.log
+Scroll to the bottom of the file (most recent entries).
+Look for a line that looks like this:textTable '.\mysql\<tablename>' is marked as crashed and should be repairedortextTable '.\mysql\<tablename>' is marked as crashed
+The name after mysql\ is the problematic table.
+Example:
+If you see
+Table '.\mysql\proxies_priv' is marked as crashed
+then the table name is proxies_priv.
+
+
+Once you have the table name, use it in the repair command:
+cmdcd /d D:\xampp8-2-12\mysql\data\mysql
+D:\xampp8-2-12\mysql\bin\aria_chk.exe -r proxies_priv
+(Replace proxies_priv with the actual table name you found.)

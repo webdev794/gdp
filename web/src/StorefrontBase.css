@@ -313,3 +313,61 @@ a.psec-feature.is-link img{width:100%;height:150px;object-fit:cover;border-radiu
   .pcard h3{min-height:34px}
   .catalog-head h2{font-size:20px}
 }
+
+.side-toolbar{position:fixed;z-index:5;right:0;bottom:120px;display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-right:0;border-radius:10px 0 0 10px;box-shadow:0 8px 24px rgba(0,0,0,.12);overflow:hidden}
+.side-toolbar-btn{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:44px;height:44px;padding:0;background:#fff;border:0;border-bottom:1px solid var(--line);color:var(--ink);cursor:pointer}
+.side-toolbar-btn:last-child{border-bottom:0}
+.side-toolbar-btn svg{width:20px;height:20px}
+.side-toolbar-btn span{font-size:9px;font-weight:600}
+.side-toolbar-btn:hover{background:var(--paper)}
+.side-toolbar-dot{position:absolute;top:6px;right:8px;width:7px;height:7px;border-radius:50%;background:#e03131}
+@media (max-width:640px){.side-toolbar{bottom:96px}.side-toolbar-btn{width:38px;height:38px}.side-toolbar-btn svg{width:17px;height:17px}.side-toolbar-btn span{font-size:8px}}
+
+.feedback-modal{text-align:center}
+.feedback-modal h2{max-width:none;font-size:20px}
+.feedback-question{margin:0 0 16px;font-weight:600;font-size:14px}
+.feedback-scale{display:flex;justify-content:center;gap:18px;margin-bottom:26px;flex-wrap:wrap}
+.feedback-option{display:flex;flex-direction:column;align-items:center;gap:8px;background:transparent;border:0;color:var(--muted);font-size:12px;cursor:pointer}
+.feedback-dot{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--line)}
+.feedback-option.active{color:var(--ink);font-weight:700}
+.feedback-option.active .feedback-dot{border-color:#e8590c;background:#e8590c}
+.feedback-submit{width:auto;min-width:220px;margin:0 auto;border-radius:999px;background:#e8590c;justify-content:center}
+.feedback-submit:disabled{opacity:.5}
+.support-new-btn{align-items:center}
+
+.product-page{padding:4px 0 40px}
+.pdp-top{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+.pdp-gallery{flex:1 1 360px;height:min(460px,60vw)}
+.pdp-buybox{flex:1 1 320px;min-width:0;position:sticky;top:96px;align-self:flex-start;display:flex;flex-direction:column;gap:4px}
+.pdp-buybox h1{margin:2px 0 6px;font-size:24px;line-height:1.25}
+.pdp-rating{font-size:13px;margin:0 0 8px}
+.pdp-swatches{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 16px}
+.pdp-swatch{display:flex;flex-direction:column;align-items:center;gap:5px;width:64px;padding:0;background:transparent;border:0;cursor:pointer;color:var(--muted);font-size:11px}
+.pdp-swatch-img{width:56px;height:56px;border-radius:9px;border:1.5px solid var(--line);overflow:hidden;background:#fff;display:grid;place-items:center}
+.pdp-swatch-img img{width:100%;height:100%;object-fit:contain;padding:4px}
+.pdp-swatch.active .pdp-swatch-img{border-color:var(--green);box-shadow:0 0 0 1px var(--green)}
+.pdp-swatch.active{color:var(--ink);font-weight:600}
+.pdp-swatch-label{max-width:64px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pdp-add{width:auto;min-width:260px;margin-top:10px}
+
+.pdp-reviews{margin-top:36px;padding-top:28px;border-top:1px solid var(--line)}
+.pdp-reviews h2,.pdp-details h2{margin:0 0 16px;font-size:19px}
+.pdp-reviews-summary{display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.pdp-reviews-score{font-size:26px;font-weight:700}
+.pdp-review-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:18px}
+.pdp-review{border:1px solid var(--line);border-radius:12px;padding:14px}
+.pdp-review-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;font-size:13px}
+.pdp-review-date{color:var(--muted);font-weight:400;font-size:11px}
+.pdp-verified{display:inline-block;margin:6px 0 4px;font-size:11px;color:var(--green);font-weight:600}
+.pdp-review p{margin:6px 0 0;font-size:13px;line-height:1.5;color:var(--ink)}
+.pdp-see-all{margin-top:18px}
+
+.pdp-details{margin-top:36px;padding-top:28px;border-top:1px solid var(--line)}
+.pdp-details dl{display:grid;grid-template-columns:160px 1fr;gap:10px 16px;margin:0;max-width:520px}
+.pdp-details dt{color:var(--muted);font-size:13px}
+.pdp-details dd{margin:0;font-size:13px}
+
+.pdp-images{margin-top:36px;display:flex;flex-direction:column;gap:14px}
+.pdp-images img{width:100%;border-radius:12px;background:#fff;border:1px solid var(--line)}
+
+@media (max-width:860px){.pdp-buybox{position:static}}
