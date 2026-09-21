@@ -66,6 +66,10 @@ export default function CheckoutScreen({ navigation }) {
       setError('Add a phone number so your delivery rider can reach you.');
       return;
     }
+    if (!selectedId) {
+      if (!form.name.trim()) { setError('Add your name.'); return; }
+      if (!form.line1.trim()) { setError('Add your street address.'); return; }
+    }
     setBusy(true);
     try {
       for (const item of cart) {
