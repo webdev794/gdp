@@ -1,11 +1,11 @@
 -- phpMyAdmin SQL Dump
--- version 5.2.3
+-- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Host: localhost:3306
--- Generation Time: Sep 15, 2026 at 01:00 PM
--- Server version: 10.6.28-MariaDB
--- PHP Version: 8.4.24
+-- Host: 127.0.0.1
+-- Generation Time: Sep 22, 2026 at 07:30 AM
+-- Server version: 10.4.32-MariaDB
+-- PHP Version: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `caretest_gdp`
+-- Database: `gdp`
 --
 
 -- --------------------------------------------------------
@@ -66,7 +66,10 @@ INSERT INTO `addresses` (`id`, `user_id`, `label`, `name`, `line1`, `line2`, `ci
 (15, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-11 04:35:06', '2026-09-11 04:35:06'),
 (16, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-11 07:31:04', '2026-09-11 07:31:04'),
 (17, 15, 'Home', 'Test User', 'Jan Marg', NULL, 'Mohali', 'Punjab', '160059', 30.7128000, 76.7242000, 0, '2026-09-15 07:53:25', '2026-09-15 07:53:25'),
-(18, 32, 'Home', 'Suraj Kumar', 'Plot C-205, Phase 8B, Sector 74', NULL, 'Mohali', 'Punjab', '160055', NULL, NULL, 1, '2026-09-15 08:15:48', '2026-09-15 08:15:48');
+(18, 32, 'Home', 'Suraj Kumar', 'Plot C-205, Phase 8B, Sector 74', NULL, 'Mohali', 'Punjab', '160055', NULL, NULL, 1, '2026-09-15 08:15:48', '2026-09-15 08:15:48'),
+(19, 15, 'Home', 'Test User', 'Sector 68, Sector 69', NULL, 'Mohali', 'Punjab', '140062', 30.6852518, 76.7184224, 0, '2026-09-21 23:18:37', '2026-09-21 23:18:37'),
+(20, 17, 'Home', 'Testcaresort', 'edge 27', NULL, 'Mohali', 'Punjab', '160055', 30.7197622, 76.7056954, 0, '2026-09-21 23:45:04', '2026-09-21 23:45:04'),
+(21, 17, 'Home', 'Testcaresort', 'edge 27', NULL, 'Mohali', 'Punjab', '160055', 30.7197622, 76.7056954, 0, '2026-09-21 23:45:33', '2026-09-21 23:45:33');
 
 -- --------------------------------------------------------
 
@@ -132,10 +135,12 @@ CREATE TABLE `cache` (
 --
 
 INSERT INTO `cache` (`key`, `value`, `expiration`) VALUES
-('gdp-cache-5c785c036466adea360111aa28563bfd556b5fba', 'i:1;', 1789132086),
-('gdp-cache-5c785c036466adea360111aa28563bfd556b5fba:timer', 'i:1789132086;', 1789132086),
+('gdp-cache-5c785c036466adea360111aa28563bfd556b5fba', 'i:1;', 1790054447),
+('gdp-cache-5c785c036466adea360111aa28563bfd556b5fba:timer', 'i:1790054447;', 1790054447),
 ('gdp-cache-f1abd670358e036c31296e66b3b66c382ac00812', 'i:1;', 1789028312),
 ('gdp-cache-f1abd670358e036c31296e66b3b66c382ac00812:timer', 'i:1789028312;', 1789028312),
+('gdp-cache-geo:reverse:99743afdb629f46fb1414091fb0da251', 'a:8:{s:5:\"label\";s:18:\"edge 29, Sector 73\";s:4:\"full\";s:129:\"edge 29, Sector 73, Sector 74, Sector 73, Mohali, S.A.S. Nagar (Mohali) Tahsil, Sahibzada Ajit Singh Nagar, Punjab, 160055, India\";s:5:\"line1\";s:7:\"edge 29\";s:4:\"city\";s:6:\"Mohali\";s:5:\"state\";s:6:\"Punjab\";s:11:\"postal_code\";s:6:\"160055\";s:3:\"lat\";d:30.7169176;s:3:\"lon\";d:76.6943997;}', 1790139290),
+('gdp-cache-geo:reverse:e192e692ae54ff05b5df83f5d7bfa595', 'a:8:{s:5:\"label\";s:25:\"Harmony Hospital, edge 27\";s:4:\"full\";s:125:\"Harmony Hospital, edge 27, Sector 73, Mohali, S.A.S. Nagar (Mohali) Tahsil, Sahibzada Ajit Singh Nagar, Punjab, 160055, India\";s:5:\"line1\";s:7:\"edge 27\";s:4:\"city\";s:6:\"Mohali\";s:5:\"state\";s:6:\"Punjab\";s:11:\"postal_code\";s:6:\"160055\";s:3:\"lat\";d:30.7197223;s:3:\"lon\";d:76.7056832;}', 1790139359),
 ('gdp-cache-geo:search:10cdb4eb2195350bbedb9efe333e521a', 'a:2:{i:0;a:8:{s:5:\"label\";s:36:\"Mohali, S.A.S. Nagar (Mohali) Tahsil\";s:4:\"full\";s:87:\"Mohali, S.A.S. Nagar (Mohali) Tahsil, Sahibzada Ajit Singh Nagar, Punjab, 140062, India\";s:5:\"line1\";s:64:\"Mohali, S.A.S. Nagar (Mohali) Tahsil, Sahibzada Ajit Singh Nagar\";s:4:\"city\";s:6:\"Mohali\";s:5:\"state\";s:6:\"Punjab\";s:11:\"postal_code\";s:6:\"140062\";s:3:\"lat\";d:30.6908804;s:3:\"lon\";d:76.7114879;}i:1;a:8:{s:5:\"label\";s:34:\"Sahibzada Ajit Singh Nagar, Punjab\";s:4:\"full\";s:41:\"Sahibzada Ajit Singh Nagar, Punjab, India\";s:5:\"line1\";s:41:\"Sahibzada Ajit Singh Nagar, Punjab, India\";s:4:\"city\";s:26:\"Sahibzada Ajit Singh Nagar\";s:5:\"state\";s:6:\"Punjab\";s:11:\"postal_code\";s:0:\"\";s:3:\"lat\";d:30.6488449;s:3:\"lon\";d:76.7412738;}}', 1789023796),
 ('gdp-cache-geo:search:f5b077e12c3d6147e345fdec766bfac3', 'a:2:{i:0;a:8:{s:5:\"label\";s:32:\"Ludhiana, Ludhiana (West) Tahsil\";s:4:\"full\";s:65:\"Ludhiana, Ludhiana (West) Tahsil, Ludhiana, Punjab, 141001, India\";s:5:\"line1\";s:42:\"Ludhiana, Ludhiana (West) Tahsil, Ludhiana\";s:4:\"city\";s:8:\"Ludhiana\";s:5:\"state\";s:6:\"Punjab\";s:11:\"postal_code\";s:6:\"141001\";s:3:\"lat\";d:30.9090157;s:3:\"lon\";d:75.851601;}i:1;a:8:{s:5:\"label\";s:16:\"Ludhiana, Punjab\";s:4:\"full\";s:23:\"Ludhiana, Punjab, India\";s:5:\"line1\";s:23:\"Ludhiana, Punjab, India\";s:4:\"city\";s:8:\"Ludhiana\";s:5:\"state\";s:6:\"Punjab\";s:11:\"postal_code\";s:0:\"\";s:3:\"lat\";d:30.789407;s:3:\"lon\";d:75.8269724;}}', 1789024009),
 ('gdp-cache-secure_access_grant:15', 's:64:\"7c18d8479034c3ab86ba657036d640736a4ad722ff90d500be9b4aba8020b421\";', 1789029153),
@@ -548,7 +553,10 @@ INSERT INTO `orders` (`id`, `user_id`, `store_id`, `status`, `cancelled_by`, `ca
 (23, 15, 1, 'cancelled', 'admin', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 'cancelled', 'cod', NULL, NULL, 0, 1118, 99, 299, 99, 0, 0, 1615, '{\"id\":14,\"user_id\":15,\"label\":\"Home\",\"name\":\"Test User\",\"line1\":\"34 Jan Marg\",\"line2\":null,\"city\":\"Mohali\",\"state\":\"PB\",\"postal_code\":\"160061\",\"latitude\":30.7149794,\"longitude\":76.7227993,\"is_default\":false,\"created_at\":\"2026-09-11T09:49:57.000000Z\",\"updated_at\":\"2026-09-11T09:49:57.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-11 04:19:58', '2026-09-11 04:34:49'),
 (25, 17, 1, 'completed', NULL, NULL, NULL, '2026-09-11 04:41:48', NULL, '2026-09-11 04:41:39', '2026-09-11 04:41:49', 0, 'test order', NULL, NULL, 'Sam Rider', 16, NULL, NULL, NULL, 0, 'paid', 'cod', NULL, NULL, 0, 1048, 93, 299, 99, 0, 0, 1539, '{\"id\":15,\"user_id\":17,\"label\":\"Home\",\"name\":\"Testcaresort\",\"line1\":\"34 Jan Marg\",\"line2\":null,\"city\":\"Mohali\",\"state\":\"PB\",\"postal_code\":\"160061\",\"latitude\":30.7149794,\"longitude\":76.7227993,\"is_default\":false,\"created_at\":\"2026-09-11T10:05:06.000000Z\",\"updated_at\":\"2026-09-11T10:05:06.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-11 04:35:06', '2026-09-11 04:41:49'),
 (26, 17, 1, 'cancelled', 'rider', 'no pay', '2026-09-15 07:54:39', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Sam Rider', 16, NULL, NULL, NULL, 0, 'cancelled', 'cod', NULL, NULL, 0, 449, 40, 299, 99, 199, 0, 1086, '{\"id\":16,\"user_id\":17,\"label\":\"Home\",\"name\":\"Testcaresort\",\"line1\":\"34 Jan Marg\",\"line2\":null,\"city\":\"Mohali\",\"state\":\"PB\",\"postal_code\":\"160061\",\"latitude\":30.7149794,\"longitude\":76.7227993,\"is_default\":false,\"created_at\":\"2026-09-11T13:01:04.000000Z\",\"updated_at\":\"2026-09-11T13:01:04.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-11 07:31:05', '2026-09-15 07:54:39'),
-(27, 15, 1, 'completed', NULL, NULL, NULL, NULL, NULL, '2026-09-15 08:11:41', '2026-09-15 08:11:47', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 'paid', 'cod', NULL, NULL, 0, 3153, 280, 299, 99, 0, 0, 3831, '{\"id\":17,\"user_id\":15,\"label\":\"Home\",\"name\":\"Test User\",\"line1\":\"Jan Marg\",\"line2\":null,\"city\":\"Mohali\",\"state\":\"Punjab\",\"postal_code\":\"160059\",\"latitude\":30.7128,\"longitude\":76.7242,\"is_default\":false,\"created_at\":\"2026-09-15T07:53:25.000000Z\",\"updated_at\":\"2026-09-15T07:53:25.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-15 07:53:25', '2026-09-15 08:11:47');
+(27, 15, 1, 'completed', NULL, NULL, NULL, NULL, NULL, '2026-09-15 08:11:41', '2026-09-15 08:11:47', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 'paid', 'cod', NULL, NULL, 0, 3153, 280, 299, 99, 0, 0, 3831, '{\"id\":17,\"user_id\":15,\"label\":\"Home\",\"name\":\"Test User\",\"line1\":\"Jan Marg\",\"line2\":null,\"city\":\"Mohali\",\"state\":\"Punjab\",\"postal_code\":\"160059\",\"latitude\":30.7128,\"longitude\":76.7242,\"is_default\":false,\"created_at\":\"2026-09-15T07:53:25.000000Z\",\"updated_at\":\"2026-09-15T07:53:25.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-15 07:53:25', '2026-09-15 08:11:47'),
+(28, 15, 1, 'completed', NULL, NULL, NULL, '2026-09-21 23:49:17', NULL, '2026-09-21 23:48:48', '2026-09-21 23:49:18', 0, 'neighbour', NULL, NULL, 'Sam Rider', 16, NULL, '2026-09-21 23:48:28', NULL, 0, 'paid', 'cod', NULL, NULL, 0, 519, 46, 299, 99, 199, 0, 1162, '{\"id\":19,\"user_id\":15,\"label\":\"Home\",\"name\":\"Test User\",\"line1\":\"Sector 68, Sector 69\",\"line2\":null,\"city\":\"Mohali\",\"state\":\"Punjab\",\"postal_code\":\"140062\",\"latitude\":30.6852518,\"longitude\":76.7184224,\"is_default\":false,\"created_at\":\"2026-09-22T04:48:37.000000Z\",\"updated_at\":\"2026-09-22T04:48:37.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-21 23:18:37', '2026-09-21 23:49:18'),
+(29, 17, 1, 'completed', NULL, NULL, NULL, '2026-09-21 23:49:10', NULL, '2026-09-21 23:48:51', '2026-09-21 23:49:10', 0, 'neighbour', NULL, NULL, 'Sam Rider', 16, NULL, '2026-09-21 23:48:25', NULL, 0, 'paid', 'cod', NULL, NULL, 0, 1047, 93, 299, 99, 0, 0, 1538, '{\"id\":20,\"user_id\":17,\"label\":\"Home\",\"name\":\"Testcaresort\",\"line1\":\"edge 27\",\"line2\":null,\"city\":\"Mohali\",\"state\":\"Punjab\",\"postal_code\":\"160055\",\"latitude\":30.7197622,\"longitude\":76.7056954,\"is_default\":false,\"created_at\":\"2026-09-22T05:15:04.000000Z\",\"updated_at\":\"2026-09-22T05:15:04.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-21 23:45:04', '2026-09-21 23:49:10'),
+(30, 17, 1, 'completed', NULL, NULL, NULL, '2026-09-21 23:49:03', NULL, NULL, '2026-09-21 23:49:04', 0, 'neighbour', NULL, NULL, 'Sam Rider', 16, NULL, '2026-09-21 23:48:23', NULL, 0, 'paid', 'card', 'pi_3UIM3G0B2YCt230S0lfZXLpa', NULL, 0, 1346, 119, 299, 99, 0, 0, 1863, '{\"id\":21,\"user_id\":17,\"label\":\"Home\",\"name\":\"Testcaresort\",\"line1\":\"edge 27\",\"line2\":null,\"city\":\"Mohali\",\"state\":\"Punjab\",\"postal_code\":\"160055\",\"latitude\":30.7197622,\"longitude\":76.7056954,\"is_default\":false,\"created_at\":\"2026-09-22T05:15:33.000000Z\",\"updated_at\":\"2026-09-22T05:15:33.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-21 23:45:34', '2026-09-21 23:49:04');
 
 -- --------------------------------------------------------
 
@@ -612,7 +620,14 @@ INSERT INTO `order_items` (`id`, `order_id`, `product_id`, `product_variant_id`,
 (33, 27, 5, NULL, 'Hass Avocados', 'GDP-PROD-009', NULL, 1, 599, NULL, 599, '2026-09-15 07:53:25', '2026-09-15 07:53:25'),
 (34, 27, 1, NULL, 'Organic Bananas', 'GDP-PROD-001', NULL, 1, 299, NULL, 299, '2026-09-15 07:53:25', '2026-09-15 07:53:25'),
 (35, 27, 4, NULL, 'Roma Tomatoes', 'GDP-PROD-008', NULL, 2, 279, NULL, 558, '2026-09-15 07:53:25', '2026-09-15 07:53:25'),
-(36, 27, 55, NULL, 'Organic Lemon(pcs of 6)', 'LM343235', NULL, 1, 500, 600, 500, '2026-09-15 07:53:25', '2026-09-15 07:53:25');
+(36, 27, 55, NULL, 'Organic Lemon(pcs of 6)', 'LM343235', NULL, 1, 500, 600, 500, '2026-09-15 07:53:25', '2026-09-15 07:53:25'),
+(37, 28, 8, NULL, 'Greek Yogurt', 'GDP-PROD-010', NULL, 1, 519, 649, 519, '2026-09-21 23:18:37', '2026-09-21 23:18:37'),
+(38, 29, 54, NULL, 'Aluminium Foil', 'GDP-PROD-054', NULL, 1, 299, NULL, 299, '2026-09-21 23:45:04', '2026-09-21 23:45:04'),
+(39, 29, 52, NULL, 'Paper Towels', 'GDP-PROD-052', NULL, 1, 399, NULL, 399, '2026-09-21 23:45:04', '2026-09-21 23:45:04'),
+(40, 29, 53, NULL, 'Trash Bags', 'GDP-PROD-053', NULL, 1, 349, NULL, 349, '2026-09-21 23:45:04', '2026-09-21 23:45:04'),
+(41, 30, 53, NULL, 'Trash Bags', 'GDP-PROD-053', NULL, 1, 349, NULL, 349, '2026-09-21 23:45:34', '2026-09-21 23:45:34'),
+(42, 30, 52, NULL, 'Paper Towels', 'GDP-PROD-052', NULL, 1, 399, NULL, 399, '2026-09-21 23:45:34', '2026-09-21 23:45:34'),
+(43, 30, 54, NULL, 'Aluminium Foil', 'GDP-PROD-054', NULL, 2, 299, NULL, 598, '2026-09-21 23:45:34', '2026-09-21 23:45:34');
 
 -- --------------------------------------------------------
 
@@ -784,7 +799,12 @@ INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `n
 (164, 'App\\Models\\User', 32, 'customer', 'ae8aba79123d9c7e6ccf71db5520d9c41400e07b0af71dca0b042df187ab4884', '[\"*\"]', '2026-09-15 08:15:48', NULL, '2026-09-15 08:15:47', '2026-09-15 08:15:48'),
 (165, 'App\\Models\\User', 32, 'customer', '82b2915b39778c8fbd08c073a4725fbc3ee6923c12c877c818b5cef3b501a081', '[\"*\"]', '2026-09-15 08:48:24', NULL, '2026-09-15 08:48:24', '2026-09-15 08:48:24'),
 (166, 'App\\Models\\User', 32, 'customer', 'e2b3d5e45d0c2c96edb4b524824bf88a214b8357b29f38033fad06e7ef6ad40e', '[\"*\"]', '2026-09-15 09:15:23', NULL, '2026-09-15 09:15:22', '2026-09-15 09:15:23'),
-(168, 'App\\Models\\User', 15, 'customer', '8e577b619cbb52948fa7f9207202b4aba0ef72fc3d3c36ad03658a89384707a7', '[\"*\"]', '2026-09-15 13:00:19', NULL, '2026-09-15 12:19:44', '2026-09-15 13:00:19');
+(168, 'App\\Models\\User', 15, 'customer', '8e577b619cbb52948fa7f9207202b4aba0ef72fc3d3c36ad03658a89384707a7', '[\"*\"]', '2026-09-15 13:00:19', NULL, '2026-09-15 12:19:44', '2026-09-15 13:00:19'),
+(171, 'App\\Models\\User', 17, 'customer', '8b67f0c6b169468534bf5d3088029fea6febe6284f4ecdd6d3e95c75d977282c', '[\"*\"]', '2026-09-21 23:14:47', NULL, '2026-09-21 23:14:17', '2026-09-21 23:14:47'),
+(173, 'App\\Models\\User', 17, 'customer', '01a9c42ff32036476ee4dde2c2b24f387afedb0492b2119e5a71b9f3cb1b409f', '[\"*\"]', '2026-09-21 23:46:57', NULL, '2026-09-21 23:33:54', '2026-09-21 23:46:57'),
+(174, 'App\\Models\\User', 15, 'customer', '39a190d1483e7d274529caccae78f59b4e598d5c6cde28c9bc4f63ad1858cc62', '[\"*\"]', '2026-09-21 23:54:05', NULL, '2026-09-21 23:47:01', '2026-09-21 23:54:05'),
+(175, 'App\\Models\\User', 16, 'customer', 'c5956b356cbc025851f97b588b4b4504023c525ba974dac10db8f9c71d091256', '[\"*\"]', '2026-09-21 23:49:25', NULL, '2026-09-21 23:48:18', '2026-09-21 23:49:25'),
+(176, 'App\\Models\\User', 15, 'customer', '16c5a5ca3cb91a1aa26e5a65c0ae2d5a423ccb855d2efe47b3a00656f6898243', '[\"*\"]', '2026-09-22 00:00:15', NULL, '2026-09-21 23:49:48', '2026-09-22 00:00:15');
 
 -- --------------------------------------------------------
 
@@ -820,7 +840,7 @@ INSERT INTO `products` (`id`, `category_id`, `name`, `slug`, `description`, `sku
 (5, 1, 'Hass Avocados', 'hass-avocados', NULL, 'GDP-PROD-009', 599, NULL, 99, 'https://www.themealdb.com/images/ingredients/Avocado-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-15 07:53:25'),
 (6, 2, 'Large Brown Eggs', 'large-brown-eggs', NULL, 'GDP-PROD-003', 599, NULL, 80, 'https://www.themealdb.com/images/ingredients/Egg-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-11 04:19:58'),
 (7, 2, 'Whole Milk', 'whole-milk', NULL, 'GDP-PROD-004', 429, NULL, 100, 'https://www.themealdb.com/images/ingredients/Milk-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(8, 2, 'Greek Yogurt', 'greek-yogurt', NULL, 'GDP-PROD-010', 519, 649, 91, 'https://www.themealdb.com/images/ingredients/Yogurt-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-11 04:19:58'),
+(8, 2, 'Greek Yogurt', 'greek-yogurt', NULL, 'GDP-PROD-010', 519, 649, 90, 'https://www.themealdb.com/images/ingredients/Yogurt-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-21 23:18:37'),
 (9, 2, 'Sharp Cheddar', 'sharp-cheddar', NULL, 'GDP-PROD-011', 649, NULL, 89, 'https://www.themealdb.com/images/ingredients/Cheddar%20Cheese-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-11 04:35:06'),
 (10, 2, 'Unsalted Butter', 'unsalted-butter', NULL, 'GDP-PROD-012', 399, NULL, 98, 'https://www.themealdb.com/images/ingredients/Butter-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-11 04:35:06'),
 (11, 3, 'Long Grain Rice', 'long-grain-rice', NULL, 'GDP-PROD-005', 699, NULL, 99, 'https://www.themealdb.com/images/ingredients/Rice-Medium.png', 1, '2026-09-09 01:12:49', '2026-09-10 23:19:31'),
@@ -864,10 +884,10 @@ INSERT INTO `products` (`id`, `category_id`, `name`, `slug`, `description`, `sku
 (49, 15, 'Diapers Value Pack', 'diapers-value-pack', NULL, 'GDP-PROD-049', 1499, NULL, 100, NULL, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
 (50, 15, 'Baby Wipes', 'baby-wipes', NULL, 'GDP-PROD-050', 299, NULL, 100, NULL, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
 (51, 15, 'Baby Lotion', 'baby-lotion', NULL, 'GDP-PROD-051', 449, NULL, 100, NULL, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(52, 16, 'Paper Towels', 'paper-towels', NULL, 'GDP-PROD-052', 399, NULL, 100, NULL, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(53, 16, 'Trash Bags', 'trash-bags', NULL, 'GDP-PROD-053', 349, NULL, 100, NULL, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
+(52, 16, 'Paper Towels', 'paper-towels', NULL, 'GDP-PROD-052', 399, NULL, 98, NULL, 1, '2026-09-09 01:12:49', '2026-09-21 23:45:34'),
+(53, 16, 'Trash Bags', 'trash-bags', NULL, 'GDP-PROD-053', 349, NULL, 98, NULL, 1, '2026-09-09 01:12:49', '2026-09-21 23:45:34'),
 (54, 16, 'Aluminium Foil', 'aluminium-foil', NULL, 'GDP-PROD-054', 299, NULL, 100, NULL, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(55, 1, 'Organic Lemon', 'organic-lemon', 'Fresh lemons are vibrant, smooth, and citrus-scented oval fruits packed with a sharp, clean sourness and rich Vitamin C content.', 'LM343235', 100, 200, 99, 'https://testcaresortwork.co.in/gdp/storage/products/Qt94qxoNXDPjTBdIiTJPUUn9x0qw8Tdy1T6gGhXl.jpg', 1, '2026-09-15 07:49:05', '2026-09-15 12:57:53');
+(55, 1, 'Organic Lemon', 'organic-lemon', 'Fresh lemons are vibrant, smooth, and citrus-scented oval fruits packed with a sharp, clean sourness and rich Vitamin C content.', 'LM343235', 100, 200, 99, '/api/media/file/products/gJE1AAvXFXjxY2CH8ViP0UIRt53SNXLZOD89SVxt.webp', 1, '2026-09-15 07:49:05', '2026-09-21 23:15:32');
 
 -- --------------------------------------------------------
 
@@ -922,8 +942,8 @@ INSERT INTO `product_variants` (`id`, `product_id`, `label`, `sku`, `price_cents
 (3, 7, '2 L', 'GDP-PROD-004-2000', 799, NULL, 22, NULL, 3, 1, '2026-09-09 01:12:49', '2026-09-10 05:14:45'),
 (4, 11, '1 kg', 'GDP-PROD-005-1KG', 699, NULL, 50, NULL, 1, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
 (5, 11, '5 kg', 'GDP-PROD-005-5KG', 3199, NULL, 15, NULL, 2, 1, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(6, 55, 'Set of 6 pcs', 'LMsds34', 500, 1000, 10, '/api/media/file/products/NsUHCOle01BBDwoflEIodg5E1skGknypHCFLPMrp.webp', 0, 1, '2026-09-15 08:23:58', '2026-09-15 12:57:53'),
-(7, 55, 'Set of 10 pcs', 'LM8734', 800, 2000, 10, '/api/media/file/products/VLjrKow3oLxGhjWmpL87skLNFbSMXanSipGxz7pA.jpg', 1, 1, '2026-09-15 08:23:58', '2026-09-15 12:57:53');
+(6, 55, 'Set of 6 pcs', 'LMsds34', 500, 1000, 10, '/api/media/file/products/u6eEvSi2E3OLxl3XS5WdSGKzjFzAgXf1RoluzF9k.webp', 0, 1, '2026-09-15 08:23:58', '2026-09-21 23:16:23'),
+(7, 55, 'Set of 10 pcs', 'LM8734', 800, 2000, 10, '/api/media/file/products/YjRaq2WGqbvILSk3d6eIX7ez1tcBqYScoIf9QIhF.jpg', 1, 1, '2026-09-15 08:23:58', '2026-09-21 23:16:23');
 
 -- --------------------------------------------------------
 
@@ -1003,7 +1023,7 @@ INSERT INTO `rider_shift_breaks` (`id`, `rider_shift_id`, `reason`, `started_at`
 (1, 1, 'Lunch', '2026-09-10 06:47:38', '2026-09-10 01:17:38', '2026-09-10 01:17:30', '2026-09-10 01:17:38'),
 (4, 1, 'Lunch', '2026-09-10 09:44:50', '2026-09-10 04:14:50', '2026-09-10 04:14:44', '2026-09-10 04:14:50'),
 (5, 1, 'Lunch', '2026-09-10 10:38:42', '2026-09-10 05:08:42', '2026-09-10 05:08:34', '2026-09-10 05:08:42'),
-(6, 10, 'Lunch', '2026-09-11 02:43:32', NULL, '2026-09-11 02:43:32', '2026-09-11 02:43:32');
+(6, 10, 'Lunch', '2026-09-22 05:19:25', '2026-09-21 23:49:25', '2026-09-11 02:43:32', '2026-09-21 23:49:25');
 
 -- --------------------------------------------------------
 
@@ -1127,7 +1147,7 @@ CREATE TABLE `store_inventory` (
 --
 
 INSERT INTO `store_inventory` (`id`, `store_id`, `product_id`, `product_variant_id`, `quantity`, `is_stocked`, `created_at`, `updated_at`) VALUES
-(1, 1, 54, NULL, 50, 1, '2026-09-09 04:21:55', '2026-09-09 04:21:55');
+(1, 1, 54, NULL, 47, 1, '2026-09-09 04:21:55', '2026-09-21 23:45:34');
 
 -- --------------------------------------------------------
 
@@ -1283,7 +1303,7 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`id`, `name`, `email`, `phone`, `stripe_customer_id`, `is_admin`, `is_rider`, `rider_is_active`, `rider_rating_avg`, `rider_rating_count`, `rider_declined_count`, `rider_missed_count`, `rider_offers_count`, `rider_daily_target_minutes`, `rider_since`, `rider_available`, `rider_unavailable_reason`, `rider_last_seen_at`, `rider_base_address`, `rider_base_lat`, `rider_base_lng`, `rider_last_lat`, `rider_last_lng`, `rider_last_located_at`, `email_verified_at`, `password`, `remember_token`, `created_at`, `updated_at`) VALUES
 (15, 'Test User', 'test@example.com', '+15551234567', 'cus_VEAEdiTnuYPjHz', 1, 0, 1, NULL, 0, 0, 0, 0, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-09 01:12:48', '$2y$12$skX3B4/nh5s/002bOYkfZ.uO5eeXCokTCYPh.8Q.Z28wpSnfcUDvy', NULL, '2026-09-09 01:12:48', '2026-09-09 04:04:45'),
-(16, 'Sam Rider', 'rider@example.com', NULL, NULL, 0, 1, 1, 4.33, 6, 0, 2, 9, NULL, '2026-09-10 01:17:26', 0, 'Lunch', '2026-09-11 07:36:43', NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-09 01:12:48', '$2y$12$skX3B4/nh5s/002bOYkfZ.uO5eeXCokTCYPh.8Q.Z28wpSnfcUDvy', NULL, '2026-09-09 01:12:48', '2026-09-11 07:36:43'),
+(16, 'Sam Rider', 'rider@example.com', NULL, NULL, 0, 1, 1, 4.33, 6, 0, 2, 12, NULL, '2026-09-10 01:17:26', 1, NULL, '2026-09-21 23:49:20', NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-09 01:12:48', '$2y$12$skX3B4/nh5s/002bOYkfZ.uO5eeXCokTCYPh.8Q.Z28wpSnfcUDvy', NULL, '2026-09-09 01:12:48', '2026-09-21 23:49:25'),
 (17, 'Testcaresort', 'testcaresort@outlook.com', '+15551234567', 'cus_VE8eecdx05e2pN', 0, 0, 1, NULL, 0, 0, 0, 0, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '$2y$12$skX3B4/nh5s/002bOYkfZ.uO5eeXCokTCYPh.8Q.Z28wpSnfcUDvy', NULL, '2026-09-09 02:25:33', '2026-09-10 07:25:57'),
 (18, 'New Ride', 'new_ride@example.com', NULL, NULL, 0, 1, 1, NULL, 0, 0, 0, 0, 480, '2026-09-09 05:14:36', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '$2y$12$kvtzqkILF65K1f7Zekch8ux7wHqhyNNSBFQG0zutKPpuhtETcpLZe', NULL, '2026-09-09 05:14:36', '2026-09-11 01:33:45'),
 (19, 'Ride Example', 'ride_example@gmail.com', NULL, NULL, 0, 0, 0, NULL, 0, 0, 0, 0, NULL, '2026-09-09 05:15:06', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '$2y$12$s8TjsvlZWoF3ROrlOuTM2ucqQDyws.3wK9rRNdYSEe4Y6x/JnNos2', NULL, '2026-09-09 05:15:06', '2026-09-11 01:34:32'),
@@ -1590,7 +1610,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `addresses`
 --
 ALTER TABLE `addresses`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT for table `auth_otps`
@@ -1614,7 +1634,7 @@ ALTER TABLE `carts`
 -- AUTO_INCREMENT for table `cart_items`
 --
 ALTER TABLE `cart_items`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=36;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
 
 --
 -- AUTO_INCREMENT for table `categories`
@@ -1662,13 +1682,13 @@ ALTER TABLE `migrations`
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT for table `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
 
 --
 -- AUTO_INCREMENT for table `order_refunds`
@@ -1686,7 +1706,7 @@ ALTER TABLE `pages`
 -- AUTO_INCREMENT for table `personal_access_tokens`
 --
 ALTER TABLE `personal_access_tokens`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=169;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=177;
 
 --
 -- AUTO_INCREMENT for table `products`
