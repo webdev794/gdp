@@ -361,7 +361,7 @@ export default function Storefront() {
   const [stores, setStores] = useState([])
   const [banners, setBanners] = useState([])
   const [homeTiles, setHomeTiles] = useState([])
-  const [branding, setBranding] = useState(null)
+  const [branding, setBranding] = useState(undefined)
   const [footer, setFooter] = useState(null)
   const mapRef = useRef(null)
   const markerRef = useRef(null)
@@ -490,7 +490,7 @@ export default function Storefront() {
     fetch(`${API_URL}/config`, { headers: { Accept: 'application/json' } })
       .then(responseJson)
       .then((data) => { setCodEnabled(!!data.data?.cod_enabled); setStores(data.data?.stores ?? []); setBanners(data.data?.banners ?? []); setHomeTiles(data.data?.home_tiles ?? []); setBranding(data.data?.branding ?? null); setFooter(data.data?.footer ?? null); if (data.data) setFees(data.data) })
-      .catch(() => { setCodEnabled(false); setStores([]); setBanners([]); setHomeTiles([]) })
+      .catch(() => { setCodEnabled(false); setStores([]); setBanners([]); setHomeTiles([]); setBranding(null) })
   }, [])
 
   // Apply admin-configured branding: theme palette, accent colours, tab title
@@ -1483,7 +1483,7 @@ export default function Storefront() {
   return <><div className="app-shell">
     <header className="topbar">
       <div className="topbar-row">
-        <a className="brand" href={import.meta.env.BASE_URL || '/'} aria-label={`${branding?.store_name || 'Grocerly'} home`}>{branding?.logo_url
+        <a className="brand" href={import.meta.env.BASE_URL || '/'} aria-label={`${branding?.store_name || 'Grocerly'} home`}>{branding === undefined ? <span className="brand-logo" aria-hidden /> : branding?.logo_url
           ? <img className="brand-logo" src={mediaUrl(branding.logo_url)} alt={branding?.store_name || 'Grocerly'} />
           : <><span className="brand-mark">{(branding?.store_name || 'g').trim().charAt(0).toLowerCase() || 'g'}</span>{(branding?.store_name || 'grocerly').toLowerCase()}</>}</a>
         <button className="deliver-to" type="button" onClick={() => { setLocationOpen(true); setLocationMsg('') }}><span className="deliver-eta">{etaText}</span><strong>{location ? location.label : 'Set your location'} <em aria-hidden>&#9662;</em></strong></button>
