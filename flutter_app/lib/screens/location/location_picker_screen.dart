@@ -477,7 +477,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Service Not Available Yet for ${_selectedAddress.city} (${_selectedAddress.distanceKm.toStringAsFixed(1)} km away). Please pick a location within 15 km of our store.',
+            'Service Not Available Yet for ${_selectedAddress.city} (${_selectedAddress.distanceKm.toStringAsFixed(1)} km away). Please pick a location within ${LocationService.maxDeliveryRadiusKm.toStringAsFixed(0)} km of our store.',
           ),
           backgroundColor: AppTheme.errorRed,
         ),
@@ -880,7 +880,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                                       ),
                                       const SizedBox(height: 2),
                                       Text(
-                                        '${_selectedAddress.city} is ${_selectedAddress.distanceKm.toStringAsFixed(1)} km away. We deliver within 15 km of our store.',
+                                        '${_selectedAddress.city} is ${_selectedAddress.distanceKm.toStringAsFixed(1)} km away. We deliver within ${LocationService.maxDeliveryRadiusKm.toStringAsFixed(0)} km of our store.',
                                         style: const TextStyle(fontSize: 10.5, color: AppTheme.errorRed),
                                       ),
                                     ],

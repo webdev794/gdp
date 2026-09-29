@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/product_model.dart';
 import '../../models/category_model.dart';
+import '../../services/checkout_fees.dart';
 import '../../services/location_service.dart';
 import '../../services/mock_auth_service.dart';
 import '../../services/mock_data_service.dart';
@@ -83,8 +84,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _updateQuantity(String productId, int delta) {
     HapticFeedback.lightImpact();
+    final current = _cartQuantities[productId] ?? 0;
+    // Don't let the basket go past the stock the store reports (same rule as the website).
+    if (delta > 0 && !productId.contains('__var_')) {
+      final p = _products.where((prod) => prod.id == productId).firstOrNull;
+      final stock = p == null ? null : (p.inStock ? p.inventoryQuantity : 0);
+      if (stock != null && current + delta > stock) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(stock == 0 ? '${p!.name} is out of stock.' : 'Only $stock of ${p!.name} left in stock.'),
+          behavior: SnackBarBehavior.floating,
+        ));
+        return;
+      }
+    }
     setState(() {
-      int current = _cartQuantities[productId] ?? 0;
       int next = current + delta;
       if (next <= 0) {
         _cartQuantities.remove(productId);
@@ -103,7 +116,10 @@ class _HomeScreenState extends State<HomeScreen> {
           cartQuantities: _cartQuantities,
           catalog: _products.isNotEmpty ? _products : MockDataService.products,
           onUpdateQuantity: (id, delta) => _updateQuantity(id, delta),
-          onClearCart: () => setState(() => _cartQuantities.clear()),
+          onClearCart: () {
+            setState(() => _cartQuantities.clear());
+            _loadLiveCatalog(); // stock changed after the order
+          },
         ),
       ),
     ).then((_) => setState(() {}));
@@ -725,7 +741,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                'Delivery unavailable to ${LocationService.activeAddress.city} (${LocationService.activeAddress.distanceKm.toStringAsFixed(1)} km). Max radius is 15 km.',
+                                'Delivery unavailable to ${LocationService.activeAddress.city} (${LocationService.activeAddress.distanceKm.toStringAsFixed(1)} km). Max radius is ${LocationService.maxDeliveryRadiusKm.toStringAsFixed(0)} km.',
                               ),
                               backgroundColor: AppTheme.errorRed,
                               action: SnackBarAction(
@@ -743,11 +759,16 @@ class _HomeScreenState extends State<HomeScreen> {
                           isScrollControlled: true,
                           backgroundColor: Colors.transparent,
                           builder: (_) => PaymentSheet(
-                            totalAmount: _totalCartPrice,
+                            totalAmount: CheckoutFees.estimate(
+                              _totalCartPrice,
+                              km: LocationService.activeAddress.distanceKm,
+                              radiusKm: LocationService.maxDeliveryRadiusKm,
+                            ).total,
                             itemCount: _totalCartCount,
                             cart: Map<String, int>.from(_cartQuantities),
                             onOrderPlaced: (order) {
                               if (mounted) setState(() => _cartQuantities.clear());
+                              _loadLiveCatalog(); // stock changed after the order
                               Navigator.of(context).push(
                                 MaterialPageRoute(builder: (_) => OrderTrackingScreen(order: order)),
                               );
@@ -893,9 +914,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           ),
                           const SizedBox(height: 6),
-                          const Text(
-                            'Free delivery on orders over \$15.00',
-                            style: TextStyle(color: Colors.white70, fontSize: 12),
+                          Text(
+                            'Free delivery on orders over \$${CheckoutFees.freeDeliveryThreshold.toStringAsFixed(2)}',
+                            style: const TextStyle(color: Colors.white70, fontSize: 12),
                           ),
                         ],
                       ),
@@ -1057,6 +1078,20 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   )
+                : _products.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Center(
+                          child: Column(
+                            children: [
+                              const Text('Products could not be loaded. Check your connection.',
+                                  textAlign: TextAlign.center, style: TextStyle(color: AppTheme.slateMuted)),
+                              const SizedBox(height: 12),
+                              ElevatedButton(onPressed: _loadLiveCatalog, child: const Text('TRY AGAIN')),
+                            ],
+                          ),
+                        ),
+                      )
                 : filteredProducts.isEmpty
                     ? const Padding(
                         padding: EdgeInsets.all(32),
@@ -1315,7 +1350,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                   const SizedBox(height: 6),
 
                                   // Action Buttons: Variant-Aware (+ CART & BUY NOW)
-                                  if (p.variants.isNotEmpty)
+                                  if (p.variants.isEmpty && !p.inStock)
+                                    Container(
+                                      height: 30,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade200,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Text('OUT OF STOCK',
+                                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: AppTheme.slateMuted)),
+                                    )
+                                  else if (p.variants.isNotEmpty)
                                     Row(
                                       children: [
                                         Expanded(

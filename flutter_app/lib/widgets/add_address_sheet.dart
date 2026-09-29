@@ -262,7 +262,7 @@ class _AddAddressSheetState extends State<AddAddressSheet> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                   child: Text(
-                    isDeliverable ? 'SAVE & CONFIRM ADDRESS ➔' : 'SAVE ADDRESS (Out of 15km Zone)',
+                    isDeliverable ? 'SAVE & CONFIRM ADDRESS ➔' : 'SAVE ADDRESS (outside delivery area)',
                     style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w900),
                   ),
                 ),

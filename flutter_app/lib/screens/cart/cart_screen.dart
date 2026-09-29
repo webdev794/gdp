@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../models/order_model.dart';
 import '../../models/product_model.dart';
+import '../../services/checkout_fees.dart';
 import '../../services/location_service.dart';
 import '../../services/mock_data_service.dart';
 import '../../theme/app_theme.dart';
@@ -56,7 +57,7 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   // Promo codes removed: there is no promo-code support on the store backend.
-  static const double _discountAmount = 0.0;
+  FeeEstimate _fees = FeeEstimate(0, 0, 0, 0, 0);
 
   void _openProductDetails(ProductModel product) {
     HapticFeedback.lightImpact();
@@ -121,8 +122,8 @@ class _CartScreenState extends State<CartScreen> {
     if (!LocationService.activeAddress.isDeliverable) {
       HapticFeedback.vibrate();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Delivery address is outside the 15km operational radius.'),
+        SnackBar(
+          content: Text('Delivery address is outside our ${LocationService.maxDeliveryRadiusKm.toStringAsFixed(0)} km delivery area.'),
           backgroundColor: AppTheme.errorRed,
         ),
       );
@@ -191,9 +192,12 @@ class _CartScreenState extends State<CartScreen> {
     });
 
     double subtotal = cartItems.fold(0.0, (sum, entry) => sum + (entry.unitPrice * entry.quantity));
-    double estimatedTax = subtotal * 0.08;
-    double deliveryFee = subtotal > 15.0 || subtotal == 0.0 ? 0.0 : 2.99;
-    double grandTotal = (subtotal + estimatedTax + deliveryFee - _discountAmount).clamp(0.0, 99999.0);
+    // Same fee rules as the store checkout (Admin -> Store settings).
+    final addr = LocationService.activeAddress;
+    _fees = CheckoutFees.estimate(subtotal, km: addr.distanceKm, radiusKm: LocationService.maxDeliveryRadiusKm);
+    double estimatedTax = _fees.tax;
+    double deliveryFee = _fees.delivery;
+    double grandTotal = _fees.total;
 
     return Scaffold(
       backgroundColor: AppTheme.bgLight,
@@ -657,12 +661,14 @@ class _CartScreenState extends State<CartScreen> {
           ),
           const Divider(height: 18),
           _buildBillRow('Item Subtotal', '\$${subtotal.toStringAsFixed(2)}'),
-          _buildBillRow('USA Sales Tax (8%)', '\$${estimatedTax.toStringAsFixed(2)}'),
           _buildBillRow(
             'Delivery Fee',
             deliveryFee == 0.0 ? 'FREE' : '\$${deliveryFee.toStringAsFixed(2)}',
             isFree: deliveryFee == 0.0,
           ),
+          if (_fees.handling > 0) _buildBillRow('Handling Fee', '\$${_fees.handling.toStringAsFixed(2)}'),
+          if (_fees.smallCart > 0) _buildBillRow('Small Basket Fee', '\$${_fees.smallCart.toStringAsFixed(2)}'),
+          if (estimatedTax > 0) _buildBillRow('Tax (${CheckoutFees.taxPercent.toStringAsFixed(2)}%)', '\$${estimatedTax.toStringAsFixed(2)}'),
           const Divider(height: 18),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

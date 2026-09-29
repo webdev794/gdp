@@ -30,8 +30,11 @@ class PaymentSheet extends StatefulWidget {
 }
 
 class _PaymentSheetState extends State<PaymentSheet> {
-  // Card payments run in a web view (Stripe card form) — Android/iOS only.
+  // A new card is typed into Stripe's card form in a web view — Android/iOS only.
   bool get _cardAvailable => !kIsWeb && ApiService.stripePublishableKey.isNotEmpty;
+  // Cards saved on the account (website or app) can be used everywhere.
+  List<Map<String, dynamic>> _savedCards = [];
+  bool get _anyMethod => _cardAvailable || _savedCards.isNotEmpty || ApiService.codEnabled;
 
   late String _method;
   final _phone = TextEditingController(text: MockAuthService.currentUser?.phone ?? '');
@@ -48,6 +51,18 @@ class _PaymentSheetState extends State<PaymentSheet> {
   void initState() {
     super.initState();
     _method = _cardAvailable ? 'card' : 'cod';
+    _loadSavedCards();
+  }
+
+  Future<void> _loadSavedCards() async {
+    if (ApiService.stripePublishableKey.isEmpty) return;
+    final cards = await ApiService.getPaymentMethods();
+    if (!mounted || cards.isEmpty) return;
+    final def = cards.firstWhere((c) => c['is_default'] == true, orElse: () => cards.first);
+    setState(() {
+      _savedCards = cards;
+      _method = 'saved:${def['id']}';
+    });
   }
 
   @override
@@ -78,6 +93,10 @@ class _PaymentSheetState extends State<PaymentSheet> {
   }
 
   Future<void> _placeOrder() async {
+    if (!LocationService.hasAddress) {
+      setState(() => _error = 'Choose a delivery address first (tap the address at the top of the home screen).');
+      return;
+    }
     if (_method == 'cod' && !ApiService.codEnabled) {
       setState(() => _error = 'Cash on delivery is not available right now.');
       return;
@@ -91,7 +110,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
     try {
       var order = await ApiService.placeOrder(
         cart: widget.cart,
-        paymentMethod: _method,
+        paymentMethod: _method == 'cod' ? 'cod' : 'card',
         address: LocationService.activeAddress,
         phone: _phone.text,
         deliveryInstructions: _notes.text,
@@ -101,9 +120,19 @@ class _PaymentSheetState extends State<PaymentSheet> {
 
       // Card orders are created as "awaiting payment"; take the card now
       // (a gift card may already have covered the whole total).
-      if (_method == 'card' && order.paymentStatus != 'paid') {
+      if (_method != 'cod' && order.paymentStatus != 'paid') {
         final secret = await ApiService.paymentIntent(order.id);
-        if (secret != null) {
+        if (secret != null && _method.startsWith('saved:')) {
+          final failure = await ApiService.payWithSavedCard(secret, _method.substring(6));
+          if (failure != null) {
+            setState(() {
+              _busy = false;
+              _error = '$failure Order ${order.orderNumber} is saved — pay for it from the website, or it will be cancelled.';
+            });
+            return;
+          }
+          await ApiService.paymentIntent(order.id); // confirms the payment with the store
+        } else if (secret != null) {
           final paid = await navigator.push<bool>(MaterialPageRoute(
             builder: (_) => CardPaymentScreen(
               clientSecret: secret,
@@ -200,13 +229,22 @@ class _PaymentSheetState extends State<PaymentSheet> {
               const SizedBox(height: 16),
               const Text('Payment', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.slateMuted)),
               const SizedBox(height: 8),
+              for (final c in _savedCards) ...[
+                _option(
+                  'saved:${c['id']}',
+                  '${c['brand'].toString().toUpperCase()} •••• ${c['last4']}',
+                  'Saved card · expires ${c['exp_month']}/${c['exp_year']}',
+                  Icons.credit_card,
+                ),
+                const SizedBox(height: 10),
+              ],
               if (_cardAvailable) ...[
-                _option('card', 'Credit / Debit Card', 'Visa, Mastercard, Amex — paid securely via Stripe', Icons.credit_card),
+                _option('card', _savedCards.isEmpty ? 'Credit / Debit Card' : 'New card', 'Visa, Mastercard, Amex — paid securely via Stripe', Icons.add_card),
                 const SizedBox(height: 10),
               ],
               if (ApiService.codEnabled)
                 _option('cod', 'Cash on Delivery', 'Pay the rider when your order arrives', Icons.local_shipping),
-              if (!_cardAvailable && !ApiService.codEnabled)
+              if (!_anyMethod)
                 const Text(
                   'No payment method is available right now. Please try again later.',
                   style: TextStyle(color: AppTheme.errorRed, fontSize: 12),
@@ -214,7 +252,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
               if (kIsWeb && ApiService.stripePublishableKey.isNotEmpty)
                 const Padding(
                   padding: EdgeInsets.only(top: 8),
-                  child: Text('Card payment is available in the Android / iPhone app.',
+                  child: Text('Adding a new card is available in the Android / iPhone app.',
                       style: TextStyle(fontSize: 11, color: AppTheme.slateMuted)),
                 ),
               const SizedBox(height: 12),
@@ -273,7 +311,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
               ],
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: _busy || (!_cardAvailable && !ApiService.codEnabled) ? null : _placeOrder,
+                onPressed: _busy || !_anyMethod ? null : _placeOrder,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.emeraldPrimary,
                   foregroundColor: Colors.white,
@@ -283,7 +321,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
                 child: _busy
                     ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
                     : Text(
-                        _method == 'card' ? 'PLACE ORDER & PAY BY CARD' : 'PLACE ORDER (PAY ON DELIVERY)',
+                        _method == 'cod' ? 'PLACE ORDER (PAY ON DELIVERY)' : 'PLACE ORDER & PAY BY CARD',
                         style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
                       ),
               ),

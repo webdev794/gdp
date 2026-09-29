@@ -3,21 +3,39 @@ import '../models/address_model.dart';
 import '../models/config_model.dart';
 
 class LocationService {
-  // Live Store Location: Caresort Solutions (loaded dynamically from /api/config)
-  static double storeLat = 30.6908804;
-  static double storeLng = 76.7114879;
+  // Store locations come from GET /api/config (Admin -> Stores). Defaults: the main store.
+  static double storeLat = 6.53189;
+  static double storeLng = -10.349486;
   static String storeName = 'Tudee Shopping Center';
   static String storeAddress = 'Kakatown Highway, Margibi County, Kataka, Liberia';
   static double maxDeliveryRadiusKm = 25.0;
+  static List<StoreModel> stores = [];
+  static bool enforceRadius = true;
 
   static void updateStoreFromConfig(AppConfigModel config) {
+    enforceRadius = config.enforceRadius;
     if (config.stores.isNotEmpty) {
+      stores = List.of(config.stores);
       final s = config.stores.first;
       storeLat = s.latitude;
       storeLng = s.longitude;
       storeName = s.name;
       maxDeliveryRadiusKm = s.deliveryRadiusKm.toDouble();
     }
+  }
+
+  /// The store nearest to a point (the one the store API would serve it from).
+  static StoreModel? nearestStore(double lat, double lng) {
+    StoreModel? best;
+    double bestKm = double.infinity;
+    for (final s in stores) {
+      final km = calculateDistanceKm(lat, lng, s.latitude, s.longitude);
+      if (km < bestKm) {
+        bestKm = km;
+        best = s;
+      }
+    }
+    return best;
   }
 
   // Haversine formula to calculate distance in KM
@@ -29,70 +47,36 @@ class LocationService {
     return 12742 * asin(sqrt(a)); // 2 * R; R = 6371 km
   }
 
-  // Universal Mode: All locations worldwide are eligible for delivery
-  static bool isDeliverable(double distanceKm) {
-    return true;
+  /// Inside the delivery radius of its nearest store (when Admin enforces radius).
+  static bool isDeliverable(double distanceKm, {double? radiusKm}) {
+    if (!enforceRadius) return true;
+    return distanceKm <= (radiusKm ?? maxDeliveryRadiusKm);
   }
 
   static int calculateDeliveryMinutes(double distanceKm) {
-    if (distanceKm <= 10.0) {
-      return (8 + (distanceKm * 1.5)).round().clamp(8, 25);
-    }
-    // Express delivery representation for testing worldwide locations
-    return (10 + (distanceKm.toInt() % 12)).clamp(10, 20);
+    if (!isDeliverable(distanceKm)) return 0;
+    return (8 + (distanceKm * 2.0)).round(); // 8 mins prep + 2 mins/km
   }
 
-  // Pre-populated Sample Saved Addresses with Blinkit Tags
-  static final List<AddressModel> userAddresses = [
-    AddressModel(
-      id: 'addr_home_1',
-      label: 'Home - Phase 8B',
-      fullAddress: 'Plot No. C-205, Phase 8B, Industrial Area, Sector 74, Mohali, Punjab 160055',
-      city: 'Mohali',
-      state: 'Punjab',
-      zipCode: '160055',
-      latitude: 30.6908804,
-      longitude: 76.7114879,
-      isDefault: true,
-      flatNo: 'Flat 402',
-      floor: '4th Floor',
-      buildingName: 'Tech Park View',
-      landmark: 'Near Bestech Business Tower',
-      tag: 'Home',
-    ),
-    AddressModel(
-      id: 'addr_work_2',
-      label: 'Office - Sector 62',
-      fullAddress: 'Phase 7, Sector 62, Mohali, Punjab 160062',
-      city: 'Mohali',
-      state: 'Punjab',
-      zipCode: '160062',
-      latitude: 30.7046,
-      longitude: 76.7179,
-      flatNo: 'Cabin 12',
-      floor: '2nd Floor',
-      buildingName: 'Phase 7 Market Hub',
-      landmark: 'Opp. Phase 7 Police Station',
-      tag: 'Work',
-    ),
-    AddressModel(
-      id: 'addr_other_3',
-      label: 'Chandigarh Sector 35',
-      fullAddress: 'SCO 120-122, Sector 35C, Chandigarh 160035',
-      city: 'Chandigarh',
-      state: 'Chandigarh',
-      zipCode: '160035',
-      latitude: 30.7259,
-      longitude: 76.7681,
-      flatNo: 'Shop 4',
-      floor: 'Ground Floor',
-      buildingName: 'Sub City Center',
-      landmark: 'Near Aroma Hotel',
-      tag: 'Other',
-    ),
-  ];
+  /// The customer's saved addresses, loaded from the store (GET /api/addresses).
+  static final List<AddressModel> userAddresses = [];
 
-  static AddressModel activeAddress = userAddresses[0];
+  /// Shown until the customer picks or saves a real delivery address.
+  static final AddressModel noAddress = AddressModel(
+    id: '',
+    label: 'Choose delivery address',
+    fullAddress: 'Choose a delivery address',
+    city: '',
+    state: '',
+    zipCode: '',
+    latitude: storeLat,
+    longitude: storeLng,
+    tag: 'Other',
+  );
+
+  static bool get hasAddress => activeAddress.id.isNotEmpty;
+
+  static AddressModel activeAddress = noAddress;
 
   static void addAddress(AddressModel newAddress) {
     userAddresses.insert(0, newAddress);
@@ -105,8 +89,8 @@ class LocationService {
 
   static void removeAddress(String id) {
     userAddresses.removeWhere((addr) => addr.id == id);
-    if (activeAddress.id == id && userAddresses.isNotEmpty) {
-      activeAddress = userAddresses.first;
+    if (activeAddress.id == id) {
+      activeAddress = userAddresses.isNotEmpty ? userAddresses.first : noAddress;
     }
   }
 }

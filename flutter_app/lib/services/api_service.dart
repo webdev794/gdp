@@ -11,6 +11,7 @@ import '../models/product_model.dart';
 import '../models/support_model.dart';
 import '../models/user_model.dart';
 import 'branding_service.dart';
+import 'checkout_fees.dart';
 import 'location_service.dart';
 import 'mock_auth_service.dart';
 import 'mock_data_service.dart';
@@ -112,6 +113,7 @@ class ApiService {
         final data = json.decode(res.body)['data'] ?? json.decode(res.body);
         isOnlineBackendAvailable = true;
         final config = AppConfigModel.fromJson(data);
+        CheckoutFees.load(Map<String, dynamic>.from(data));
         LocationService.updateStoreFromConfig(config);
         await BrandingService.apply(config);
         codEnabled = config.codEnabled;
@@ -404,13 +406,12 @@ class ApiService {
       final res = await http.get(Uri.parse('$baseUrl/categories'), headers: _headers).timeout(const Duration(seconds: 6));
       if (res.statusCode == 200) {
         final List raw = json.decode(res.body)['data'] ?? [];
-        if (raw.isNotEmpty) {
-          isOnlineBackendAvailable = true;
-          final cats = raw.map((c) => CategoryModel.fromJson(c)).toList();
-          MockDataService.categories.clear();
-          MockDataService.categories.addAll(cats);
-          return cats;
-        }
+        isOnlineBackendAvailable = true;
+        final cats = raw.map((c) => CategoryModel.fromJson(c)).toList();
+        MockDataService.categories
+          ..clear()
+          ..addAll(cats);
+        return cats;
       }
     } catch (_) {}
     return MockDataService.categories;
@@ -447,14 +448,14 @@ class ApiService {
           }
         }
 
-        if (allProducts.isNotEmpty) {
-          isOnlineBackendAvailable = true;
-          if (categorySlug == null && (search == null || search.isEmpty)) {
-            MockDataService.products.clear();
-            MockDataService.products.addAll(allProducts);
-          }
-          return allProducts;
+        // The store list is the truth, also when admin has removed everything.
+        isOnlineBackendAvailable = true;
+        if (categorySlug == null && (search == null || search.isEmpty)) {
+          MockDataService.products
+            ..clear()
+            ..addAll(allProducts);
         }
+        return allProducts;
       }
     } catch (_) {}
     return MockDataService.products;
@@ -838,6 +839,31 @@ class ApiService {
     }
     final data = json.decode(res.body)['data'] ?? {};
     return data['client_secret']?.toString();
+  }
+
+  /// Pay an order's PaymentIntent with a card saved on the customer's account
+  /// (same as the website): confirm it with Stripe using the publishable key.
+  /// Returns null on success, or a message to show the customer.
+  static Future<String?> payWithSavedCard(String clientSecret, String paymentMethodId) async {
+    final intentId = clientSecret.split('_secret_').first;
+    try {
+      final res = await http.post(
+        Uri.parse('https://api.stripe.com/v1/payment_intents/$intentId/confirm'),
+        headers: {
+          'Authorization': 'Bearer $stripePublishableKey',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: {'client_secret': clientSecret, 'payment_method': paymentMethodId},
+      ).timeout(const Duration(seconds: 20));
+      final data = json.decode(res.body);
+      if (res.statusCode == 200 && data['status'] == 'succeeded') return null;
+      if (data['status'] == 'requires_action') {
+        return 'Your bank needs to verify this card. Please pay with it on the website, or use another card.';
+      }
+      return data['error']?['message']?.toString() ?? 'The card payment did not go through.';
+    } catch (_) {
+      return 'Could not reach the payment service. Please try again.';
+    }
   }
 
   static Future<void> cancelOrder(String orderId) async {

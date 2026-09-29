@@ -293,8 +293,8 @@ void main() {
   group('Location & Delivery Radius Calculations', () {
     test('Haversine distance calculation is accurate', () {
       double dist = LocationService.calculateDistanceKm(
-        LocationService.storeLat,
-        LocationService.storeLng,
+        30.6908804, // fixed points ~7 km apart (the store location now comes from settings)
+        76.7114879,
         30.7259,
         76.7681,
       );

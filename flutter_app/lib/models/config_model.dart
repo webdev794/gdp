@@ -17,8 +17,8 @@ class StoreModel {
     return StoreModel(
       id: (json['id'] as num?)?.toInt() ?? 1,
       name: json['name'] ?? 'Tudee Shopping Center',
-      latitude: (json['latitude'] as num?)?.toDouble() ?? 30.6908804,
-      longitude: (json['longitude'] as num?)?.toDouble() ?? 76.7114879,
+      latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
+      longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
       deliveryRadiusKm: (json['delivery_radius_km'] as num?)?.toDouble() ?? 25.0,
     );
   }
@@ -64,6 +64,7 @@ class AppConfigModel {
   final String currency;
   final bool otpEnabled;
   final bool codEnabled;
+  final bool enforceRadius;
   final double deliveryFee;
   final double freeDeliveryThreshold;
   final List<PromoBanner> banners;
@@ -80,6 +81,7 @@ class AppConfigModel {
     this.currency = 'USD',
     this.otpEnabled = true,
     this.codEnabled = true,
+    this.enforceRadius = true,
     this.deliveryFee = 2.99,
     this.freeDeliveryThreshold = 15.0,
     required this.banners,
@@ -95,37 +97,9 @@ class AppConfigModel {
       codEnabled: true,
       deliveryFee: 2.99,
       freeDeliveryThreshold: 15.0,
-      banners: [
-        PromoBanner(
-          id: 'b1',
-          imageUrl: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&auto=format&fit=crop',
-          headline: 'Fresh Organics Up to 30% Off Today! 🥑',
-          categorySlug: '1',
-          badge: 'SPECIAL DEAL',
-        ),
-        PromoBanner(
-          id: 'b2',
-          imageUrl: 'https://images.unsplash.com/photo-1526367790999-0150786686a2?w=800&auto=format&fit=crop',
-          headline: 'Instant 10-Minute Farm Delivery ⚡',
-          badge: 'EXPRESS',
-        ),
-        PromoBanner(
-          id: 'b3',
-          imageUrl: 'https://images.unsplash.com/photo-1506617420156-8e4536971650?w=800&auto=format&fit=crop',
-          headline: 'Artisanal Bakery & Farm Fresh Dairy 🥖🥛',
-          categorySlug: '2',
-          badge: 'NEW ARRIVALS',
-        ),
-      ],
-      stores: [
-        StoreModel(
-          id: 1,
-          name: 'Caresort Solutions',
-          latitude: 30.6908804,
-          longitude: 76.7114879,
-          deliveryRadiusKm: 25.0,
-        ),
-      ],
+      // Banners and stores come only from Admin (GET /api/config).
+      banners: [],
+      stores: [],
     );
   }
 
@@ -144,14 +118,11 @@ class AppConfigModel {
       currency: (json['currency'] ?? 'usd').toString().toUpperCase(),
       otpEnabled: json['otp_enabled'] ?? true,
       codEnabled: json['cod_enabled'] ?? true,
+      enforceRadius: json['enforce_radius'] ?? true,
       deliveryFee: (json['delivery_fee'] as num?)?.toDouble() ?? 2.99,
       freeDeliveryThreshold: (json['free_delivery_threshold'] as num?)?.toDouble() ?? 15.0,
-      banners: rawBanners.isNotEmpty
-          ? rawBanners.map((b) => PromoBanner.fromJson(b)).toList()
-          : AppConfigModel.defaults().banners,
-      stores: rawStores.isNotEmpty
-          ? rawStores.map((s) => StoreModel.fromJson(s)).toList()
-          : AppConfigModel.defaults().stores,
+      banners: rawBanners.map((b) => PromoBanner.fromJson(b)).toList(),
+      stores: rawStores.map((s) => StoreModel.fromJson(s)).toList(),
     );
   }
 }
