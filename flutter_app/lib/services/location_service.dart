@@ -7,7 +7,7 @@ class LocationService {
   static double storeLat = 6.53189;
   static double storeLng = -10.349486;
   static String storeName = 'Tudee Shopping Center';
-  static String storeAddress = 'Kakatown Highway, Margibi County, Kataka, Liberia';
+  static String storeAddress = 'Kakatown Highway, Margibi County, Kakata, Liberia';
   static double maxDeliveryRadiusKm = 25.0;
   static List<StoreModel> stores = [];
   static bool enforceRadius = true;

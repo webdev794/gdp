@@ -1151,11 +1151,13 @@ class _HomeScreenState extends State<HomeScreen> {
                                   child: Container(
                                     height: 110,
                                     width: double.infinity,
-                                    color: AppTheme.bgLight,
+                                    color: Colors.white,
+                                    // Whole image, padded — same as the website product cards.
+                                    padding: const EdgeInsets.all(8),
                                     child: p.imageUrl != null
                                         ? Image.network(
                                             p.imageUrl!,
-                                            fit: BoxFit.cover,
+                                            fit: BoxFit.contain,
                                             errorBuilder: (context, error, stackTrace) => Center(
                                               child: Text(p.imageEmoji, style: const TextStyle(fontSize: 44)),
                                             ),

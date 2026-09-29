@@ -14,7 +14,7 @@ class BrandingService {
   static String logoUrl = '';
   static String contactEmail = '';
   static String contactPhone = '';
-  static String contactAddress = 'Kakatown Highway, Margibi County, Kataka, Liberia';
+  static String contactAddress = 'Kakatown Highway, Margibi County, Kakata, Liberia';
 
   /// Store name for use inside sentences: "TUDEE SHOPPING CENTER" -> "Tudee Shopping Center".
   static String get proseName {

@@ -17,7 +17,7 @@ return [
     // {address} appear (see App\Support\PageTokens).
     'contact_email' => env('STORE_CONTACT_EMAIL', ''),
     'contact_phone' => env('STORE_CONTACT_PHONE', ''),
-    'contact_address' => env('STORE_CONTACT_ADDRESS', 'Kakatown Highway, Margibi County, Kataka, Liberia'),
+    'contact_address' => env('STORE_CONTACT_ADDRESS', 'Kakatown Highway, Margibi County, Kakata, Liberia'),
 
     'theme' => env('STORE_THEME', 'light'), // light | dark
     'layout_width' => env('STORE_LAYOUT_WIDTH', 'boxed'), // boxed | full

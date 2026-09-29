@@ -32,4 +32,5 @@ Done: real checkout (cash on delivery + Stripe card), gift cards at checkout, or
 
 - [ ] **Real contact email/phone.** Pages use `{email}` / `{phone}` from Admin → Store settings; currently `test@example.com` and no phone.
 - [ ] **Footer app-store and social links** still point to placeholder `grocerly` URLs (Admin → Footer).
-- [ ] **Address spelling:** "Kataka" vs the usual "Kakata" (Margibi County) — confirm with client.
+- [x] **Address spelling:** corrected "Kataka" to **Kakata** (capital of Margibi County) in the app and backend defaults.
+- [ ] **Street name:** "Kakatown Highway" doesn't appear in maps/search; the main road is the **Monrovia–Kakata Highway**. Confirm the exact street with the client, then set it in Admin → Store settings (and redeploy the backend so the live site uses the new contact settings).

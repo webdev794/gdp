@@ -543,7 +543,7 @@ class _CartScreenState extends State<CartScreen> {
                           child: item.imageUrl != null
                               ? Image.network(
                                   item.imageUrl!,
-                                  fit: BoxFit.cover,
+                                  fit: BoxFit.contain,
                                   errorBuilder: (context, error, stackTrace) => Center(
                                     child: Text(item.imageEmoji, style: const TextStyle(fontSize: 26)),
                                   ),
