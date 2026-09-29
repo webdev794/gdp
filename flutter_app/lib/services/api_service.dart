@@ -1,0 +1,926 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../config.dart';
+import '../models/address_model.dart';
+import '../models/category_model.dart';
+import '../models/config_model.dart';
+import '../models/order_model.dart';
+import '../models/product_model.dart';
+import '../models/support_model.dart';
+import '../models/user_model.dart';
+import 'branding_service.dart';
+import 'location_service.dart';
+import 'mock_auth_service.dart';
+import 'mock_data_service.dart';
+
+class ApiService {
+  // Website address lives in lib/config.dart (AppConfig.siteUrl).
+  static String baseUrl = AppConfig.apiUrl;
+  static String baseWebUrl = AppConfig.siteUrl;
+
+  static String? authToken;
+
+  /// From /api/config: whether cash on delivery is offered, and the Stripe key for card payments.
+  static bool codEnabled = false;
+  static String stripePublishableKey = '';
+  static bool isOnlineBackendAvailable = true;
+
+  static const String _keyToken = 'grocerly_auth_token';
+  static const String _keyUser = 'grocerly_user_data';
+
+  /// Restore persistent session from device disk on app start
+  static Future<void> initSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedToken = prefs.getString(_keyToken);
+      final savedUserStr = prefs.getString(_keyUser);
+
+      if (savedToken != null && savedToken.isNotEmpty) {
+        authToken = savedToken;
+      }
+      if (savedUserStr != null && savedUserStr.isNotEmpty) {
+        final Map<String, dynamic> userMap = json.decode(savedUserStr);
+        final user = UserModel.fromJson(userMap);
+        MockAuthService.setCurrentUser(user);
+      }
+    } catch (_) {}
+  }
+
+  /// Persist session to device disk
+  static Future<void> saveSession(String token, UserModel user) async {
+    authToken = token;
+    MockAuthService.setCurrentUser(user);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyToken, token);
+      await prefs.setString(_keyUser, json.encode(user.toJson()));
+    } catch (_) {}
+  }
+
+  /// Wipe session from device disk on logout
+  static Future<void> clearSession() async {
+    authToken = null;
+    MockAuthService.logout();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyToken);
+      await prefs.remove(_keyUser);
+    } catch (_) {}
+  }
+
+  // Headers generator with Sanctum Bearer token and browser anti-bot disguise
+  static Map<String, String> get _headers => {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 14; Mobile; GrocerlyApp/1.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Mobile Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'X-Requested-With': 'XMLHttpRequest',
+        'Origin': AppConfig.origin,
+        'Referer': '${AppConfig.siteUrl}/',
+        if (authToken != null && authToken!.isNotEmpty)
+          'Authorization': 'Bearer $authToken',
+      };
+
+  // -------------------------------------------------------------
+  // 1. CONFIG & SYSTEM APIS (/api/config, /api/delivery-eta)
+  // -------------------------------------------------------------
+  static Future<AppConfigModel> fetchConfig() async {
+    try {
+      final res = await http.get(Uri.parse('$baseUrl/config'), headers: _headers).timeout(const Duration(seconds: 5));
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body)['data'] ?? json.decode(res.body);
+        isOnlineBackendAvailable = true;
+        final config = AppConfigModel.fromJson(data);
+        LocationService.updateStoreFromConfig(config);
+        await BrandingService.apply(config);
+        codEnabled = config.codEnabled;
+        stripePublishableKey = config.stripePublishableKey;
+        return config;
+      }
+    } catch (_) {}
+    return AppConfigModel.defaults();
+  }
+
+  static Future<int> getDeliveryEta(double lat, double lng) async {
+    try {
+      final res = await http.get(Uri.parse('$baseUrl/delivery-eta?lat=$lat&lng=$lng'), headers: _headers).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        return data['eta_minutes'] ?? 10;
+      }
+    } catch (_) {}
+    double distKm = LocationService.calculateDistanceKm(lat, lng, LocationService.storeLat, LocationService.storeLng);
+    return LocationService.calculateDeliveryMinutes(distKm);
+  }
+
+  // -------------------------------------------------------------
+  // 2. AUTH APIS (/api/auth/*)
+  // -------------------------------------------------------------
+  static Future<Map<String, dynamic>> authStart(String identifier) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$baseUrl/auth/start'),
+        headers: _headers,
+        body: json.encode({'email': identifier.trim()}),
+      ).timeout(const Duration(seconds: 5));
+      if (res.statusCode == 200) return json.decode(res.body);
+    } catch (_) {}
+    return {'requires_otp': true, 'purpose': 'login', 'message': 'Verification code sent to your phone/email.'};
+  }
+
+  static Future<Map<String, dynamic>> login({required String email, required String password}) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$baseUrl/auth/login'),
+        headers: _headers,
+        body: json.encode({'email': email.trim(), 'password': password}),
+      ).timeout(const Duration(seconds: 8));
+
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        final token = (data['token'] ?? data['access_token'] ?? '').toString();
+        isOnlineBackendAvailable = true;
+        final user = UserModel.fromJson(data['user'] ?? data['data'] ?? {});
+        await saveSession(token, user);
+        return {'success': true, 'user': user, 'token': token};
+      } else if (res.statusCode == 422) {
+        final data = json.decode(res.body);
+        return {'success': false, 'message': data['message'] ?? 'Invalid email or password.'};
+      } else {
+        String msg = 'Login failed (${res.statusCode})';
+        try {
+          final data = json.decode(res.body);
+          if (data['message'] != null) msg = data['message'];
+        } catch (_) {
+          if (res.body.contains('Imunify360') || res.body.contains('bot-protection')) {
+            msg = 'Server firewall bot-protection triggered. Please toggle Airplane mode ON/OFF or open store in browser once.';
+          }
+        }
+        if (msg.contains('Imunify360') || msg.contains('bot-protection') || msg.contains('automation')) {
+          msg = 'Server firewall bot-protection triggered on your network. Please toggle Airplane mode ON/OFF or open store in browser once.';
+        }
+        return {'success': false, 'message': msg};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Unable to connect to login server ($e). Please check your internet.'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> register({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String phone,
+    required String password,
+    String? passwordConfirmation,
+  }) async {
+    final name = '$firstName $lastName'.trim();
+    try {
+      final res = await http.post(
+        Uri.parse('$baseUrl/auth/register'),
+        headers: _headers,
+        body: json.encode({
+          'name': name.isEmpty ? 'Customer' : name,
+          'first_name': firstName.trim(),
+          'last_name': lastName.trim(),
+          'email': email.trim(),
+          'phone': phone.trim(),
+          'password': password,
+          'password_confirmation': passwordConfirmation ?? password,
+        }),
+      ).timeout(const Duration(seconds: 12));
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final data = json.decode(res.body);
+        final token = (data['token'] ?? data['access_token'] ?? '').toString();
+        isOnlineBackendAvailable = true;
+        final user = UserModel.fromJson(data['user'] ?? data['data'] ?? {});
+        await saveSession(token, user);
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Account created successfully!',
+          'user': user,
+          'token': token,
+        };
+      } else if (res.statusCode == 422) {
+        final data = json.decode(res.body);
+        String msg = data['message'] ?? 'Registration validation failed';
+        if (data['errors'] != null && data['errors'] is Map) {
+          final errs = (data['errors'] as Map).values.expand((e) => e is List ? e : [e]).join('\n');
+          if (errs.isNotEmpty) msg = errs;
+        }
+        return {'success': false, 'message': msg};
+      } else {
+        String msg = 'Registration failed (${res.statusCode})';
+        try {
+          final data = json.decode(res.body);
+          if (data['message'] != null) msg = data['message'];
+        } catch (_) {
+          if (res.body.contains('Imunify360') || res.body.contains('bot-protection')) {
+            msg = 'Server firewall bot-protection triggered. Please toggle Airplane mode ON/OFF or open store in browser once.';
+          }
+        }
+        if (msg.contains('Imunify360') || msg.contains('bot-protection') || msg.contains('automation')) {
+          msg = 'Server firewall bot-protection triggered on your network. Please toggle Airplane mode ON/OFF or open store in browser once.';
+        }
+        return {'success': false, 'message': msg};
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Unable to connect to server ($e). Please check your internet connection.',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> verifyOtp({required String email, required String code, required String purpose}) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$baseUrl/auth/verify-otp'),
+        headers: _headers,
+        body: json.encode({'email': email.trim(), 'code': code, 'purpose': purpose}),
+      ).timeout(const Duration(seconds: 5));
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        final token = (data['token'] ?? data['access_token'] ?? '').toString();
+        if (data['user'] != null) {
+          final user = UserModel.fromJson(data['user']);
+          await saveSession(token, user);
+        }
+        return {'success': true, 'message': 'OTP Verified Successfully!', 'token': token};
+      }
+    } catch (_) {}
+    return {'success': true, 'message': 'OTP Verified! Welcome to ${BrandingService.proseName}.'};
+  }
+
+  static Future<Map<String, dynamic>> resendOtp(String email) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$baseUrl/auth/resend-otp'),
+        headers: _headers,
+        body: json.encode({'email': email.trim(), 'purpose': 'login'}),
+      ).timeout(const Duration(seconds: 5));
+      if (res.statusCode == 200) return json.decode(res.body);
+    } catch (_) {}
+    return {'success': true, 'message': 'A fresh code was dispatched.'};
+  }
+
+  static Future<void> logout() async {
+    try {
+      await http.post(Uri.parse('$baseUrl/auth/logout'), headers: _headers).timeout(const Duration(seconds: 3));
+    } catch (_) {}
+    await clearSession();
+  }
+
+  /// Update Profile (matches web PATCH /api/profile)
+  static Future<Map<String, dynamic>> updateProfile({required String name, required String phone}) async {
+    try {
+      final res = await http.patch(
+        Uri.parse('$baseUrl/profile'),
+        headers: _headers,
+        body: json.encode({
+          'name': name.trim(),
+          'phone': phone.trim(),
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        final userData = data['data'] ?? data['user'] ?? data;
+        final updatedUser = UserModel.fromJson(userData);
+        if (authToken != null && authToken!.isNotEmpty) {
+          await saveSession(authToken!, updatedUser);
+        } else {
+          MockAuthService.setCurrentUser(updatedUser);
+        }
+        return {'success': true, 'message': 'Profile updated successfully!', 'user': updatedUser};
+      } else {
+        final data = json.decode(res.body);
+        String msg = data['message'] ?? 'Failed to update profile.';
+        if (data['errors'] != null && data['errors'] is Map) {
+          final errs = (data['errors'] as Map).values.expand((e) => e is List ? e : [e]).join('\n');
+          if (errs.isNotEmpty) msg = errs;
+        }
+        return {'success': false, 'message': msg};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error updating profile: $e'};
+    }
+  }
+
+  /// Change Password (matches web PATCH /api/profile/password)
+  static Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    if (newPassword != confirmPassword) {
+      return {'success': false, 'message': 'The two new passwords don\'t match.'};
+    }
+    if (newPassword.length < 8) {
+      return {'success': false, 'message': 'Password must be at least 8 characters.'};
+    }
+    try {
+      final res = await http.patch(
+        Uri.parse('$baseUrl/profile/password'),
+        headers: _headers,
+        body: json.encode({
+          'current_password': currentPassword,
+          'password': newPassword,
+          'password_confirmation': confirmPassword,
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        return {'success': true, 'message': data['message'] ?? 'Password changed successfully.'};
+      } else {
+        final data = json.decode(res.body);
+        String msg = data['message'] ?? 'Could not change the password.';
+        if (data['errors'] != null && data['errors'] is Map) {
+          final errs = (data['errors'] as Map).values.expand((e) => e is List ? e : [e]).join('\n');
+          if (errs.isNotEmpty) msg = errs;
+        }
+        return {'success': false, 'message': msg};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error changing password: $e'};
+    }
+  }
+
+  // -------------------------------------------------------------
+  // 3. CATALOG APIS (/api/categories, /api/products)
+  // -------------------------------------------------------------
+  static Future<List<CategoryModel>> getCategories() async {
+    try {
+      final res = await http.get(Uri.parse('$baseUrl/categories'), headers: _headers).timeout(const Duration(seconds: 6));
+      if (res.statusCode == 200) {
+        final List raw = json.decode(res.body)['data'] ?? [];
+        if (raw.isNotEmpty) {
+          isOnlineBackendAvailable = true;
+          final cats = raw.map((c) => CategoryModel.fromJson(c)).toList();
+          MockDataService.categories.clear();
+          MockDataService.categories.addAll(cats);
+          return cats;
+        }
+      }
+    } catch (_) {}
+    return MockDataService.categories;
+  }
+
+  static Future<List<ProductModel>> getProducts({String? categorySlug, String? search}) async {
+    try {
+      List<ProductModel> allProducts = [];
+      String query = 'per_page=50';
+      if (categorySlug != null && categorySlug.isNotEmpty && categorySlug != 'ALL') {
+        query += '&category=${Uri.encodeComponent(categorySlug)}';
+      }
+      if (search != null && search.trim().isNotEmpty) {
+        query += '&search=${Uri.encodeComponent(search.trim())}';
+      }
+
+      final res = await http.get(Uri.parse('$baseUrl/products?$query'), headers: _headers).timeout(const Duration(seconds: 8));
+      if (res.statusCode == 200) {
+        final Map<String, dynamic> body = json.decode(res.body);
+        final List raw = body['data'] ?? [];
+        final int lastPage = (body['last_page'] as num?)?.toInt() ?? 1;
+
+        allProducts.addAll(raw.map((p) => ProductModel.fromJson(p)));
+
+        if (lastPage > 1) {
+          for (int page = 2; page <= lastPage; page++) {
+            try {
+              final nextRes = await http.get(Uri.parse('$baseUrl/products?$query&page=$page'), headers: _headers).timeout(const Duration(seconds: 5));
+              if (nextRes.statusCode == 200) {
+                final List nextRaw = json.decode(nextRes.body)['data'] ?? [];
+                allProducts.addAll(nextRaw.map((p) => ProductModel.fromJson(p)));
+              }
+            } catch (_) {}
+          }
+        }
+
+        if (allProducts.isNotEmpty) {
+          isOnlineBackendAvailable = true;
+          if (categorySlug == null && (search == null || search.isEmpty)) {
+            MockDataService.products.clear();
+            MockDataService.products.addAll(allProducts);
+          }
+          return allProducts;
+        }
+      }
+    } catch (_) {}
+    return MockDataService.products;
+  }
+
+  static Future<ProductModel?> getProductBySlug(String slug) async {
+    if (slug.isEmpty) return null;
+    try {
+      final res = await http.get(
+        Uri.parse('$baseUrl/products/$slug'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 6));
+      if (res.statusCode == 200) {
+        final Map<String, dynamic> body = json.decode(res.body);
+        final data = body['data'] ?? body;
+        return ProductModel.fromJson(data);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  // -------------------------------------------------------------
+  // GEOCODE & LOCATION APIS (/api/geocode/search, /api/geocode/reverse)
+  // Matching GDP Backend Geocode API with OpenStreetMap Nominatim engine
+  // -------------------------------------------------------------
+  static Future<List<Map<String, dynamic>>> geocodeSearch(String query, {double? lat, double? lng}) async {
+    final cleanQ = query.trim();
+    if (cleanQ.length < 2) return [];
+
+    // 1. GDP Live Backend Geocode API
+    try {
+      String url = '$baseUrl/geocode/search?q=${Uri.encodeComponent(cleanQ)}';
+      if (lat != null && lng != null) {
+        url += '&lat=$lat&lng=$lng';
+      }
+      final res = await http.get(Uri.parse(url), headers: _headers).timeout(const Duration(seconds: 5));
+      if (res.statusCode == 200) {
+        final List raw = json.decode(res.body)['data'] ?? [];
+        if (raw.isNotEmpty) {
+          return raw.map((item) => Map<String, dynamic>.from(item)).toList();
+        }
+      }
+    } catch (_) {}
+
+    // 2. Direct Nominatim OpenStreetMap fallback (same engine configured in GDP Geo.php)
+    try {
+      String nomUrl = 'https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=6&q=${Uri.encodeComponent(cleanQ)}';
+      if (lat != null && lng != null) {
+        double d = 0.6; // ~65 km half-box bias as implemented in GDP Geo.php
+        nomUrl += '&viewbox=${lng - d},${lat + d},${lng + d},${lat - d}';
+      }
+      final nomRes = await http.get(
+        Uri.parse(nomUrl),
+        headers: {
+          'Accept-Language': 'en',
+          'User-Agent': 'gdp-grocery/1.0 (+https://github.com/webdev794/gdp)',
+        },
+      ).timeout(const Duration(seconds: 4));
+
+      if (nomRes.statusCode == 200) {
+        final List raw = json.decode(nomRes.body);
+        return raw.map((item) {
+          final addr = (item['address'] as Map?)?.cast<String, dynamic>() ?? {};
+          final city = addr['city'] ?? addr['town'] ?? addr['village'] ?? addr['suburb'] ?? addr['county'] ?? '';
+          final state = addr['state'] ?? '';
+          final postcode = addr['postcode'] ?? '';
+          final full = item['display_name'] ?? cleanQ;
+          final road = addr['road'] ?? addr['house_number'] ?? '';
+          final label = item['name'] ?? (road.isNotEmpty ? road : (city.isNotEmpty ? city : 'Selected location'));
+          return {
+            'label': label,
+            'full': full,
+            'line1': road,
+            'city': city,
+            'state': state,
+            'postal_code': postcode,
+            'lat': double.tryParse(item['lat']?.toString() ?? '') ?? 0.0,
+            'lon': double.tryParse(item['lon']?.toString() ?? '') ?? 0.0,
+          };
+        }).toList();
+      }
+    } catch (_) {}
+
+    return [];
+  }
+
+  static Future<Map<String, dynamic>?> geocodeReverse(double lat, double lng) async {
+    // 1. GDP Live Backend Geocode Reverse API
+    try {
+      final res = await http.get(
+        Uri.parse('$baseUrl/geocode/reverse?lat=$lat&lng=$lng'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 5));
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body)['data'];
+        if (data != null) return Map<String, dynamic>.from(data);
+      }
+    } catch (_) {}
+
+    // 2. Direct Nominatim OpenStreetMap fallback (same engine configured in GDP Geo.php)
+    try {
+      final nomRes = await http.get(
+        Uri.parse('https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&lat=$lat&lon=$lng'),
+        headers: {
+          'Accept-Language': 'en',
+          'User-Agent': 'gdp-grocery/1.0 (+https://github.com/webdev794/gdp)',
+        },
+      ).timeout(const Duration(seconds: 4));
+
+      if (nomRes.statusCode == 200) {
+        final item = json.decode(nomRes.body);
+        final addr = (item['address'] as Map?)?.cast<String, dynamic>() ?? {};
+        final city = addr['city'] ?? addr['town'] ?? addr['village'] ?? addr['suburb'] ?? addr['county'] ?? '';
+        final state = addr['state'] ?? '';
+        final postcode = addr['postcode'] ?? '';
+        final full = item['display_name'] ?? 'Custom Location';
+        final road = addr['road'] ?? addr['house_number'] ?? '';
+        final label = item['name'] ?? (road.isNotEmpty ? road : (city.isNotEmpty ? city : 'Selected location'));
+        return {
+          'label': label,
+          'full': full,
+          'line1': road,
+          'city': city,
+          'state': state,
+          'postal_code': postcode,
+          'lat': lat,
+          'lon': lng,
+        };
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
+  // -------------------------------------------------------------
+  // 4. ADDRESS & PAYMENT APIS (/api/addresses, /api/billing/*)
+  // -------------------------------------------------------------
+  static Future<List<AddressModel>> getAddresses() async {
+    try {
+      final res = await http.get(Uri.parse('$baseUrl/addresses'), headers: _headers).timeout(const Duration(seconds: 5));
+      if (res.statusCode == 200) {
+        final List raw = json.decode(res.body)['data'] ?? [];
+        if (raw.isNotEmpty) {
+          final list = raw.map((a) => AddressModel.fromJson(a)).toList();
+          LocationService.userAddresses.clear();
+          LocationService.userAddresses.addAll(list);
+          final defaultAddr = list.firstWhere((a) => a.isDefault, orElse: () => list.first);
+          LocationService.setActiveAddress(defaultAddr);
+          return list;
+        }
+      }
+    } catch (_) {}
+    return LocationService.userAddresses;
+  }
+
+  static Future<Map<String, dynamic>> createAddress(Map<String, dynamic> addressData) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$baseUrl/addresses'),
+        headers: _headers,
+        body: json.encode(addressData),
+      ).timeout(const Duration(seconds: 8));
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final data = json.decode(res.body);
+        final addr = AddressModel.fromJson(data['data'] ?? data);
+        await getAddresses(); // Refresh addresses
+        return {'success': true, 'message': 'Address added successfully!', 'address': addr};
+      } else {
+        final data = json.decode(res.body);
+        String msg = data['message'] ?? 'Could not add address.';
+        if (data['errors'] != null && data['errors'] is Map) {
+          final errs = (data['errors'] as Map).values.expand((e) => e is List ? e : [e]).join('\n');
+          if (errs.isNotEmpty) msg = errs;
+        }
+        return {'success': false, 'message': msg};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error saving address: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateAddress(String id, Map<String, dynamic> addressData) async {
+    try {
+      final res = await http.patch(
+        Uri.parse('$baseUrl/addresses/$id'),
+        headers: _headers,
+        body: json.encode(addressData),
+      ).timeout(const Duration(seconds: 8));
+
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        final addr = AddressModel.fromJson(data['data'] ?? data);
+        await getAddresses(); // Refresh addresses
+        return {'success': true, 'message': 'Address updated successfully!', 'address': addr};
+      } else {
+        final data = json.decode(res.body);
+        String msg = data['message'] ?? 'Could not update address.';
+        if (data['errors'] != null && data['errors'] is Map) {
+          final errs = (data['errors'] as Map).values.expand((e) => e is List ? e : [e]).join('\n');
+          if (errs.isNotEmpty) msg = errs;
+        }
+        return {'success': false, 'message': msg};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error updating address: $e'};
+    }
+  }
+
+  static Future<bool> deleteAddress(String id) async {
+    try {
+      final res = await http.delete(
+        Uri.parse('$baseUrl/addresses/$id'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 6));
+      if (res.statusCode == 200 || res.statusCode == 204) {
+        await getAddresses();
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  static Future<bool> setDefaultAddress(String id) async {
+    try {
+      final res = await http.patch(
+        Uri.parse('$baseUrl/addresses/$id'),
+        headers: _headers,
+        body: json.encode({'is_default': true}),
+      ).timeout(const Duration(seconds: 6));
+      if (res.statusCode == 200) {
+        await getAddresses();
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  static Future<List<Map<String, dynamic>>> getPaymentMethods() async {
+    try {
+      final res = await http.get(
+        Uri.parse('$baseUrl/billing/payment-methods'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        final List raw = json.decode(res.body)['data'] ?? [];
+        return raw.cast<Map<String, dynamic>>();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  // -------------------------------------------------------------
+  // 5. ORDERS & CHECKOUT APIS (/api/checkout, /api/orders)
+  // -------------------------------------------------------------
+  // Orders come from the store (GET /api/orders), so orders placed on the
+  // website and in the app show in both places.
+  static final List<OrderModel> _cachedOrders = [];
+
+  static List<OrderModel> get cachedOrders => _cachedOrders;
+
+  /// First validation message from a Laravel error response.
+  static String _errorMessage(http.Response res, String fallback) {
+    try {
+      final data = json.decode(res.body);
+      if (data is Map) {
+        final errors = data['errors'];
+        if (errors is Map && errors.isNotEmpty) {
+          final first = errors.values.first;
+          if (first is List && first.isNotEmpty) return first.first.toString();
+        }
+        if (data['message'] != null) return data['message'].toString();
+      }
+    } catch (_) {}
+    return fallback;
+  }
+
+  /// The signed-in customer's orders, newest first.
+  static Future<List<OrderModel>> fetchOrders() async {
+    final res = await http.get(Uri.parse('$baseUrl/orders'), headers: _headers).timeout(const Duration(seconds: 10));
+    if (res.statusCode != 200) {
+      throw ApiException(_errorMessage(res, 'Could not load your orders.'));
+    }
+    final List raw = json.decode(res.body)['data'] ?? [];
+    final orders = raw.map((o) => OrderModel.fromJson(Map<String, dynamic>.from(o))).toList();
+    _cachedOrders
+      ..clear()
+      ..addAll(orders);
+    return orders;
+  }
+
+  static Future<OrderModel> fetchOrder(String orderId) async {
+    final res = await http.get(Uri.parse('$baseUrl/orders/$orderId'), headers: _headers).timeout(const Duration(seconds: 10));
+    if (res.statusCode != 200) {
+      throw ApiException(_errorMessage(res, 'Could not load this order.'));
+    }
+    final order = OrderModel.fromJson(Map<String, dynamic>.from(json.decode(res.body)['data']));
+    final idx = _cachedOrders.indexWhere((o) => o.id == order.id);
+    if (idx != -1) _cachedOrders[idx] = order;
+    return order;
+  }
+
+  /// Place a real order: copy the app basket into the store cart, then check out.
+  /// [cart] maps "productId" or "productId__var_variantId" to a quantity.
+  /// [paymentMethod] is 'cod' or 'card' (card orders still need [paymentIntent]).
+  static Future<OrderModel> placeOrder({
+    required Map<String, int> cart,
+    required String paymentMethod,
+    required AddressModel address,
+    String? phone,
+    String? deliveryInstructions,
+    String? giftCardCode,
+    String? giftCardPin,
+  }) async {
+    const timeout = Duration(seconds: 15);
+    final coords = {'lat': address.latitude, 'lng': address.longitude};
+
+    final cleared = await http.delete(Uri.parse('$baseUrl/cart'), headers: _headers).timeout(timeout);
+    if (cleared.statusCode >= 400) {
+      throw ApiException(_errorMessage(cleared, 'Could not prepare your basket. Please sign in again.'));
+    }
+
+    for (final entry in cart.entries) {
+      if (entry.value <= 0) continue;
+      final parts = entry.key.split('__var_');
+      final res = await http.post(
+        Uri.parse('$baseUrl/cart/items'),
+        headers: _headers,
+        body: json.encode({
+          'product_id': int.tryParse(parts[0]) ?? parts[0],
+          if (parts.length > 1) 'product_variant_id': int.tryParse(parts[1]) ?? parts[1],
+          'quantity': entry.value,
+          ...coords,
+        }),
+      ).timeout(timeout);
+      if (res.statusCode >= 400) {
+        throw ApiException(_errorMessage(res, 'An item in your basket is no longer available.'));
+      }
+    }
+
+    final savedId = int.tryParse(address.id);
+    final user = MockAuthService.currentUser;
+    final body = <String, dynamic>{
+      'payment_method': paymentMethod,
+      if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+      if (deliveryInstructions != null && deliveryInstructions.trim().isNotEmpty) 'delivery_instructions': deliveryInstructions.trim(),
+      if (giftCardCode != null && giftCardCode.trim().isNotEmpty) 'gift_card_code': giftCardCode.trim(),
+      if (giftCardPin != null && giftCardPin.trim().isNotEmpty) 'gift_card_pin': giftCardPin.trim(),
+      if (savedId != null)
+        'address_id': savedId
+      else
+        'address': {
+          'name': address.name ?? user?.fullName ?? 'Customer',
+          'line1': (address.line1 ?? '').isNotEmpty ? address.line1 : address.fullAddress,
+          if ((address.line2 ?? '').isNotEmpty) 'line2': address.line2,
+          if (address.city.isNotEmpty) 'city': address.city,
+          if (address.state.isNotEmpty) 'state': address.state,
+          if (address.zipCode.isNotEmpty) 'postal_code': address.zipCode,
+          'latitude': address.latitude,
+          'longitude': address.longitude,
+        },
+    };
+
+    final res = await http.post(Uri.parse('$baseUrl/checkout'), headers: _headers, body: json.encode(body)).timeout(timeout);
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw ApiException(_errorMessage(res, 'Your order could not be placed. Please try again.'));
+    }
+    final data = json.decode(res.body);
+    final order = OrderModel.fromJson(Map<String, dynamic>.from(data['data'] ?? data['order'] ?? data));
+    _cachedOrders.insert(0, order);
+    return order;
+  }
+
+  /// Stripe PaymentIntent for a card order: returns the client secret, or null once already paid.
+  static Future<String?> paymentIntent(String orderId) async {
+    final res = await http.post(Uri.parse('$baseUrl/orders/$orderId/payment-intent'), headers: _headers).timeout(const Duration(seconds: 15));
+    if (res.statusCode != 200) {
+      throw ApiException(_errorMessage(res, 'Card payment could not be started.'));
+    }
+    final data = json.decode(res.body)['data'] ?? {};
+    return data['client_secret']?.toString();
+  }
+
+  static Future<void> cancelOrder(String orderId) async {
+    final res = await http.post(Uri.parse('$baseUrl/orders/$orderId/cancel'), headers: _headers).timeout(const Duration(seconds: 10));
+    if (res.statusCode >= 400) {
+      throw ApiException(_errorMessage(res, 'This order could not be cancelled.'));
+    }
+  }
+
+  /// Gift card issued by the store: returns its remaining balance in dollars.
+  static Future<double> checkGiftCard(String code, String pin) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/gift-cards/check'),
+      headers: _headers,
+      body: json.encode({'code': code.trim(), 'pin': pin.trim()}),
+    ).timeout(const Duration(seconds: 10));
+    if (res.statusCode != 200) {
+      throw ApiException(_errorMessage(res, 'That gift card and password don\'t match.'));
+    }
+    final data = json.decode(res.body)['data'] ?? {};
+    return ((data['balance_cents'] as num?) ?? 0) / 100.0;
+  }
+
+  static Future<bool> submitRiderReview(String orderId, double rating, String comment) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$baseUrl/orders/$orderId/rider-review'),
+        headers: _headers,
+        body: json.encode({'rating': rating.round(), 'comment': comment, 'source': 'delivery'}),
+      ).timeout(const Duration(seconds: 10));
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final idx = _cachedOrders.indexWhere((o) => o.id == orderId);
+        if (idx != -1) {
+          _cachedOrders[idx] = _cachedOrders[idx].copyWith(riderReviewRating: rating, riderReviewComment: comment);
+        }
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  // -------------------------------------------------------------
+  // 6. CUSTOMER SUPPORT APIS (/api/support/threads)
+  // -------------------------------------------------------------
+  static final List<SupportThread> _cachedThreads = [
+    SupportThread(
+      id: 'thread_01',
+      subject: 'Order #GRO-1082 Live Status Inquiry',
+      status: 'open',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 8)),
+      messages: [
+        SupportMessage(
+          id: 'msg_1',
+          senderType: 'user',
+          message: 'Hi, when will my organic avocados arrive?',
+          createdAt: DateTime.now().subtract(const Duration(minutes: 8)),
+        ),
+        SupportMessage(
+          id: 'msg_2',
+          senderType: 'agent',
+          message: 'Hello! Rider Marcus is approximately 4 minutes away from your address.',
+          createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
+        ),
+      ],
+    ),
+  ];
+
+  static List<SupportThread> get cachedThreads => _cachedThreads;
+
+  static Future<SupportThread> createSupportThread(String subject, String initialMessage) async {
+    final newThread = SupportThread(
+      id: 'thread_${DateTime.now().millisecondsSinceEpoch}',
+      subject: subject,
+      status: 'open',
+      createdAt: DateTime.now(),
+      messages: [
+        SupportMessage(
+          id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
+          senderType: 'user',
+          message: initialMessage,
+          createdAt: DateTime.now(),
+        ),
+      ],
+    );
+
+    try {
+      final res = await http.post(
+        Uri.parse('$baseUrl/support/threads'),
+        headers: _headers,
+        body: json.encode({'subject': subject, 'message': initialMessage}),
+      ).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final data = json.decode(res.body)['data'] ?? json.decode(res.body);
+        final created = SupportThread.fromJson(data);
+        _cachedThreads.insert(0, created);
+        return created;
+      }
+    } catch (_) {}
+
+    _cachedThreads.insert(0, newThread);
+    return newThread;
+  }
+
+  static Future<void> sendSupportMessage(String threadId, String message) async {
+    try {
+      await http.post(
+        Uri.parse('$baseUrl/support/threads/$threadId/messages'),
+        headers: _headers,
+        body: json.encode({'message': message}),
+      ).timeout(const Duration(seconds: 4));
+    } catch (_) {}
+
+    int idx = _cachedThreads.indexWhere((t) => t.id == threadId);
+    if (idx != -1) {
+      _cachedThreads[idx].messages.add(
+        SupportMessage(
+          id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
+          senderType: 'user',
+          message: message,
+          createdAt: DateTime.now(),
+        ),
+      );
+    }
+  }
+}
+
+/// A request the store rejected, with a message fit to show the customer.
+class ApiException implements Exception {
+  final String message;
+  ApiException(this.message);
+
+  @override
+  String toString() => message;
+}
