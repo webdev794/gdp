@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import '../../models/address_model.dart';
 import '../../services/api_service.dart';
 import '../../services/location_service.dart';
+import '../../services/mock_auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/add_address_sheet.dart';
 import '../../widgets/blinkit_map_widget.dart';
@@ -41,6 +42,12 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
     super.initState();
     _selectedAddress = LocationService.activeAddress;
     _autoDetectUserCountryAndCity();
+    // Saved addresses on the account (added on the website or in the app).
+    if (MockAuthService.isLoggedIn) {
+      ApiService.getAddresses().then((_) {
+        if (mounted) setState(() {});
+      });
+    }
   }
 
   @override

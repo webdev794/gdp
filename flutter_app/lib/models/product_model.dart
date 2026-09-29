@@ -237,31 +237,30 @@ class ProductModel {
     );
   }
 
+  // Same name -> emoji list as the website (web/src/Storefront.jsx PRODUCT_EMOJI),
+  // shown when a product has no image; anything else gets the cart 🛒.
+  static final List<MapEntry<RegExp, String>> _productEmoji = [
+    for (final e in const [
+      ['banana', '🍌'], ['apple', '🍎'], ['egg', '🥚'], ['milk', '🥛'],
+      ['rice', '🍚'], ['pasta|noodle|spaghetti', '🍝'], ['bread|loaf|bun', '🍞'],
+      ['cheese', '🧀'], ['butter', '🧈'], ['yog[hu]|yoghurt', '🥣'],
+      ['tomato', '🍅'], ['potato', '🥔'], ['onion|garlic', '🧅'],
+      ['carrot', '🥕'], ['orange|citrus', '🍊'], ['grape', '🍇'],
+      ['berr|blueberr|strawberr', '🫐'], ['lemon|lime', '🍋'], ['avocado', '🥑'],
+      ['chicken|poultry', '🍗'], ['fish|salmon|tuna', '🐟'], ['coffee', '☕'],
+      [r'\btea\b', '🍵'], ['water', '💧'], ['juice', '🧃'], ['oil', '🫙'],
+      ['sugar', '🍬'], ['salt', '🧂'], ['chocolate|cookie|biscuit', '🍪'],
+      ['chip|crisp', '🍟'], ['corn', '🌽'], ['bean|lentil', '🫘'],
+      ['flour|wheat', '🌾'], ['honey', '🍯'], ['pepper|chil', '🌶️'],
+      ['mushroom', '🍄'], ['broccoli', '🥦'], ['lettuce|spinach|kale|salad', '🥬'],
+    ])
+      MapEntry(RegExp(e[0], caseSensitive: false), e[1]),
+  ];
+
   static String _getEmojiForProduct(String name, String catName) {
-    final n = name.toLowerCase();
-    final c = catName.toLowerCase();
-    if (n.contains('apple')) return '🍎';
-    if (n.contains('banana')) return '🍌';
-    if (n.contains('lemon')) return '🍋';
-    if (n.contains('mango')) return '🥭';
-    if (n.contains('milk')) return '🥛';
-    if (n.contains('bread')) return '🍞';
-    if (n.contains('egg')) return '🥚';
-    if (n.contains('oil')) return '🫒';
-    if (n.contains('rice') || n.contains('atta') || n.contains('flour')) return '🌾';
-    if (n.contains('tomato')) return '🍅';
-    if (n.contains('potato') || n.contains('onion')) return '🥔';
-    if (n.contains('chips') || n.contains('crisp')) return '🥔';
-    if (n.contains('foil')) return '📦';
-    if (n.contains('lotion') || n.contains('soap') || n.contains('shampoo')) return '🧴';
-    if (n.contains('coke') || n.contains('pepsi') || n.contains('drink') || n.contains('juice')) return '🥤';
-    if (n.contains('biscuit') || n.contains('cookie')) return '🍪';
-    if (n.contains('chocolate')) return '🍫';
-    if (n.contains('coffee') || n.contains('tea')) return '☕';
-    if (n.contains('chicken') || n.contains('meat')) return '🍗';
-    if (c.contains('produce') || c.contains('vegetable') || c.contains('fruit')) return '🥦';
-    if (c.contains('dairy')) return '🧀';
-    if (c.contains('care')) return '🧴';
+    for (final e in _productEmoji) {
+      if (e.key.hasMatch(name)) return e.value;
+    }
     return '🛒';
   }
 

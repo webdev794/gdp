@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../models/order_model.dart';
 import '../screens/checkout/card_payment_screen.dart';
+import '../screens/location/location_picker_screen.dart';
 import '../services/api_service.dart';
 import '../services/location_service.dart';
 import '../services/mock_auth_service.dart';
@@ -92,9 +93,16 @@ class _PaymentSheetState extends State<PaymentSheet> {
     }
   }
 
+  Future<void> _chooseAddress() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => LocationPickerScreen(onAddressSelected: (_) {}),
+    ));
+    if (mounted) setState(() => _error = '');
+  }
+
   Future<void> _placeOrder() async {
     if (!LocationService.hasAddress) {
-      setState(() => _error = 'Choose a delivery address first (tap the address at the top of the home screen).');
+      setState(() => _error = 'Choose a delivery address first.');
       return;
     }
     if (_method == 'cod' && !ApiService.codEnabled) {
@@ -212,9 +220,24 @@ class _PaymentSheetState extends State<PaymentSheet> {
                 ],
               ),
               const SizedBox(height: 16),
-              const Text('Deliver to', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.slateMuted)),
-              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text('Deliver to', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.slateMuted)),
+                  ),
+                  TextButton.icon(
+                    onPressed: _busy ? null : _chooseAddress,
+                    icon: const Icon(Icons.location_on_outlined, size: 18),
+                    label: Text(LocationService.hasAddress ? 'CHANGE' : 'CHOOSE ADDRESS'),
+                  ),
+                ],
+              ),
               Text(LocationService.activeAddress.fullAddress, style: const TextStyle(fontSize: 13, color: AppTheme.slateDark)),
+              if (LocationService.hasAddress && !LocationService.activeAddress.isDeliverable)
+                const Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Text('This address is outside our delivery area.', style: TextStyle(fontSize: 12, color: AppTheme.errorRed, fontWeight: FontWeight.w700)),
+                ),
               const SizedBox(height: 14),
               TextField(
                 controller: _phone,

@@ -78,6 +78,8 @@ class ApiService {
       await prefs.setString(_keyToken, token);
       await prefs.setString(_keyUser, json.encode(user.toJson()));
     } catch (_) {}
+    // Saved addresses come from the account (same as the website); the default becomes active.
+    if (!LocationService.hasAddress) unawaited(getAddresses());
   }
 
   /// Wipe session from device disk on logout
