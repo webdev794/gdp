@@ -251,7 +251,7 @@ class DatabaseSeeder extends Seeder
                 'slug' => 'about', 'title' => 'About Us', 'footer_group' => 'company', 'sort_order' => 1,
                 'content' => 'TUDEE SHOPPING CENTER delivers everyday groceries and household essentials to your door, fast.',
                 'sections' => [
-                    $hero('Groceries at your door in minutes', 'TUDEE SHOPPING CENTER is a demo storefront for fast local grocery delivery — fresh produce, pantry staples and household essentials, picked and delivered from a store near you.', '/img/pages/about-hero.jpg', 'Start shopping', '#/'),
+                    $hero('Groceries at your door in minutes', 'TUDEE SHOPPING CENTER is your neighbourhood store for fast grocery delivery — fresh produce, pantry staples and household essentials, picked and delivered from a store near you.', '/img/pages/about-hero.jpg', 'Start shopping', '#/'),
                     $stats('TUDEE SHOPPING CENTER by the numbers', [
                         ['~10 min', 'Average delivery time'],
                         ['20+', 'Categories in stock'],
@@ -270,7 +270,7 @@ class DatabaseSeeder extends Seeder
                         ['We pick and pack', 'Your order is assembled at the nearest store within minutes.'],
                         ['Delivered to your door', 'Track it on the way; hand over cash on arrival if you chose that.'],
                     ]),
-                    $mediaText('/img/pages/about-story.jpg', 'left', 'Our story', "TUDEE SHOPPING CENTER started as a single neighbourhood store and now runs a small network of local hubs.\n\nThis whole site is a **demo build** — every page here, including this one, is editable in **Admin -> Pages** using drag-and-drop sections."),
+                    $mediaText('/img/pages/about-story.jpg', 'left', 'Our story', "TUDEE SHOPPING CENTER started as a single neighbourhood store and now runs a small network of local hubs."),
                     $mediaText('/img/pages/about-hero.jpg', 'right', 'From local stores, not a warehouse', "We stock and dispatch from small hubs inside your neighbourhood, so produce travels metres, not miles.\n\nShorter journeys mean fresher food, less packaging and a delivery rider who can be at your door before the kettle boils."),
                     $quote('I ordered eggs and coriander at 8pm and it was at my door before I had finished chopping the onions. Genuinely faster than walking to the corner shop.', 'Priya M. — early tester'),
                     $features('On the roadmap', [
@@ -305,7 +305,7 @@ class DatabaseSeeder extends Seeder
                         ['Sustainability', 'Less waste, less packaging, shorter journeys.'],
                     ]),
                     $quote('Short, useful and no fluff — I actually cooked two of the weeknight recipes the same evening I read them.', 'Alex R. — newsletter subscriber'),
-                    $mediaText('/img/pages/blog-dinner.jpg', 'right', 'Write for us', "Got a fast recipe, a market tip or a strong opinion about tinned tomatoes? We publish guest posts.\n\nEmail **hello@grocerly.example** with a two-line pitch. This is a demo build, so treat these as sample posts you can replace in **Admin -> Pages**."),
+                    $mediaText('/img/pages/blog-dinner.jpg', 'right', 'Write for us', "Got a fast recipe, a market tip or a strong opinion about tinned tomatoes? We publish guest posts.\n\nEmail **hello@grocerly.example** with a two-line pitch."),
                     $richText("**Editorial note** — nothing here is sponsored. Product mentions are picked by the writer, and prices and availability shown in posts can change."),
                     $cta('Get new posts by email', "A subscribe box is coming soon — for now, check back weekly for the next one."),
                 ],
@@ -540,10 +540,6 @@ We acknowledge every complaint within 48 hours and aim to resolve it within one 
 **GSTIN:** 00AAAAA0000A0Z0
 
 **Registered address:** 4th Floor, Market House, 12 Commerce Road, Cityville, State 100001, India
-
----
-
-*This is placeholder contact information for a demo store. Replace the entity name, addresses, identifiers and officer details in Admin -> Pages before going live.*
 MD,
             ],
             [
@@ -588,7 +584,7 @@ TUDEE SHOPPING CENTER Retail Private Limited (**"TUDEE SHOPPING CENTER"**, **"we
 
 By using the Platform you agree to the practices described in this Policy. If you do not agree, please do not use the Platform.
 
-**Effective date:** this is a demo document — set a real date before going live.
+**Effective date:** 29 September 2026.
 
 ## 1. Information we collect
 
@@ -696,10 +692,6 @@ In line with the Consumer Protection (E-Commerce) Rules, 2020, we acknowledge co
 ## 13. Changes to this Policy
 
 We may update this Policy from time to time. If we make material changes we will post the updated Policy on the Platform and, where appropriate, notify you. The **Effective date** above shows when it last changed.
-
----
-
-*This is placeholder text for a demo store. Replace it with a privacy policy prepared and reviewed by your legal team, and set a real effective date, entity details and contact information in Admin -> Pages.*
 MD,
             ],
             [
@@ -709,7 +701,7 @@ MD,
                 'content' => <<<'MD'
 These Terms of Service (**"Terms"**) govern your use of the TUDEE SHOPPING CENTER website and app (the **"Platform"**), operated by TUDEE SHOPPING CENTER Retail Private Limited (**"TUDEE SHOPPING CENTER"**, **"we"**, **"us"** or **"our"**). By creating an account, placing an order or otherwise using the Platform, you agree to these Terms and to our Privacy Policy. If you do not agree, do not use the Platform.
 
-**Effective date:** this is a demo document — set a real date before going live.
+**Effective date:** 29 September 2026.
 
 ## 1. Eligibility and your account
 
@@ -815,10 +807,6 @@ In line with the Consumer Protection (E-Commerce) Rules, 2020, we acknowledge co
 - **No waiver** — our failure to enforce a provision is not a waiver of it.
 - **Assignment** — you may not assign these Terms; we may assign them in connection with a merger, acquisition or sale of assets.
 - **Force majeure** — we are not liable for delays or failures caused by events beyond our reasonable control.
-
----
-
-*This is placeholder text for a demo store. Replace it with terms of service prepared and reviewed by your legal team, and set a real effective date, entity details, governing law and contact information in Admin -> Pages.*
 MD,
             ],
             [
@@ -831,7 +819,7 @@ TUDEE SHOPPING CENTER Retail Private Limited (**"TUDEE SHOPPING CENTER"**) takes
 
 This page sets out how to report a security issue to us and what you can expect in return.
 
-**Effective date:** this is a demo document — set a real date before going live.
+**Effective date:** 29 September 2026.
 
 ## Our commitment
 
@@ -909,10 +897,6 @@ With your consent, we are happy to acknowledge researchers who report valid, pre
 Security reports: **security@grocerly.example**
 
 For anything else, see the [Contact](/#/p/contact) page.
-
----
-
-*This is placeholder text for a demo store. Replace it with a responsible-disclosure policy reviewed by your security and legal teams, and set real scope, contact details and an effective date in Admin -> Pages.*
 MD,
             ],
         ];
