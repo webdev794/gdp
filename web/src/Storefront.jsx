@@ -1288,7 +1288,8 @@ export default function Storefront() {
     if (typeof supportView !== 'object' || !supportView) return
     setSupportBusy(true)
     try {
-      const response = await authPost(`/support/threads/${supportView.id}/messages`, { body: 'Client ended chat.' })
+      // Marks the chat resolved for the store too (same as the app); replying re-opens it.
+      const response = await authPost(`/support/threads/${supportView.id}/close`, {})
       const data = await responseJson(response)
       if (!response.ok) throw new Error(data.message ?? 'Could not end the chat.')
       loadThreads()
