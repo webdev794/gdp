@@ -1,98 +1,73 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 import '../models/review_model.dart';
+import 'api_service.dart';
 
+/// Product reviews from the store (GET/POST /api/products/{slug}/reviews), so
+/// ratings written on the website show in the app and vice versa.
 class ReviewService {
-  static const String _storageKey = 'grocerly_product_reviews';
   static final Map<String, List<ReviewModel>> _reviewsByProduct = {};
+  static final Map<String, double> _average = {};
+  static final Map<String, int> _count = {};
 
-  /// Global notifier to trigger UI rebuilds when a new review is added
+  /// Bumped whenever reviews change, so product cards and sheets rebuild.
   static final ValueNotifier<int> changeNotifier = ValueNotifier<int>(0);
 
-  /// Load persisted reviews from device disk
-  static Future<void> init() async {
+  static Future<void> init() async {}
+
+  /// Card stars come with the product list (rating_avg / rating_count).
+  static void recordSummary(String productId, double? average, int count) {
+    _average[productId] = average ?? 0.0;
+    _count[productId] = count;
+  }
+
+  static List<ReviewModel> getReviews(String productId) => List.unmodifiable(_reviewsByProduct[productId] ?? []);
+  static int getReviewCount(String productId) => _count[productId] ?? 0;
+  static double getAverageRating(String productId) => double.parse((_average[productId] ?? 0.0).toStringAsFixed(1));
+
+  static Future<void> load(String productId, String slug) async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedStr = prefs.getString(_storageKey);
-      if (savedStr != null && savedStr.isNotEmpty) {
-        final Map<String, dynamic> rawMap = json.decode(savedStr);
-        _reviewsByProduct.clear();
-        rawMap.forEach((productId, list) {
-          if (list is List) {
-            _reviewsByProduct[productId] = list
-                .map((item) => ReviewModel.fromJson(Map<String, dynamic>.from(item)))
-                .toList();
-          }
-        });
-      }
+      final res = await http
+          .get(Uri.parse('${ApiService.baseUrl}/products/$slug/reviews'), headers: ApiService.headers)
+          .timeout(const Duration(seconds: 10));
+      if (res.statusCode != 200) return;
+      final data = json.decode(res.body);
+      _reviewsByProduct[productId] = (data['data'] as List? ?? [])
+          .map((r) => ReviewModel.fromJson(Map<String, dynamic>.from(r)))
+          .toList();
+      final summary = data['summary'] ?? {};
+      recordSummary(productId, (summary['average'] as num?)?.toDouble(), (summary['count'] as num?)?.toInt() ?? 0);
+      changeNotifier.value++;
     } catch (_) {}
   }
 
-  /// Persist current reviews map to device disk
-  static Future<void> _saveToDisk() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final Map<String, dynamic> rawMap = {};
-      _reviewsByProduct.forEach((productId, reviews) {
-        rawMap[productId] = reviews.map((r) => r.toJson()).toList();
-      });
-      await prefs.setString(_storageKey, json.encode(rawMap));
-    } catch (_) {}
-  }
-
-  /// Get all customer reviews for a specific product
-  static List<ReviewModel> getReviews(String productId) {
-    return List.unmodifiable(_reviewsByProduct[productId] ?? []);
-  }
-
-  /// Count of customer reviews for a specific product
-  static int getReviewCount(String productId) {
-    return _reviewsByProduct[productId]?.length ?? 0;
-  }
-
-  /// Calculate real-time dynamic average star rating for a product (0.0 if no reviews)
-  static double getAverageRating(String productId) {
-    final list = _reviewsByProduct[productId];
-    if (list == null || list.isEmpty) return 0.0;
-    final double total = list.fold(0.0, (sum, r) => sum + r.rating);
-    final double avg = total / list.length;
-    return double.parse(avg.toStringAsFixed(1));
-  }
-
-  /// Add a new verified customer review strictly scoped to this product
-  static Future<ReviewModel> addReview({
+  /// Rate one item on one of the customer's orders (once per item per order).
+  static Future<ReviewModel> reviewOrderItem({
+    required String orderId,
     required String productId,
-    required String userId,
-    required String userName,
-    required double rating,
+    required int rating,
     required String comment,
   }) async {
-    final newReview = ReviewModel(
-      id: 'rev_${DateTime.now().millisecondsSinceEpoch}',
-      productId: productId,
-      userId: userId,
-      userName: userName.isNotEmpty ? userName : 'Verified Customer',
-      rating: rating.clamp(1.0, 5.0),
-      comment: comment.trim(),
-      createdAt: DateTime.now(),
-    );
-
-    if (!_reviewsByProduct.containsKey(productId)) {
-      _reviewsByProduct[productId] = [];
+    final res = await http
+        .post(
+          Uri.parse('${ApiService.baseUrl}/orders/$orderId/reviews'),
+          headers: ApiService.headers,
+          body: json.encode({'product_id': int.tryParse(productId) ?? productId, 'rating': rating.clamp(1, 5), 'comment': comment.trim()}),
+        )
+        .timeout(const Duration(seconds: 10));
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw ApiException(ApiService.errorMessage(res, 'Your review could not be saved.'));
     }
-    // Insert at front so newest reviews appear first
-    _reviewsByProduct[productId]!.insert(0, newReview);
-
-    await _saveToDisk();
     changeNotifier.value++;
-    return newReview;
+    return ReviewModel.fromJson(Map<String, dynamic>.from(json.decode(res.body)['data']));
   }
 
-  /// Clear reviews (used in test suite)
   @visibleForTesting
   static void clearMemoryForTesting() {
     _reviewsByProduct.clear();
+    _average.clear();
+    _count.clear();
     changeNotifier.value = 0;
   }
 }

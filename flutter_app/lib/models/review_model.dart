@@ -28,14 +28,13 @@ class ReviewModel {
   };
 
   factory ReviewModel.fromJson(Map<String, dynamic> json) => ReviewModel(
-    id: json['id'] ?? '',
-    productId: json['product_id'] ?? '',
-    userId: json['user_id'] ?? '',
-    userName: json['user_name'] ?? 'Verified Customer',
+    id: json['id']?.toString() ?? '',
+    productId: json['product_id']?.toString() ?? '',
+    userId: json['user_id']?.toString() ?? '',
+    // Store sends "author" (first name + last initial).
+    userName: (json['author'] ?? json['user_name'] ?? 'Customer').toString(),
     rating: (json['rating'] as num?)?.toDouble() ?? 5.0,
-    comment: json['comment'] ?? '',
-    createdAt: json['created_at'] != null
-        ? (DateTime.tryParse(json['created_at'].toString()) ?? DateTime.now())
-        : DateTime.now(),
+    comment: json['comment']?.toString() ?? '',
+    createdAt: DateTime.tryParse((json['updated_at'] ?? json['created_at'] ?? '').toString())?.toLocal() ?? DateTime.now(),
   );
 }

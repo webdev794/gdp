@@ -101,6 +101,8 @@ class OrderModel {
   final double riderRating;
   final double? riderReviewRating;
   final String? riderReviewComment;
+  /// Item ratings the customer gave on this order: product id -> stars (1..5).
+  final Map<String, int> itemRatings;
 
   OrderModel({
     required this.id,
@@ -123,6 +125,7 @@ class OrderModel {
     this.riderRating = 4.9,
     this.riderReviewRating,
     this.riderReviewComment,
+    this.itemRatings = const {},
   });
 
   OrderModel copyWith({
@@ -133,6 +136,7 @@ class OrderModel {
     String? riderPhone,
     String? riderVehicle,
     double? riderRating,
+    Map<String, int>? itemRatings,
   }) {
     return OrderModel(
       id: id,
@@ -155,6 +159,7 @@ class OrderModel {
       riderRating: riderRating ?? this.riderRating,
       riderReviewRating: riderReviewRating ?? this.riderReviewRating,
       riderReviewComment: riderReviewComment ?? this.riderReviewComment,
+      itemRatings: itemRatings ?? this.itemRatings,
     );
   }
 
@@ -182,6 +187,10 @@ class OrderModel {
       riderRating: (json['rider']?['rating'] as num?)?.toDouble() ?? 0,
       riderReviewRating: (json['rider_review']?['rating'] as num?)?.toDouble(),
       riderReviewComment: json['rider_review']?['comment'],
+      itemRatings: {
+        for (final r in (json['product_reviews'] as List? ?? []))
+          r['product_id'].toString(): (r['rating'] as num?)?.toInt() ?? 0,
+      },
     );
   }
 

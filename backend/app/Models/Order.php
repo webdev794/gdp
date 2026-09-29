@@ -128,6 +128,11 @@ class Order extends Model
         return $this->belongsTo(User::class, 'delivery_partner_id');
     }
 
+    public function productReviews(): HasMany
+    {
+        return $this->hasMany(ProductReview::class);
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);

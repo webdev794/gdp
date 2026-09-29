@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../models/product_model.dart';
 import '../models/review_model.dart';
-import '../models/user_model.dart';
 import '../screens/auth/login_screen.dart';
 import '../services/api_service.dart';
 import '../services/mock_auth_service.dart';
@@ -40,9 +38,6 @@ class _ProductDetailsSheetState extends State<ProductDetailsSheet> {
   int _currentImageIndex = 0;
   bool _isLoadingFreshData = false;
   final PageController _pageController = PageController();
-  final TextEditingController _reviewController = TextEditingController();
-  double _userRating = 5.0;
-  bool _isSubmittingReview = false;
 
   String get _currentCartKey {
     return _selectedVariant != null
@@ -67,6 +62,8 @@ class _ProductDetailsSheetState extends State<ProductDetailsSheet> {
         : widget.initialQuantity;
     _fetchFreshDetails();
     ReviewService.changeNotifier.addListener(_onReviewsUpdated);
+    // Shared reviews from the store (same as the website).
+    if (_product.slug.isNotEmpty) ReviewService.load(_product.id, _product.slug);
   }
 
   void _onReviewsUpdated() {
@@ -97,7 +94,6 @@ class _ProductDetailsSheetState extends State<ProductDetailsSheet> {
   void dispose() {
     ReviewService.changeNotifier.removeListener(_onReviewsUpdated);
     _pageController.dispose();
-    _reviewController.dispose();
     super.dispose();
   }
 
@@ -1022,9 +1018,8 @@ class _ProductDetailsSheetState extends State<ProductDetailsSheet> {
 
   Widget _buildCustomerReviewsSection() {
     final reviews = ReviewService.getReviews(_product.id);
-    final count = reviews.length;
+    final count = ReviewService.getReviewCount(_product.id);
     final avgRating = ReviewService.getAverageRating(_product.id);
-    final currentUser = MockAuthService.currentUser;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1102,11 +1097,8 @@ class _ProductDetailsSheetState extends State<ProductDetailsSheet> {
 
         const SizedBox(height: 14),
 
-        // Post a review: Login required
-        if (currentUser == null)
-          _buildLoginPromptForReview()
-        else
-          _buildReviewComposer(currentUser),
+        // Reviews are written from an order (My Orders -> order -> Rate), once per item per order.
+        Text('Ordered this? Rate it from My Orders.', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
       ],
     );
   }
@@ -1195,241 +1187,6 @@ class _ProductDetailsSheetState extends State<ProductDetailsSheet> {
         ],
       ),
     );
-  }
-
-  Widget _buildLoginPromptForReview() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: const Icon(Icons.lock_outline, size: 18, color: AppTheme.emeraldPrimary),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Write a Review',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.slateDark),
-                ),
-                Text(
-                  'Log in to submit your rating & review.',
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-              ).then((_) {
-                if (mounted) setState(() {});
-              });
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.emeraldPrimary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              minimumSize: const Size(64, 34),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
-            child: const Text('LOG IN', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildReviewComposer(UserModel user) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7FAF8),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.emeraldPrimary.withAlpha(60)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 12,
-                backgroundColor: AppTheme.emeraldPrimary,
-                child: Text(
-                  user.firstName.isNotEmpty ? user.firstName[0].toUpperCase() : 'U',
-                  style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Rate & Review as ${user.fullName}',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.slateDark),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          // Interactive Star Rating Selector
-          Row(
-            children: [
-              const Text('Rating: ', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.slateDark)),
-              const SizedBox(width: 4),
-              Row(
-                children: List.generate(5, (index) {
-                  final starVal = (index + 1).toDouble();
-                  final isSelected = starVal <= _userRating;
-                  return InkWell(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() => _userRating = starVal);
-                    },
-                    borderRadius: BorderRadius.circular(14),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: Icon(
-                        isSelected ? Icons.star : Icons.star_border,
-                        color: Colors.amber,
-                        size: 26,
-                      ),
-                    ),
-                  );
-                }),
-              ),
-              const SizedBox(width: 6),
-              Text(
-                '${_userRating.toInt()} / 5',
-                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: Colors.amber),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          // Comment input
-          TextField(
-            controller: _reviewController,
-            maxLines: 3,
-            minLines: 2,
-            maxLength: 300,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: InputDecoration(
-              hintText: 'Share your experience about freshness, quality, and delivery...',
-              hintStyle: TextStyle(fontSize: 12, color: Colors.grey.shade400),
-              filled: true,
-              fillColor: Colors.white,
-              contentPadding: const EdgeInsets.all(10),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: AppTheme.emeraldPrimary, width: 1.5),
-              ),
-            ),
-            style: const TextStyle(fontSize: 12.5),
-          ),
-          const SizedBox(height: 4),
-          // Submit Button
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton.icon(
-              onPressed: _isSubmittingReview ? null : () => _submitReview(user),
-              icon: _isSubmittingReview
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(Icons.send_rounded, size: 14),
-              label: Text(_isSubmittingReview ? 'Submitting...' : 'Submit Review'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.emeraldPrimary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _submitReview(UserModel user) async {
-    final comment = _reviewController.text.trim();
-    if (comment.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please write a short review before submitting.'),
-          backgroundColor: AppTheme.coralAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    setState(() => _isSubmittingReview = true);
-
-    try {
-      await ReviewService.addReview(
-        productId: _product.id,
-        userId: user.id,
-        userName: user.fullName,
-        rating: _userRating,
-        comment: comment,
-      );
-
-      if (mounted) {
-        _reviewController.clear();
-        setState(() {
-          _userRating = 5.0;
-          _isSubmittingReview = false;
-        });
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Review submitted successfully! Thank you for your feedback.'),
-            backgroundColor: AppTheme.emeraldPrimary,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() => _isSubmittingReview = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to post review. Please try again.'),
-            backgroundColor: AppTheme.errorRed,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
   }
 
   String _formatReviewDate(DateTime dt) {

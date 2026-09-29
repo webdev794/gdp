@@ -106,16 +106,16 @@ function Loading({ children }) {
 }
 // Left sidebar vs top-right. Support/Settings stay top-right (used less often,
 // and Support carries the live badge next to the notification bell).
-const PRIMARY_TABS = ['dashboard', 'orders', 'products', 'categories', 'customers', 'riders', 'stores', 'branding', 'secure']
+const PRIMARY_TABS = ['dashboard', 'orders', 'products', 'categories', 'reviews', 'customers', 'riders', 'stores', 'branding', 'secure']
 const TOP_TABS = ['support', 'settings']
 const TAB_LABELS = {
   dashboard: 'Dashboard', orders: 'Orders', products: 'Products', categories: 'Categories',
-  customers: 'Customers', riders: 'Riders', stores: 'Stores', branding: 'Store settings', secure: 'Secure access',
+  reviews: 'Reviews', customers: 'Customers', riders: 'Riders', stores: 'Stores', branding: 'Store settings', secure: 'Secure access',
   homepage: 'Homepage', support: 'Support', settings: 'Settings',
 }
 const TAB_ICONS = {
   dashboard: '\u{1F4CA}', orders: '\u{1F9FE}', products: '\u{1F4E6}', categories: '\u{1F5C2}️',
-  customers: '\u{1F465}', riders: '\u{1F6F5}', stores: '\u{1F3EC}', branding: '\u{1F3A8}', secure: '\u{1F510}',
+  reviews: '⭐', customers: '\u{1F465}', riders: '\u{1F6F5}', stores: '\u{1F3EC}', branding: '\u{1F3A8}', secure: '\u{1F510}',
   homepage: '\u{1F5BC}️',
 }
 const EMPTY_BRANDING = { store_name: '', tagline: '', logo_url: '', favicon_url: '', contact_email: '', contact_phone: '', contact_address: '', theme: 'light', layout_width: 'boxed', color_brand: '#1f7a3d', color_accent: '#ffd23f', color_heading: '#18211c' }
@@ -352,6 +352,10 @@ export default function Admin({ token, onClose }) {
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
   const [customers, setCustomers] = useState([])
+  const [reviews, setReviews] = useState([])
+  const [reviewsMeta, setReviewsMeta] = useState(null)
+  const [reviewsPage, setReviewsPage] = useState(1)
+  const [reviewsFilter, setReviewsFilter] = useState('')
   const [customerDetail, setCustomerDetail] = useState(null)
   const [orderDetail, setOrderDetail] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
@@ -513,6 +517,22 @@ export default function Admin({ token, onClose }) {
       .then((data) => { setCustomers(data.data ?? []); setCustomersMeta(data.meta ?? null) }).catch(() => setMessage('Could not load customers.')))
   }, [authHeaders, customersPage, pageSize, track])
 
+  const loadReviews = useCallback(() => {
+    const qs = new URLSearchParams({ page: reviewsPage })
+    if (reviewsFilter) qs.set('status', reviewsFilter)
+    track('reviews', fetch(`${API_URL}/admin/reviews?${qs}`, { headers: authHeaders() }).then(readJson)
+      .then((data) => { setReviews(data.data ?? []); setReviewsMeta(data.meta ?? null) }).catch(() => setMessage('Could not load reviews.')))
+  }, [authHeaders, reviewsPage, reviewsFilter, track])
+
+  const moderateReview = async (review, hide) => {
+    const response = hide === null
+      ? await fetch(`${API_URL}/admin/reviews/${review.id}`, { method: 'DELETE', headers: authHeaders() })
+      : await fetch(`${API_URL}/admin/reviews/${review.id}`, { method: 'PATCH', headers: jsonHeaders(), body: JSON.stringify({ is_hidden: hide }) })
+    if (!response.ok) { setMessage('Could not update the review.'); return }
+    setMessage(hide === null ? 'Review deleted.' : hide ? 'Review hidden from the website and app.' : 'Review shown again.')
+    loadReviews()
+  }
+
   const loadRiders = useCallback(() => {
     track('riders', fetch(`${API_URL}/admin/riders`, { headers: authHeaders() }).then(readJson)
       .then((data) => setRiders(data.data ?? [])).catch(() => setMessage('Could not load riders.')))
@@ -572,6 +592,7 @@ export default function Admin({ token, onClose }) {
   useEffect(() => { if (tab === 'products') { loadProducts(); loadCategories(); loadStores() } }, [tab, loadProducts, loadCategories, loadStores])
   useEffect(() => { if (tab === 'categories') loadCategories() }, [tab, loadCategories])
   useEffect(() => { if (tab === 'customers') loadCustomers() }, [tab, loadCustomers])
+  useEffect(() => { if (tab === 'reviews') loadReviews() }, [tab, loadReviews])
   useEffect(() => { if (tab === 'riders') { loadRiders(); loadStores() } }, [tab, loadRiders, loadStores])
   useEffect(() => { if (tab === 'stores') loadStores() }, [tab, loadStores])
   useEffect(() => { if (tab === 'homepage') { loadBanners(); loadHomeTiles(); loadCategories() } }, [tab, loadBanners, loadHomeTiles, loadCategories])
@@ -2252,6 +2273,40 @@ export default function Admin({ token, onClose }) {
             </table>
           )}
           <Pager page={categoriesPage} pageCount={Math.max(1, Math.ceil(categories.length / pageSize))} total={categories.length} onPage={setCategoriesPage} pageSize={pageSize} onPageSize={setPageSize} />
+        </section>
+      )}
+
+      {tab === 'reviews' && (
+        <section className="admin-panel">
+          <div className="admin-toolbar">
+            <select value={reviewsFilter} onChange={(event) => { setReviewsFilter(event.target.value); setReviewsPage(1) }} aria-label="Show">
+              <option value="">All reviews</option>
+              <option value="visible">Visible</option>
+              <option value="hidden">Hidden</option>
+            </select>
+            <span className="muted">Customers rate products after delivery, on the website or in the app. Hidden reviews don't show anywhere or count towards the rating.</span>
+          </div>
+          {listBusy.reviews && reviews.length === 0 ? <Loading>Loading reviews…</Loading> : reviews.length === 0 ? <p className="admin-empty">No reviews yet.</p> : (
+            <table className="admin-table">
+              <thead><tr><th>Product</th><th>Rating</th><th>Comment</th><th>Customer</th><th>Date</th><th></th></tr></thead>
+              <tbody>
+                {reviews.map((review) => (
+                  <tr key={review.id} style={review.is_hidden ? { opacity: 0.55 } : undefined}>
+                    <td>{review.product?.name ?? '—'}</td>
+                    <td>{'\u2605'.repeat(review.rating)}{'\u2606'.repeat(5 - review.rating)}</td>
+                    <td>{review.comment || <span className="muted">—</span>}</td>
+                    <td>{review.customer?.name}<span className="admin-note">{review.customer?.email}</span></td>
+                    <td>{new Date(review.updated_at).toLocaleDateString()}</td>
+                    <td className="admin-actions">
+                      <button className="act" type="button" onClick={() => moderateReview(review, !review.is_hidden)}>{review.is_hidden ? 'Show' : 'Hide'}</button>
+                      <button className="act danger" type="button" onClick={() => { if (window.confirm('Delete this review?')) moderateReview(review, null) }}>Delete</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <Pager page={reviewsMeta?.current_page ?? reviewsPage} pageCount={reviewsMeta?.last_page ?? 1} total={reviewsMeta?.total ?? reviews.length} onPage={setReviewsPage} />
         </section>
       )}
 

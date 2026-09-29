@@ -1,4 +1,5 @@
 import '../config.dart';
+import '../services/review_service.dart';
 class ProductVariantModel {
   final String id;
   final String productId;
@@ -197,6 +198,9 @@ class ProductModel {
     final prodName = json['name']?.toString() ?? 'Product';
     final slug = json['slug']?.toString() ?? '';
     final isOut = json['out_of_stock'] == true;
+    if (json.containsKey('rating_count')) {
+      ReviewService.recordSummary(json['id']?.toString() ?? '', (json['rating_avg'] as num?)?.toDouble(), (json['rating_count'] as num?)?.toInt() ?? 0);
+    }
     final qty = (json['inventory_quantity'] as num?)?.toInt();
     final inStock = !isOut && (qty == null || qty > 0);
     final desc = json['description']?.toString();

@@ -16,7 +16,7 @@ class OrderController extends Controller
     public function index(Request $request): JsonResponse
     {
         $orders = $request->user()->orders()
-            ->with(['items', 'riderReview'])
+            ->with(['items', 'riderReview', 'productReviews'])
             ->latest()
             ->paginate(20);
 
@@ -38,7 +38,7 @@ class OrderController extends Controller
     {
         abort_unless($order->user_id === $request->user()->id, 404);
 
-        return response()->json(['data' => $order->load('items', 'riderReview')->makeVisible(['delivery_code', 'delivery_code_expires_at'])]);
+        return response()->json(['data' => $order->load('items', 'riderReview', 'productReviews')->makeVisible(['delivery_code', 'delivery_code_expires_at'])]);
     }
 
     /**

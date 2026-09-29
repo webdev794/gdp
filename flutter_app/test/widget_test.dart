@@ -542,46 +542,17 @@ void main() {
       }
     });
 
-    test('ReviewService isolates reviews per product and computes dynamic average', () async {
-      SharedPreferences.setMockInitialValues({});
-      await ReviewService.init();
+    test('ReviewService keeps per-product star summaries from the store', () {
       ReviewService.clearMemoryForTesting();
-
       expect(ReviewService.getReviewCount('p_apple'), 0);
       expect(ReviewService.getAverageRating('p_apple'), 0.0);
-      expect(ReviewService.getReviewCount('p_banana'), 0);
 
-      // Add review to p_apple only
-      await ReviewService.addReview(
-        productId: 'p_apple',
-        userId: 'u1',
-        userName: 'Alice',
-        rating: 5.0,
-        comment: 'Super crisp and delicious!',
-      );
+      // Product JSON carries rating_avg / rating_count from the store.
+      ProductModel.fromJson({'id': 'p_apple', 'name': 'Apple', 'price_cents': 100, 'rating_avg': 4.5, 'rating_count': 2});
 
-      // Verify p_apple has 1 review
-      expect(ReviewService.getReviewCount('p_apple'), 1);
-      expect(ReviewService.getAverageRating('p_apple'), 5.0);
-      expect(ReviewService.getReviews('p_apple').first.comment, 'Super crisp and delicious!');
-
-      // Verify p_banana remains completely untouched (0 reviews)
-      expect(ReviewService.getReviewCount('p_banana'), 0);
-      expect(ReviewService.getAverageRating('p_banana'), 0.0);
-      expect(ReviewService.getReviews('p_banana').isEmpty, isTrue);
-
-      // Add second review to p_apple
-      await ReviewService.addReview(
-        productId: 'p_apple',
-        userId: 'u2',
-        userName: 'Bob',
-        rating: 4.0,
-        comment: 'Good quality, fast delivery.',
-      );
-
-      // Average should now be 4.5
       expect(ReviewService.getReviewCount('p_apple'), 2);
       expect(ReviewService.getAverageRating('p_apple'), 4.5);
+      expect(ReviewService.getReviewCount('p_banana'), 0);
     });
 
     testWidgets('ProductDetailsSheet displays customer reviews section and requires login for guest', (tester) async {
@@ -625,9 +596,9 @@ void main() {
       expect(find.text('No reviews yet'), findsWidgets);
       expect(find.text('Be the first verified customer to share your thoughts on Fresh Strawberries!'), findsOneWidget);
 
-      // Guest prompt
-      expect(find.text('Write a Review'), findsOneWidget);
-      expect(find.text('LOG IN'), findsOneWidget);
+      // No review form on the product sheet — reviews are written from an order.
+      expect(find.text('Write a Review'), findsNothing);
+      expect(find.text('Ordered this? Rate it from My Orders.'), findsOneWidget);
 
       // Now simulate logged-in user
       MockAuthService.setCurrentUser(
@@ -650,9 +621,9 @@ void main() {
       await tester.drag(find.byType(SingleChildScrollView), const Offset(0, -600));
       await tester.pumpAndSettle();
 
-      // Composer should now be visible with user's name
-      expect(find.text('Rate & Review as Sarah Connor'), findsOneWidget);
-      expect(find.text('Submit Review'), findsOneWidget);
+      // Signed in but this product was never delivered to them -> no composer (store rule).
+      expect(find.text('Ordered this? Rate it from My Orders.'), findsOneWidget);
+      expect(find.text('Submit Review'), findsNothing);
 
       // Clean up
       MockAuthService.logout();

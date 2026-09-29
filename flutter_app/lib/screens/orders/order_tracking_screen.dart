@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:printing/printing.dart';
 import '../../models/order_model.dart';
 import '../../services/api_service.dart';
+import '../../services/review_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/responsive.dart';
 import '../../widgets/rider_review_dialog.dart';
@@ -252,6 +253,93 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.errorRed));
+    }
+  }
+
+  // Items can be rated once the order is confirmed (store rule), once per item per order.
+  bool get _canRateItems => _currentOrder.status != 'cancelled' && _currentOrder.status != 'pending_payment';
+
+  Future<void> _rateItem(OrderItem item) async {
+    HapticFeedback.lightImpact();
+    int stars = 0;
+    String error = '';
+    bool saving = false;
+    final comment = TextEditingController();
+    final rated = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Rate ${item.productName}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: AppTheme.slateDark)),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  for (var n = 1; n <= 5; n++)
+                    IconButton(
+                      tooltip: '$n star${n > 1 ? 's' : ''}',
+                      onPressed: () => setSheet(() => stars = n),
+                      icon: Icon(n <= stars ? Icons.star : Icons.star_border, color: Colors.amber, size: 32),
+                    ),
+                ],
+              ),
+              TextField(
+                controller: comment,
+                maxLength: 1000,
+                maxLines: 3,
+                decoration: const InputDecoration(hintText: 'A few words about it (optional)'),
+              ),
+              if (error.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(error, style: const TextStyle(color: AppTheme.errorRed, fontWeight: FontWeight.w700)),
+                ),
+              ElevatedButton(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        if (stars == 0) {
+                          setSheet(() => error = 'Pick a star rating first.');
+                          return;
+                        }
+                        setSheet(() {
+                          saving = true;
+                          error = '';
+                        });
+                        try {
+                          await ReviewService.reviewOrderItem(
+                            orderId: _currentOrder.id,
+                            productId: item.productId,
+                            rating: stars,
+                            comment: comment.text,
+                          );
+                          if (ctx.mounted) Navigator.pop(ctx, stars);
+                        } catch (e) {
+                          setSheet(() {
+                            saving = false;
+                            error = e.toString();
+                          });
+                        }
+                      },
+                child: Text(saving ? 'SAVING…' : 'POST REVIEW'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    comment.dispose();
+    if (rated != null && mounted) {
+      setState(() => _currentOrder = _currentOrder.copyWith(itemRatings: {..._currentOrder.itemRatings, item.productId: rated}));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Thanks! Your review is posted.'), backgroundColor: AppTheme.emeraldPrimary),
+      );
     }
   }
 
@@ -561,6 +649,20 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                             '${item.unit} x ${item.quantity}',
                             style: const TextStyle(fontSize: 11, color: AppTheme.slateMuted),
                           ),
+                          if (_canRateItems && item.productId.isNotEmpty)
+                            _currentOrder.itemRatings.containsKey(item.productId)
+                                ? Text(
+                                    '${'★' * _currentOrder.itemRatings[item.productId]!}${'☆' * (5 - _currentOrder.itemRatings[item.productId]!)}  You rated this',
+                                    style: const TextStyle(fontSize: 11.5, color: Colors.amber, fontWeight: FontWeight.w700),
+                                  )
+                                : InkWell(
+                                    onTap: () => _rateItem(item),
+                                    child: const Padding(
+                                      padding: EdgeInsets.only(top: 2),
+                                      child: Text('☆ Rate this item',
+                                          style: TextStyle(fontSize: 12, color: AppTheme.coralAccent, fontWeight: FontWeight.w800)),
+                                    ),
+                                  ),
                         ],
                       ),
                     ),
@@ -578,7 +680,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
           _buildCostRow('Subtotal', '\$${_currentOrder.subtotal.toStringAsFixed(2)}'),
           _buildCostRow('Delivery Fee', _currentOrder.deliveryFee == 0 ? 'FREE' : '\$${_currentOrder.deliveryFee.toStringAsFixed(2)}'),
-          _buildCostRow('Sales Tax (8%)', '\$${_currentOrder.tax.toStringAsFixed(2)}'),
+          _buildCostRow('Tax','\$${_currentOrder.tax.toStringAsFixed(2)}'),
           if (_currentOrder.discount > 0)
             _buildCostRow('Discount Saved', '-\$${_currentOrder.discount.toStringAsFixed(2)}', isGreen: true),
 

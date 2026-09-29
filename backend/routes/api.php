@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AdminBannerController;
 use App\Http\Controllers\Api\AdminCategoryController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AdminGiftCardController;
+use App\Http\Controllers\Api\AdminProductReviewController;
 use App\Http\Controllers\Api\AdminHomeTileController;
 use App\Http\Controllers\Api\AdminOrderController;
 use App\Http\Controllers\Api\AdminPageController;
@@ -22,6 +23,7 @@ use App\Http\Controllers\Api\ConfigController;
 use App\Http\Controllers\Api\DeliveryController;
 use App\Http\Controllers\Api\GeocodeController;
 use App\Http\Controllers\Api\GiftCardController;
+use App\Http\Controllers\Api\ProductReviewController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\PageController;
@@ -56,6 +58,7 @@ Route::middleware('throttle:30,1')->group(function () {
 Route::get('/categories', [CatalogController::class, 'categories']);
 Route::get('/products', [CatalogController::class, 'products']);
 Route::get('/products/{product:slug}', [CatalogController::class, 'product']);
+Route::get('/products/{product:slug}/reviews', [ProductReviewController::class, 'index']);
 
 Route::get('/pages', [PageController::class, 'index']);
 Route::get('/pages/{slug}', [PageController::class, 'show']);
@@ -84,6 +87,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('/orders/{order}/payment-method', [OrderController::class, 'setPaymentMethod']);
     Route::post('/orders/{order}/cancel', [OrderController::class, 'cancel']);
     Route::post('/orders/{order}/rider-review', [OrderController::class, 'storeRiderReview']);
+    Route::post('/orders/{order}/reviews', [ProductReviewController::class, 'store']);
     Route::post('/orders/{order}/payment-intent', [PaymentController::class, 'intent']);
 
     Route::get('/support/threads', [SupportThreadController::class, 'index']);
@@ -120,6 +124,9 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::patch('/orders/{order}', [AdminOrderController::class, 'update']);
     Route::post('/orders/{order}/refund', [PaymentController::class, 'refund']);
     Route::post('/orders/{order}/gift-card', [AdminGiftCardController::class, 'issue']);
+    Route::get('/reviews', [AdminProductReviewController::class, 'index']);
+    Route::patch('/reviews/{review}', [AdminProductReviewController::class, 'update']);
+    Route::delete('/reviews/{review}', [AdminProductReviewController::class, 'destroy']);
     Route::post('/orders/{order}/apply-gift-card', [AdminGiftCardController::class, 'applyToOrder']);
 
     Route::get('/support/threads', [AdminSupportController::class, 'index']);

@@ -27,6 +27,8 @@ class Product extends Model
         'is_demo',
     ];
 
+    // rating_avg / rating_count are kept in sync by refreshRating(), not mass-assigned.
+
     protected function casts(): array
     {
         return [
@@ -35,6 +37,8 @@ class Product extends Model
             'inventory_quantity' => 'integer',
             'is_active' => 'boolean',
             'is_demo' => 'boolean',
+            'rating_avg' => 'float',
+            'rating_count' => 'integer',
         ];
     }
 
@@ -49,6 +53,22 @@ class Product extends Model
     }
 
     /** Extra gallery photos, shown alongside the primary image_url. */
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(ProductReview::class);
+    }
+
+    /** Recompute the visible-review average and count shown on product cards. */
+    public function refreshRating(): void
+    {
+        $visible = $this->reviews()->where('is_hidden', false);
+        $count = (clone $visible)->count();
+        $this->forceFill([
+            'rating_count' => $count,
+            'rating_avg' => $count ? round((float) (clone $visible)->avg('rating'), 2) : null,
+        ])->save();
+    }
+
     public function images(): HasMany
     {
         return $this->hasMany(ProductImage::class)->orderBy('sort_order')->orderBy('id');

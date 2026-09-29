@@ -94,6 +94,9 @@ class ApiService {
   }
 
   // Headers generator with Sanctum Bearer token and browser anti-bot disguise
+  static Map<String, String> get headers => _headers;
+  static String errorMessage(http.Response res, String fallback) => _errorMessage(res, fallback);
+
   static Map<String, String> get _headers => {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
