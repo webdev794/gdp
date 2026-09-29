@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/api_service.dart';
 import '../../services/branding_service.dart';
-import '../../services/mock_auth_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/responsive.dart';
 import '../../widgets/otp_verification_sheet.dart';
@@ -81,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _handleQuickOtpLogin() {
+  void _handleQuickOtpLogin() async {
     String email = _emailController.text.trim();
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -91,15 +90,25 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     HapticFeedback.lightImpact();
+    // Ask the store to email a code (same account as the website; a new email signs up).
+    setState(() => _isLoading = true);
+    final start = await ApiService.authStart(email);
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    if (start['success'] != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(start['message']?.toString() ?? 'Could not send a code.'), backgroundColor: AppTheme.errorRed),
+      );
+      return;
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => OtpVerificationSheet(
         emailOrPhone: email,
-        purpose: 'login',
+        purpose: start['purpose']?.toString() ?? 'login',
         onVerified: () {
-          MockAuthService.login(email, 'otp_login');
           if (Navigator.canPop(context)) {
             Navigator.pop(context, true);
           } else {

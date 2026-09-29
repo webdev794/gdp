@@ -57,7 +57,7 @@ class _OtpVerificationSheetState extends State<OtpVerificationSheet> {
   void _verifyOtp() async {
     String code = _otpController.text.trim();
     if (code.length < 4) {
-      setState(() => _errorMessage = 'Please enter the 4-digit verification code.');
+      setState(() => _errorMessage = 'Please enter the verification code from your email.');
       return;
     }
 
@@ -89,10 +89,10 @@ class _OtpVerificationSheetState extends State<OtpVerificationSheet> {
   void _resendCode() async {
     HapticFeedback.lightImpact();
     _startCountdown();
-    await ApiService.resendOtp(widget.emailOrPhone);
+    final res = await ApiService.resendOtp(widget.emailOrPhone, purpose: widget.purpose);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('A new 4-digit verification code was sent!')),
+        SnackBar(content: Text(res['message']?.toString() ?? '')),
       );
     }
   }
@@ -146,7 +146,7 @@ class _OtpVerificationSheetState extends State<OtpVerificationSheet> {
               const SizedBox(height: 6),
 
               Text(
-                'We sent a 4-digit code to ${widget.emailOrPhone}',
+                'We sent a code to ${widget.emailOrPhone}',
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 13, color: AppTheme.slateMuted),
               ),

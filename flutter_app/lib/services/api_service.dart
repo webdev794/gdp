@@ -125,9 +125,11 @@ class ApiService {
         headers: _headers,
         body: json.encode({'email': identifier.trim()}),
       ).timeout(const Duration(seconds: 5));
-      if (res.statusCode == 200) return json.decode(res.body);
-    } catch (_) {}
-    return {'requires_otp': true, 'purpose': 'login', 'message': 'Verification code sent to your phone/email.'};
+      if (res.statusCode == 200) return {'success': true, ...Map<String, dynamic>.from(json.decode(res.body))};
+      return {'success': false, 'message': _errorMessage(res, 'Could not send a sign-in code to that email.')};
+    } catch (_) {
+      return {'success': false, 'message': 'Could not reach the server. Check your connection and try again.'};
+    }
   }
 
   static Future<Map<String, dynamic>> login({required String email, required String password}) async {
@@ -194,6 +196,15 @@ class ApiService {
 
       if (res.statusCode == 200 || res.statusCode == 201) {
         final data = json.decode(res.body);
+        // The store may email a code first; the account is created once it's verified.
+        if (data['requires_otp'] == true) {
+          return {
+            'success': false,
+            'requires_otp': true,
+            'purpose': data['purpose'] ?? 'register',
+            'message': data['message'] ?? 'We emailed you a code to confirm your address.',
+          };
+        }
         final token = (data['token'] ?? data['access_token'] ?? '').toString();
         isOnlineBackendAvailable = true;
         final user = UserModel.fromJson(data['user'] ?? data['data'] ?? {});
@@ -249,22 +260,26 @@ class ApiService {
           final user = UserModel.fromJson(data['user']);
           await saveSession(token, user);
         }
-        return {'success': true, 'message': 'OTP Verified Successfully!', 'token': token};
+        return {'success': true, 'message': 'Verified! Welcome to ${BrandingService.proseName}.', 'token': token};
       }
-    } catch (_) {}
-    return {'success': true, 'message': 'OTP Verified! Welcome to ${BrandingService.proseName}.'};
+      return {'success': false, 'message': _errorMessage(res, 'That code is not correct or has expired.')};
+    } catch (_) {
+      return {'success': false, 'message': 'Could not reach the server to verify the code. Please try again.'};
+    }
   }
 
-  static Future<Map<String, dynamic>> resendOtp(String email) async {
+  static Future<Map<String, dynamic>> resendOtp(String email, {String purpose = 'login'}) async {
     try {
       final res = await http.post(
         Uri.parse('$baseUrl/auth/resend-otp'),
         headers: _headers,
-        body: json.encode({'email': email.trim(), 'purpose': 'login'}),
-      ).timeout(const Duration(seconds: 5));
-      if (res.statusCode == 200) return json.decode(res.body);
-    } catch (_) {}
-    return {'success': true, 'message': 'A fresh code was dispatched.'};
+        body: json.encode({'email': email.trim(), 'purpose': purpose}),
+      ).timeout(const Duration(seconds: 10));
+      if (res.statusCode == 200) return {'success': true, 'message': 'A new code was sent to your email.'};
+      return {'success': false, 'message': _errorMessage(res, 'Could not send a new code.')};
+    } catch (_) {
+      return {'success': false, 'message': 'Could not reach the server. Check your connection and try again.'};
+    }
   }
 
   static Future<void> logout() async {
@@ -551,14 +566,16 @@ class ApiService {
       final res = await http.get(Uri.parse('$baseUrl/addresses'), headers: _headers).timeout(const Duration(seconds: 5));
       if (res.statusCode == 200) {
         final List raw = json.decode(res.body)['data'] ?? [];
-        if (raw.isNotEmpty) {
-          final list = raw.map((a) => AddressModel.fromJson(a)).toList();
-          LocationService.userAddresses.clear();
-          LocationService.userAddresses.addAll(list);
+        // The store's list is the truth (also when empty), so it matches the website.
+        final list = raw.map((a) => AddressModel.fromJson(a)).toList();
+        LocationService.userAddresses
+          ..clear()
+          ..addAll(list);
+        if (list.isNotEmpty) {
           final defaultAddr = list.firstWhere((a) => a.isDefault, orElse: () => list.first);
           LocationService.setActiveAddress(defaultAddr);
-          return list;
         }
+        return list;
       }
     } catch (_) {}
     return LocationService.userAddresses;
@@ -834,84 +851,60 @@ class ApiService {
   // -------------------------------------------------------------
   // 6. CUSTOMER SUPPORT APIS (/api/support/threads)
   // -------------------------------------------------------------
-  static final List<SupportThread> _cachedThreads = [
-    SupportThread(
-      id: 'thread_01',
-      subject: 'Order #GRO-1082 Live Status Inquiry',
-      status: 'open',
-      createdAt: DateTime.now().subtract(const Duration(minutes: 8)),
-      messages: [
-        SupportMessage(
-          id: 'msg_1',
-          senderType: 'user',
-          message: 'Hi, when will my organic avocados arrive?',
-          createdAt: DateTime.now().subtract(const Duration(minutes: 8)),
-        ),
-        SupportMessage(
-          id: 'msg_2',
-          senderType: 'agent',
-          message: 'Hello! Rider Marcus is approximately 4 minutes away from your address.',
-          createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
-        ),
-      ],
-    ),
-  ];
+  // Support chats live on the store, so the website and the app show the same
+  // conversations and replies.
+  static final List<SupportThread> _cachedThreads = [];
 
   static List<SupportThread> get cachedThreads => _cachedThreads;
 
-  static Future<SupportThread> createSupportThread(String subject, String initialMessage) async {
-    final newThread = SupportThread(
-      id: 'thread_${DateTime.now().millisecondsSinceEpoch}',
-      subject: subject,
-      status: 'open',
-      createdAt: DateTime.now(),
-      messages: [
-        SupportMessage(
-          id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
-          senderType: 'user',
-          message: initialMessage,
-          createdAt: DateTime.now(),
-        ),
-      ],
-    );
+  static Future<List<SupportThread>> fetchSupportThreads() async {
+    final res = await http.get(Uri.parse('$baseUrl/support/threads'), headers: _headers).timeout(const Duration(seconds: 10));
+    if (res.statusCode != 200) {
+      throw ApiException(_errorMessage(res, 'Could not load your support chats.'));
+    }
+    final List raw = json.decode(res.body)['data'] ?? [];
+    final threads = raw.map((t) => SupportThread.fromJson(Map<String, dynamic>.from(t))).toList();
+    _cachedThreads
+      ..clear()
+      ..addAll(threads);
+    return threads;
+  }
 
-    try {
-      final res = await http.post(
-        Uri.parse('$baseUrl/support/threads'),
-        headers: _headers,
-        body: json.encode({'subject': subject, 'message': initialMessage}),
-      ).timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        final data = json.decode(res.body)['data'] ?? json.decode(res.body);
-        final created = SupportThread.fromJson(data);
-        _cachedThreads.insert(0, created);
-        return created;
-      }
-    } catch (_) {}
+  static Future<SupportThread> fetchSupportThread(String threadId) async {
+    final res = await http.get(Uri.parse('$baseUrl/support/threads/$threadId'), headers: _headers).timeout(const Duration(seconds: 10));
+    if (res.statusCode != 200) {
+      throw ApiException(_errorMessage(res, 'Could not load this chat.'));
+    }
+    return SupportThread.fromJson(Map<String, dynamic>.from(json.decode(res.body)['data']));
+  }
 
-    _cachedThreads.insert(0, newThread);
-    return newThread;
+  /// Open a chat. [issueType] is one of `supportIssueTypes`; [orderId] links it to an order.
+  static Future<SupportThread> createSupportThread(String issueType, String message, {String? orderId}) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/support/threads'),
+      headers: _headers,
+      body: json.encode({
+        'issue_type': issueType,
+        'message': message,
+        if (orderId != null) 'order_id': int.tryParse(orderId) ?? orderId,
+      }),
+    ).timeout(const Duration(seconds: 10));
+    if (res.statusCode != 200 && res.statusCode != 201) {
+      throw ApiException(_errorMessage(res, 'Could not open a support chat.'));
+    }
+    final thread = SupportThread.fromJson(Map<String, dynamic>.from(json.decode(res.body)['data']));
+    _cachedThreads.insert(0, thread);
+    return thread;
   }
 
   static Future<void> sendSupportMessage(String threadId, String message) async {
-    try {
-      await http.post(
-        Uri.parse('$baseUrl/support/threads/$threadId/messages'),
-        headers: _headers,
-        body: json.encode({'message': message}),
-      ).timeout(const Duration(seconds: 4));
-    } catch (_) {}
-
-    int idx = _cachedThreads.indexWhere((t) => t.id == threadId);
-    if (idx != -1) {
-      _cachedThreads[idx].messages.add(
-        SupportMessage(
-          id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
-          senderType: 'user',
-          message: message,
-          createdAt: DateTime.now(),
-        ),
-      );
+    final res = await http.post(
+      Uri.parse('$baseUrl/support/threads/$threadId/messages'),
+      headers: _headers,
+      body: json.encode({'body': message}),
+    ).timeout(const Duration(seconds: 10));
+    if (res.statusCode >= 400) {
+      throw ApiException(_errorMessage(res, 'Your message was not sent. Please try again.'));
     }
   }
 }

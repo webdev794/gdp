@@ -3,6 +3,7 @@ import '../../services/api_service.dart';
 import '../../services/branding_service.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/responsive.dart';
+import '../../widgets/otp_verification_sheet.dart';
 import '../home/home_screen.dart';
 import 'login_screen.dart';
 
@@ -65,6 +66,26 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = false);
 
     if (!mounted) return;
+
+    if (res['requires_otp'] == true) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => OtpVerificationSheet(
+          emailOrPhone: _emailController.text.trim(),
+          purpose: res['purpose']?.toString() ?? 'register',
+          onVerified: () {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (_) => const HomeScreen()),
+              (_) => false,
+            );
+          },
+        ),
+      );
+      return;
+    }
 
     if (res['success'] == true) {
       ScaffoldMessenger.of(context).showSnackBar(
