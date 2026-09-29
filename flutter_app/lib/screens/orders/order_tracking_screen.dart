@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:printing/printing.dart';
 import '../../models/order_model.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_theme.dart';
@@ -78,6 +79,12 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
           style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
         ),
         actions: [
+          if (_canDownloadBill)
+            IconButton(
+              tooltip: 'Download bill',
+              icon: const Icon(Icons.receipt_long, color: AppTheme.emeraldPrimary),
+              onPressed: _downloadReceipt,
+            ),
           IconButton(
             tooltip: 'Refresh',
             icon: const Icon(Icons.refresh, color: AppTheme.emeraldPrimary),
@@ -231,6 +238,21 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         ],
       ),
     );
+  }
+
+  // Same rule as the store: a bill exists once paid, or for cash on delivery, unless cancelled.
+  bool get _canDownloadBill =>
+      _currentOrder.status != 'cancelled' && (_currentOrder.paymentStatus == 'paid' || _currentOrder.paymentMethod == 'COD');
+
+  Future<void> _downloadReceipt() async {
+    HapticFeedback.lightImpact();
+    try {
+      final bytes = await ApiService.fetchReceipt(_currentOrder.id);
+      await Printing.sharePdf(bytes: bytes, filename: 'receipt-order-${_currentOrder.id}.pdf');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.errorRed));
+    }
   }
 
   bool get _hasRider => (_currentOrder.riderName ?? '').isNotEmpty;

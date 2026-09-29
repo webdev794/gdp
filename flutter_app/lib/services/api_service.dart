@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config.dart';
@@ -864,6 +865,18 @@ class ApiService {
     } catch (_) {
       return 'Could not reach the payment service. Please try again.';
     }
+  }
+
+  /// The order's bill as PDF bytes (same receipt the website downloads).
+  static Future<Uint8List> fetchReceipt(String orderId) async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/orders/$orderId/receipt'),
+      headers: {..._headers, 'Accept': 'application/pdf'},
+    ).timeout(const Duration(seconds: 20));
+    if (res.statusCode != 200) {
+      throw ApiException(_errorMessage(res, 'The bill for this order is not available yet.'));
+    }
+    return res.bodyBytes;
   }
 
   static Future<void> cancelOrder(String orderId) async {

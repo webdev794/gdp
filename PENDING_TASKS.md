@@ -13,7 +13,7 @@ Today the app reads the catalogue, categories, store settings and login from the
 - [x] **Order history & tracking from the server.** Replace the hard-coded `_cachedOrders` sample orders (fake riders, e.g. "Alex Rivera") with `GET /api/orders`; order tracking should read the real status/rider/delivery code.
 - [x] **Saved cards in the app.** Cards saved on the website are listed at checkout and charged the same way as the website (works in the web preview too). Adding a new card needs the phone app (Stripe card form).
 - [ ] **Card payment on a real phone.** Card orders open the Stripe card form in a web view (`lib/screens/checkout/card_payment_screen.dart`); verify on an Android device with the test card. On the web preview only cash on delivery is offered.
-- [ ] **Receipt download.** The fake "receipt generated" button was removed from order tracking; add a real download of `GET /api/orders/{id}/receipt` (PDF).
+- [x] **Receipt download.** Order tracking has a "Download bill" button (same PDF as the website; share/save sheet on phones, download on web).
 - [x] **Estimated totals.** The basket shows the app's own fee/tax estimate; the store's real total is shown on the placed order. Use the server cart totals instead.
 - [x] **Support chat shared with the website.** List threads with `GET /api/support/threads`, open a thread and poll for replies, send with `POST /api/support/threads/{id}/messages`. Remove the hard-coded sample threads and the local fallback thread.
 - [x] **Gift cards issued by admin usable in the app.** Backend has `POST /api/gift-cards/check`; add a gift-card field at checkout (same flow as the website) and apply it to the order.
@@ -29,6 +29,8 @@ Today the app reads the catalogue, categories, store settings and login from the
 Done: real checkout (cash on delivery + Stripe card), gift cards at checkout, order history/tracking from the store with live refresh, fake payment options (Apple Pay/Google Pay/PayPal) removed, admin/rider screens removed (backed up in `.tmp/flutter-backup/removed/`), website address in one place (`lib/config.dart`). Earlier: branding (logo from Store settings, app icon, favicon, "Tudee Shopping Center" name, address/contact in the side menu) and promo codes removed (no backend support).
 
 ## Website / backend
+
+- [ ] **Hide demo products.** 54 of 55 products are the seeded demo products (e.g. Baby Lotion), all still active, so website and app both show them. Admin → Products → hide/delete demo products. The demo flag (commit 54fab53) must be deployed to the live site first.
 
 - [ ] **Real contact email/phone.** Pages use `{email}` / `{phone}` from Admin → Store settings; currently `test@example.com` and no phone.
 - [ ] **Footer app-store and social links** still point to placeholder `grocerly` URLs (Admin → Footer).
