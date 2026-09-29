@@ -111,13 +111,6 @@ class _ProductDetailsSheetState extends State<ProductDetailsSheet> {
     return _product.comparePrice;
   }
 
-  String get _currentSku {
-    if (_selectedVariant != null && _selectedVariant!.sku.isNotEmpty) {
-      return _selectedVariant!.sku;
-    }
-    return _product.sku ?? 'GDP-PROD-${_product.id}';
-  }
-
   int get _currentInventory {
     if (_selectedVariant != null) {
       return _selectedVariant!.inventoryQuantity;
@@ -193,20 +186,6 @@ class _ProductDetailsSheetState extends State<ProductDetailsSheet> {
         widget.onVariantQuantityChanged!(key, _quantity);
       }
       widget.onQuantityChanged(_quantity);
-    }
-  }
-
-  String _formatDate(String? raw) {
-    if (raw == null || raw.isEmpty) return 'N/A';
-    try {
-      final dt = DateTime.parse(raw);
-      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
-      final period = dt.hour >= 12 ? 'PM' : 'AM';
-      final minStr = dt.minute.toString().padLeft(2, '0');
-      return '${dt.day} ${months[dt.month - 1]} ${dt.year}, $hour:$minStr $period';
-    } catch (_) {
-      return raw;
     }
   }
 
@@ -494,7 +473,7 @@ class _ProductDetailsSheetState extends State<ProductDetailsSheet> {
 
                   // Unit & SKU Subtitle
                   Text(
-                    '${_product.unit}  •  SKU: $_currentSku',
+                    _product.unit.isNotEmpty ? _product.unit : (_product.categoryName ?? ''),
                     style: const TextStyle(fontSize: 12.5, color: AppTheme.slateMuted, fontWeight: FontWeight.w600),
                   ),
 
@@ -652,13 +631,13 @@ class _ProductDetailsSheetState extends State<ProductDetailsSheet> {
 
                   const SizedBox(height: 18),
 
-                  // 5. Complete Database Specifications Table
+                  // 5. Product details (customer-facing only; no internal/admin fields)
                   Row(
                     children: [
-                      const Icon(Icons.storage_outlined, size: 16, color: AppTheme.emeraldPrimary),
+                      const Icon(Icons.info_outline, size: 16, color: AppTheme.emeraldPrimary),
                       const SizedBox(width: 6),
                       const Text(
-                        'Database Specifications & Attributes',
+                        'Product details',
                         style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: AppTheme.slateDark),
                       ),
                       if (_isLoadingFreshData) ...[
@@ -680,21 +659,9 @@ class _ProductDetailsSheetState extends State<ProductDetailsSheet> {
                     ),
                     child: Column(
                       children: [
-                        _buildSpecRow('Product ID', '#${_product.id}'),
-                        _buildSpecRow('SKU Code', _currentSku),
-                        _buildSpecRow('Category', _product.categoryName ?? 'Produce'),
-                        _buildSpecRow('Category Slug', _product.categorySlug ?? 'produce'),
-                        _buildSpecRow('Warehouse Stock', '$_currentInventory units in stock'),
-                        _buildSpecRow('Stock Status', _isCurrentInStock ? 'In Stock (Ready)' : 'Out of Stock'),
-                        _buildSpecRow('Base Pack / Unit', _product.unit),
-                        if (_product.priceMin != null && _product.priceMax != null)
-                          _buildSpecRow(
-                            'Price Range',
-                            '\$${_product.priceMin!.toStringAsFixed(2)} - \$${_product.priceMax!.toStringAsFixed(2)}',
-                          ),
-                        _buildSpecRow('Created At', _formatDate(_product.createdAt)),
-                        _buildSpecRow('Last Updated', _formatDate(_product.updatedAt)),
-                        _buildSpecRow('Active in Catalog', _product.isActive ? 'Yes (Published)' : 'No (Hidden)', isLast: true),
+                        _buildSpecRow('Category', _product.categoryName ?? 'Grocery'),
+                        if (_product.unit.isNotEmpty) _buildSpecRow('Pack / Unit', _product.unit),
+                        _buildSpecRow('Availability', _isCurrentInStock ? 'In stock' : 'Out of stock', isLast: true),
                       ],
                     ),
                   ),

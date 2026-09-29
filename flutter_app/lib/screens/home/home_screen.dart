@@ -1247,7 +1247,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     children: [
                                       Expanded(
                                         child: Text(
-                                          p.unit,
+                                          (p.unit.isNotEmpty ? p.unit : (p.categoryName ?? '')).toUpperCase(),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(fontSize: 10, color: AppTheme.slateMuted, fontWeight: FontWeight.w600),

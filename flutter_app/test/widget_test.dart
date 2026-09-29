@@ -75,9 +75,9 @@ void main() {
 
     expect(find.text('Organic Lemon'), findsOneWidget);
     expect(find.text('Fruits & Vegetables'), findsNWidgets(2));
-    expect(find.textContaining('LM343235'), findsWidgets);
+    expect(find.textContaining('LM343235'), findsNothing); // internal SKU is not shown to customers
     expect(find.text('Fresh lemons are vibrant, smooth, and citrus-scented oval fruits.'), findsOneWidget);
-    expect(find.text('Set of 6 pcs'), findsOneWidget);
+    expect(find.text('Set of 6 pcs'), findsWidgets);
     expect(find.text('CLOSE'), findsOneWidget);
   });
 

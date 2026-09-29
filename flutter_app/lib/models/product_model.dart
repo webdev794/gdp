@@ -215,7 +215,7 @@ class ProductModel {
       categoryId: catId,
       price: parsedPrice,
       comparePrice: parsedComparePrice,
-      unit: json['unit'] ?? json['sku'] ?? '1 pack',
+      unit: json['unit']?.toString() ?? '', // no SKU fallback — that's an internal code
       imageEmoji: _getEmojiForProduct(prodName, catName ?? ''),
       imageUrl: fullImg,
       badgeText: (parsedComparePrice != null && parsedComparePrice > parsedPrice)
