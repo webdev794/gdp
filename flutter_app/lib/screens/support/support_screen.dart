@@ -185,6 +185,151 @@ class _SupportScreenState extends State<SupportScreen> {
     );
   }
 
+  Future<void> _endChat() async {
+    final thread = _selectedThread;
+    if (thread == null) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('End this chat?'),
+        content: const Text('You can still reply later to reopen it.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('CANCEL')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('END CHAT')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    try {
+      final closed = await ApiService.closeSupportThread(thread.id);
+      if (!mounted) return;
+      setState(() => _selectedThread = closed);
+      // Ask for feedback right away, like the website.
+      if (closed.isDelivery ? closed.orderId != null : (closed.hasStaffReply && closed.rating == null)) {
+        await _rate(closed);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.errorRed));
+      }
+    }
+  }
+
+  /// Rate the chat (support team) — or, for a chat the rider started about a
+  /// delivery, rate the rider (stars shown to the rider, comment to admin only).
+  Future<void> _rate(SupportThread thread) async {
+    int stars = thread.isDelivery ? 0 : (thread.rating ?? 0);
+    final comment = TextEditingController(text: thread.isDelivery ? '' : (thread.ratingComment ?? ''));
+    String error = '';
+    bool saving = false;
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(thread.isDelivery ? 'Rate your delivery rider' : 'How was this conversation?',
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: AppTheme.slateDark)),
+              const SizedBox(height: 10),
+              Row(children: [
+                for (var n = 1; n <= 5; n++)
+                  IconButton(
+                    tooltip: '$n star${n > 1 ? 's' : ''}',
+                    onPressed: () => setSheet(() => stars = n),
+                    icon: Icon(n <= stars ? Icons.star : Icons.star_border, color: Colors.amber, size: 32),
+                  ),
+              ]),
+              TextField(
+                controller: comment,
+                maxLength: 1000,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: thread.isDelivery ? 'Anything to tell us about the rider? (only the store sees this)' : 'Anything we could do better? (optional)',
+                ),
+              ),
+              if (error.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(error, style: const TextStyle(color: AppTheme.errorRed, fontWeight: FontWeight.w700)),
+                ),
+              ElevatedButton(
+                onPressed: saving
+                    ? null
+                    : () async {
+                        if (stars == 0) {
+                          setSheet(() => error = 'Tap a star to rate.');
+                          return;
+                        }
+                        setSheet(() {
+                          saving = true;
+                          error = '';
+                        });
+                        try {
+                          if (thread.isDelivery) {
+                            final ok = await ApiService.submitRiderReview(thread.orderId!, stars.toDouble(), comment.text, source: 'chat');
+                            if (!ok) throw ApiException('You can rate the rider once the order is on its way.');
+                          } else {
+                            final updated = await ApiService.rateSupportThread(thread.id, stars, comment.text);
+                            if (mounted) setState(() => _selectedThread = updated);
+                          }
+                          if (ctx.mounted) Navigator.pop(ctx, true);
+                        } catch (e) {
+                          setSheet(() {
+                            saving = false;
+                            error = e.toString();
+                          });
+                        }
+                      },
+                child: Text(saving ? 'SAVING…' : 'SUBMIT RATING'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    comment.dispose();
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Thanks for the feedback!'), backgroundColor: AppTheme.emeraldPrimary),
+      );
+    }
+  }
+
+  Widget _buildRatingStrip(SupportThread thread) {
+    // Chat rating needs a staff reply first (store rule); rider chats rate the rider.
+    final show = thread.isDelivery ? thread.orderId != null : (thread.rating != null || thread.hasStaffReply);
+    if (!show) return const SizedBox.shrink();
+    final rated = !thread.isDelivery && thread.rating != null;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      color: AppTheme.sageLight,
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              rated
+                  ? 'You rated this chat ${'★' * thread.rating!}${'☆' * (5 - thread.rating!)}'
+                  : (thread.isDelivery ? 'How was your delivery rider?' : 'How was this conversation?'),
+              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppTheme.slateDark),
+            ),
+          ),
+          TextButton(
+            onPressed: () => _rate(thread),
+            child: Text(rated ? 'EDIT' : (thread.isDelivery ? 'RATE RIDER' : 'RATE CHAT'),
+                style: const TextStyle(fontWeight: FontWeight.w900, color: AppTheme.coralAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _sendChatMessage() async {
     final thread = _selectedThread;
     final text = _chatMsgController.text.trim();
@@ -226,6 +371,11 @@ class _SupportScreenState extends State<SupportScreen> {
               )
             : null,
         actions: [
+          if (_selectedThread != null && _selectedThread!.status == 'open')
+            TextButton(
+              onPressed: _endChat,
+              child: const Text('END CHAT', style: TextStyle(color: AppTheme.errorRed, fontWeight: FontWeight.w900)),
+            ),
           IconButton(
             icon: const Icon(Icons.add_comment, color: AppTheme.emeraldPrimary),
             tooltip: 'New chat',
@@ -391,6 +541,7 @@ class _SupportScreenState extends State<SupportScreen> {
             },
           ),
         ),
+        _buildRatingStrip(thread),
         if (!canReply)
           Container(
             width: double.infinity,

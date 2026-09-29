@@ -49,6 +49,8 @@ class SupportThread {
   final String subject;
   final String status; // 'open', 'resolved', 'closed'
   final String? orderId;
+  final String issueType; // 'delivery' = started by the rider
+  final String? ratingComment;
   final List<SupportMessage> messages;
   final int messageCount;
   final int? rating; // 1 to 5
@@ -60,12 +62,17 @@ class SupportThread {
     required this.subject,
     required this.status,
     this.orderId,
+    this.issueType = 'other',
+    this.ratingComment,
     required this.messages,
     this.messageCount = 0,
     this.rating,
     required this.createdAt,
     this.lastMessageAt,
   });
+
+  bool get isDelivery => issueType == 'delivery';
+  bool get hasStaffReply => messages.any((m) => m.senderType == 'agent');
 
   factory SupportThread.fromJson(Map<String, dynamic> json) {
     final rawMsgs = json['messages'] as List? ?? [];
@@ -78,6 +85,8 @@ class SupportThread {
       subject: orderId != null ? '$issue · Order #$orderId' : issue,
       status: json['status']?.toString() ?? 'open',
       orderId: orderId,
+      issueType: json['issue_type']?.toString() ?? 'other',
+      ratingComment: json['rating_comment']?.toString(),
       messages: rawMsgs.map((m) => SupportMessage.fromJson(Map<String, dynamic>.from(m))).toList(),
       messageCount: (json['messages_count'] as num?)?.toInt() ?? rawMsgs.length,
       rating: (json['rating'] as num?)?.toInt(),

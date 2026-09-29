@@ -30,6 +30,24 @@ class SupportChatRatingTest extends TestCase
         $this->assertNotNull($thread->fresh()->rated_at);
     }
 
+    public function test_customer_can_end_their_chat_and_a_reply_reopens_it(): void
+    {
+        $user = User::factory()->create();
+        $thread = $this->thread($user);
+        Sanctum::actingAs($user);
+
+        $this->postJson("/api/support/threads/{$thread->id}/close")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'resolved');
+        $this->assertNotNull($thread->fresh()->resolved_at);
+
+        $this->postJson("/api/support/threads/{$thread->id}/messages", ['body' => 'One more thing'])->assertOk();
+        $this->assertSame('open', $thread->fresh()->status);
+
+        Sanctum::actingAs(User::factory()->create());
+        $this->postJson("/api/support/threads/{$thread->id}/close")->assertNotFound();
+    }
+
     public function test_a_second_submission_edits_the_rating(): void
     {
         $user = User::factory()->create();

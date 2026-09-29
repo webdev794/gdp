@@ -129,6 +129,22 @@ class SupportThreadController extends Controller
      * went. One rating per thread — a repeat call edits it. Only once staff
      * have replied, so there's something to rate.
      */
+    /**
+     * The customer ends the conversation (marks it resolved). Replying later
+     * re-opens it, same as when staff resolve it.
+     */
+    public function close(Request $request, SupportThread $thread): JsonResponse
+    {
+        abort_unless($thread->user_id === $request->user()->id, 404);
+
+        if ($thread->status !== 'resolved') {
+            $thread->forceFill(['status' => 'resolved', 'resolved_at' => now()])->save();
+            $thread->post(null, 'The customer ended this chat.', isStaff: false, system: true);
+        }
+
+        return response()->json(['data' => $this->withMessages($thread)]);
+    }
+
     public function rate(Request $request, SupportThread $thread): JsonResponse
     {
         abort_unless($thread->user_id === $request->user()->id, 404);

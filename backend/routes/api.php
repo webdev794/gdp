@@ -95,6 +95,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/support/threads/{thread}', [SupportThreadController::class, 'show']);
     Route::post('/support/threads/{thread}/messages', [SupportThreadController::class, 'message']);
     Route::post('/support/threads/{thread}/rating', [SupportThreadController::class, 'rate']);
+    Route::post('/support/threads/{thread}/close', [SupportThreadController::class, 'close']);
 });
 
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {

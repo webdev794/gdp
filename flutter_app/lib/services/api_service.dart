@@ -905,12 +905,12 @@ class ApiService {
     return ((data['balance_cents'] as num?) ?? 0) / 100.0;
   }
 
-  static Future<bool> submitRiderReview(String orderId, double rating, String comment) async {
+  static Future<bool> submitRiderReview(String orderId, double rating, String comment, {String source = 'delivery'}) async {
     try {
       final res = await http.post(
         Uri.parse('$baseUrl/orders/$orderId/rider-review'),
         headers: _headers,
-        body: json.encode({'rating': rating.round(), 'comment': comment, 'source': 'delivery'}),
+        body: json.encode({'rating': rating.round(), 'comment': comment, 'source': source}),
       ).timeout(const Duration(seconds: 10));
       if (res.statusCode == 200 || res.statusCode == 201) {
         final idx = _cachedOrders.indexWhere((o) => o.id == orderId);
@@ -970,6 +970,24 @@ class ApiService {
     final thread = SupportThread.fromJson(Map<String, dynamic>.from(json.decode(res.body)['data']));
     _cachedThreads.insert(0, thread);
     return thread;
+  }
+
+  /// The customer ends the chat (store marks it resolved; replying re-opens it).
+  static Future<SupportThread> closeSupportThread(String threadId) async {
+    final res = await http.post(Uri.parse('$baseUrl/support/threads/$threadId/close'), headers: _headers).timeout(const Duration(seconds: 10));
+    if (res.statusCode != 200) throw ApiException(_errorMessage(res, 'Could not end the chat.'));
+    return SupportThread.fromJson(Map<String, dynamic>.from(json.decode(res.body)['data']));
+  }
+
+  /// Rate how the support team handled a chat (1-5 + optional comment), same as the website.
+  static Future<SupportThread> rateSupportThread(String threadId, int rating, String comment) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/support/threads/$threadId/rating'),
+      headers: _headers,
+      body: json.encode({'rating': rating, 'comment': comment.trim().isEmpty ? null : comment.trim()}),
+    ).timeout(const Duration(seconds: 10));
+    if (res.statusCode != 200) throw ApiException(_errorMessage(res, 'Could not save your rating.'));
+    return SupportThread.fromJson(Map<String, dynamic>.from(json.decode(res.body)['data']));
   }
 
   static Future<void> sendSupportMessage(String threadId, String message) async {
