@@ -47,7 +47,8 @@ define('LARAVEL_START', microtime(true));
 // writes a marker so it never runs again.
 $deployTag = '__DEPLOY_TAG__';
 $deployMark = __DIR__.'/storage/framework/.deployed-'.$deployTag;
-if (! is_file($deployMark)) {
+$firstRunAfterDeploy = ! is_file($deployMark);
+if ($firstRunAfterDeploy) {
     foreach (glob(__DIR__.'/bootstrap/cache/*.php') ?: [] as $stale) { @unlink($stale); }
     foreach (glob(__DIR__.'/storage/framework/views/*.php') ?: [] as $stale) { @unlink($stale); }
     if (function_exists('opcache_reset')) { @opcache_reset(); }
@@ -65,6 +66,18 @@ $app = require_once __DIR__.'/bootstrap/app.php';
 
 // App files and the web root are the same folder in this deployment.
 $app->usePublicPath(__DIR__);
+
+// Once per bundle: apply new (additive) database migrations — no Terminal on
+// this host. Output goes to storage/logs/deploy-migrate.log.
+if ($firstRunAfterDeploy) {
+    try {
+        $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+        Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        @file_put_contents(__DIR__.'/storage/logs/deploy-migrate.log', date('c').' '.$deployTag."\n".Illuminate\Support\Facades\Artisan::output()."\n", FILE_APPEND);
+    } catch (Throwable $e) {
+        @file_put_contents(__DIR__.'/storage/logs/deploy-migrate.log', date('c').' FAILED: '.$e->getMessage()."\n", FILE_APPEND);
+    }
+}
 
 $app->handleRequest(Request::capture());
 PHP
@@ -118,8 +131,10 @@ TUDEE SHOPPING CENTER - code update bundle
 =============================
 Updated application code + built frontend. No .env, no database, no installer -
 nothing of yours is touched. Runs as-is: on the first page load after upload,
-index.php clears the old compiled caches and resets OPcache by itself (no
-Terminal needed).
+index.php clears the old compiled caches and resets OPcache by itself, and
+applies any new database tables/columns (additive only - existing data is
+kept). Result: public_html/gdp/storage/logs/deploy-migrate.log (no Terminal
+needed).
 
 DEPLOY
   1. Back up: cPanel > File Manager, download  public_html/gdp/ .
