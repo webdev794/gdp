@@ -178,7 +178,7 @@ class DatabaseSeeder extends Seeder
         }
 
         \App\Models\Setting::put('footer', [
-            'copyright' => '© {year} Grocerly',
+            'copyright' => '© {year} TUDEE SHOPPING CENTER',
             'app_store_url' => 'https://apps.apple.com/app/grocerly-demo',
             'play_store_url' => 'https://play.google.com/store/apps/details?id=com.grocerly.demo',
             'socials' => [
@@ -249,10 +249,10 @@ class DatabaseSeeder extends Seeder
         $pages = [
             [
                 'slug' => 'about', 'title' => 'About Us', 'footer_group' => 'company', 'sort_order' => 1,
-                'content' => 'Grocerly delivers everyday groceries and household essentials to your door, fast.',
+                'content' => 'TUDEE SHOPPING CENTER delivers everyday groceries and household essentials to your door, fast.',
                 'sections' => [
-                    $hero('Groceries at your door in minutes', 'Grocerly is a demo storefront for fast local grocery delivery — fresh produce, pantry staples and household essentials, picked and delivered from a store near you.', '/img/pages/about-hero.jpg', 'Start shopping', '#/'),
-                    $stats('Grocerly by the numbers', [
+                    $hero('Groceries at your door in minutes', 'TUDEE SHOPPING CENTER is a demo storefront for fast local grocery delivery — fresh produce, pantry staples and household essentials, picked and delivered from a store near you.', '/img/pages/about-hero.jpg', 'Start shopping', '#/'),
+                    $stats('TUDEE SHOPPING CENTER by the numbers', [
                         ['~10 min', 'Average delivery time'],
                         ['20+', 'Categories in stock'],
                         ['4.8 / 5', 'Average order rating'],
@@ -270,7 +270,7 @@ class DatabaseSeeder extends Seeder
                         ['We pick and pack', 'Your order is assembled at the nearest store within minutes.'],
                         ['Delivered to your door', 'Track it on the way; hand over cash on arrival if you chose that.'],
                     ]),
-                    $mediaText('/img/pages/about-story.jpg', 'left', 'Our story', "Grocerly started as a single neighbourhood store and now runs a small network of local hubs.\n\nThis whole site is a **demo build** — every page here, including this one, is editable in **Admin -> Pages** using drag-and-drop sections."),
+                    $mediaText('/img/pages/about-story.jpg', 'left', 'Our story', "TUDEE SHOPPING CENTER started as a single neighbourhood store and now runs a small network of local hubs.\n\nThis whole site is a **demo build** — every page here, including this one, is editable in **Admin -> Pages** using drag-and-drop sections."),
                     $mediaText('/img/pages/about-hero.jpg', 'right', 'From local stores, not a warehouse', "We stock and dispatch from small hubs inside your neighbourhood, so produce travels metres, not miles.\n\nShorter journeys mean fresher food, less packaging and a delivery rider who can be at your door before the kettle boils."),
                     $quote('I ordered eggs and coriander at 8pm and it was at my door before I had finished chopping the onions. Genuinely faster than walking to the corner shop.', 'Priya M. — early tester'),
                     $features('On the roadmap', [
@@ -285,7 +285,7 @@ class DatabaseSeeder extends Seeder
                 'slug' => 'blog', 'title' => 'Blog', 'footer_group' => 'company', 'sort_order' => 2,
                 'content' => 'Recipes, seasonal picks and a look behind the delivery promise.',
                 'sections' => [
-                    $hero('The Grocerly Blog', 'Recipes, seasonal picks and a look behind the 10-minute delivery promise.', '/img/pages/blog-seasonal.jpg'),
+                    $hero('The TUDEE SHOPPING CENTER Blog', 'Recipes, seasonal picks and a look behind the 10-minute delivery promise.', '/img/pages/blog-seasonal.jpg'),
                     $cards('Latest posts', [
                         ['/img/pages/blog-delivery.jpg', 'How we get groceries to you in 10 minutes', 'A look under the hood of the delivery promise — from stocked hubs to planned routes.', '#/p/blog-10-minute-delivery'],
                         ['/img/pages/blog-dinner.jpg', '5 weeknight dinners in under 20 minutes', 'Five ingredients or fewer, on the table before the news finishes.', '#/p/blog-weeknight-dinners'],
@@ -313,7 +313,7 @@ class DatabaseSeeder extends Seeder
             [
                 'slug' => 'blog-10-minute-delivery', 'title' => 'How we get groceries to you in 10 minutes',
                 'footer_group' => 'blog', 'sort_order' => 1, 'show_in_footer' => false,
-                'content' => 'A look under the hood of the Grocerly delivery promise.',
+                'content' => 'A look under the hood of the TUDEE SHOPPING CENTER delivery promise.',
                 'sections' => [
                     $hero('How we get groceries to you in 10 minutes', 'From stocked neighbourhood hubs to routes built for your street — a look under the hood.', '/img/pages/blog-delivery.jpg'),
                     $stats('The promise in numbers', [
@@ -497,7 +497,7 @@ class DatabaseSeeder extends Seeder
 
 ## Registered office
 
-Grocerly Retail Private Limited
+TUDEE SHOPPING CENTER Retail Private Limited
 
 4th Floor, Market House, 12 Commerce Road
 
@@ -505,7 +505,7 @@ Cityville, State 100001, India
 
 ## Corporate office
 
-Grocerly Retail Private Limited
+TUDEE SHOPPING CENTER Retail Private Limited
 
 Tower B, Riverside Business Park, 88 Harbour Avenue
 
@@ -523,7 +523,7 @@ Metro City, State 400001, India
 
 In line with the Consumer Protection (E-Commerce) Rules, 2020, complaints can be sent to our Grievance Officer.
 
-**Name:** Grievance Officer, Grocerly Retail Private Limited
+**Name:** Grievance Officer, TUDEE SHOPPING CENTER Retail Private Limited
 
 **Email:** grievance@grocerly.example
 
@@ -533,7 +533,7 @@ We acknowledge every complaint within 48 hours and aim to resolve it within one 
 
 ## Company details
 
-**Legal entity:** Grocerly Retail Private Limited
+**Legal entity:** TUDEE SHOPPING CENTER Retail Private Limited
 
 **CIN:** U00000XX2020PTC000000
 
@@ -560,7 +560,7 @@ MD,
                     ]),
                     $faq('Payments', [
                         ['How can I pay?', 'By card through our payment provider, or by cash on delivery where that option is shown at checkout.'],
-                        ['Is it safe to save my card?', "Card details are handled by our PCI-compliant payment provider and are never stored on Grocerly servers. We keep only a reference and the payment status."],
+                        ['Is it safe to save my card?', "Card details are handled by our PCI-compliant payment provider and are never stored on TUDEE SHOPPING CENTER servers. We keep only a reference and the payment status."],
                         ['When am I charged?', 'For card orders, at checkout. For cash on delivery, you pay the rider the full amount on hand-over.'],
                         ['My payment failed but money was deducted — what now?', "A failed-payment hold is usually released by your bank within a few working days. If no order was created, no purchase was made. Contact support with the order time if it does not clear."],
                     ]),
@@ -584,7 +584,7 @@ MD,
                 // A plain long-form policy (headings, bold, lists) — no section blocks.
                 'sections' => [],
                 'content' => <<<'MD'
-Grocerly Retail Private Limited (**"Grocerly"**, **"we"**, **"us"** or **"our"**) is committed to protecting your privacy. This Privacy Policy explains what information we collect when you use the Grocerly website and app (the **"Platform"**), how we use it, who we share it with, and the choices you have.
+TUDEE SHOPPING CENTER Retail Private Limited (**"TUDEE SHOPPING CENTER"**, **"we"**, **"us"** or **"our"**) is committed to protecting your privacy. This Privacy Policy explains what information we collect when you use the TUDEE SHOPPING CENTER website and app (the **"Platform"**), how we use it, who we share it with, and the choices you have.
 
 By using the Platform you agree to the practices described in this Policy. If you do not agree, please do not use the Platform.
 
@@ -627,7 +627,7 @@ We use your information to:
 
 ## 3. Payment information
 
-Card payments are processed by our third-party payment processor. Your card details are entered on their secure systems and are **not stored on Grocerly servers**. We retain only a payment reference and the status of the transaction.
+Card payments are processed by our third-party payment processor. Your card details are entered on their secure systems and are **not stored on TUDEE SHOPPING CENTER servers**. We retain only a payment reference and the status of the transaction.
 
 ## 4. Cookies and similar technologies
 
@@ -644,8 +644,8 @@ We share information only as described here:
 
 - **Delivery partners** — the name, address, phone number and order contents needed to deliver your order.
 - **Service providers** — payment processing, hosting, communications, mapping and analytics providers who process data on our instructions.
-- **Legal and safety** — where required by law, court order or a government request, or to protect the rights, property or safety of Grocerly, our customers or the public.
-- **Business transfers** — if Grocerly is involved in a merger, acquisition or sale of assets, your information may be transferred, subject to this Policy.
+- **Legal and safety** — where required by law, court order or a government request, or to protect the rights, property or safety of TUDEE SHOPPING CENTER, our customers or the public.
+- **Business transfers** — if TUDEE SHOPPING CENTER is involved in a merger, acquisition or sale of assets, your information may be transferred, subject to this Policy.
 
 We do **not** sell your personal information.
 
@@ -685,7 +685,7 @@ Your information may be processed in countries other than the one you live in. W
 
 For questions about this Policy or to exercise your rights, contact:
 
-Grievance Officer, Grocerly Retail Private Limited
+Grievance Officer, TUDEE SHOPPING CENTER Retail Private Limited
 
 Email: privacy@grocerly.example
 
@@ -707,7 +707,7 @@ MD,
                 // A plain long-form terms document (headings, bold, lists) — no section blocks.
                 'sections' => [],
                 'content' => <<<'MD'
-These Terms of Service (**"Terms"**) govern your use of the Grocerly website and app (the **"Platform"**), operated by Grocerly Retail Private Limited (**"Grocerly"**, **"we"**, **"us"** or **"our"**). By creating an account, placing an order or otherwise using the Platform, you agree to these Terms and to our Privacy Policy. If you do not agree, do not use the Platform.
+These Terms of Service (**"Terms"**) govern your use of the TUDEE SHOPPING CENTER website and app (the **"Platform"**), operated by TUDEE SHOPPING CENTER Retail Private Limited (**"TUDEE SHOPPING CENTER"**, **"we"**, **"us"** or **"our"**). By creating an account, placing an order or otherwise using the Platform, you agree to these Terms and to our Privacy Policy. If you do not agree, do not use the Platform.
 
 **Effective date:** this is a demo document — set a real date before going live.
 
@@ -732,7 +732,7 @@ The Platform lets you order groceries and household items from a nearby store fo
 ## 4. Payment
 
 - You can pay by card through our third-party payment processor, or by cash on delivery where that option is shown.
-- Card details are entered on the payment processor's systems and are **not stored on Grocerly servers**.
+- Card details are entered on the payment processor's systems and are **not stored on TUDEE SHOPPING CENTER servers**.
 - For cash-on-delivery orders, the full amount is due to the delivery rider on hand-over.
 - If a payment fails or is reversed, we may cancel the order or suspend your account until it is resolved.
 
@@ -762,7 +762,7 @@ You agree not to:
 
 ## 8. Intellectual property
 
-The Platform, including its content, design, logos and software, is owned by Grocerly or its licensors and is protected by intellectual-property laws. We grant you a limited, non-exclusive, non-transferable, revocable licence to use the Platform for its intended purpose. All other rights are reserved.
+The Platform, including its content, design, logos and software, is owned by TUDEE SHOPPING CENTER or its licensors and is protected by intellectual-property laws. We grant you a limited, non-exclusive, non-transferable, revocable licence to use the Platform for its intended purpose. All other rights are reserved.
 
 ## 9. User content
 
@@ -778,11 +778,11 @@ The Platform and all products and services are provided on an **"as is"** and **
 
 ## 12. Limitation of liability
 
-To the fullest extent permitted by law, Grocerly and its officers, employees and partners will not be liable for any indirect, incidental, special, consequential or punitive damages, or for loss of profits, data or goodwill, arising from your use of the Platform. Our total liability for any claim relating to an order will not exceed the amount you paid for that order.
+To the fullest extent permitted by law, TUDEE SHOPPING CENTER and its officers, employees and partners will not be liable for any indirect, incidental, special, consequential or punitive damages, or for loss of profits, data or goodwill, arising from your use of the Platform. Our total liability for any claim relating to an order will not exceed the amount you paid for that order.
 
 ## 13. Indemnity
 
-You agree to indemnify and hold Grocerly harmless from claims, losses and expenses (including reasonable legal fees) arising from your breach of these Terms or your misuse of the Platform.
+You agree to indemnify and hold TUDEE SHOPPING CENTER harmless from claims, losses and expenses (including reasonable legal fees) arising from your breach of these Terms or your misuse of the Platform.
 
 ## 14. Suspension and termination
 
@@ -800,7 +800,7 @@ These Terms are governed by the laws of India, without regard to conflict-of-law
 
 For complaints or questions about these Terms, contact:
 
-Grievance Officer, Grocerly Retail Private Limited
+Grievance Officer, TUDEE SHOPPING CENTER Retail Private Limited
 
 Email: grievance@grocerly.example
 
@@ -810,7 +810,7 @@ In line with the Consumer Protection (E-Commerce) Rules, 2020, we acknowledge co
 
 ## 18. General
 
-- **Entire agreement** — these Terms and the Privacy Policy are the entire agreement between you and Grocerly regarding the Platform.
+- **Entire agreement** — these Terms and the Privacy Policy are the entire agreement between you and TUDEE SHOPPING CENTER regarding the Platform.
 - **Severability** — if any provision is held unenforceable, the rest remains in effect.
 - **No waiver** — our failure to enforce a provision is not a waiver of it.
 - **Assignment** — you may not assign these Terms; we may assign them in connection with a merger, acquisition or sale of assets.
@@ -827,7 +827,7 @@ MD,
                 // A plain responsible-disclosure policy (headings, bold, lists) — no section blocks.
                 'sections' => [],
                 'content' => <<<'MD'
-Grocerly Retail Private Limited (**"Grocerly"**) takes the security of our customers and their data seriously. We value the work of security researchers and welcome reports of vulnerabilities in our website, app and infrastructure.
+TUDEE SHOPPING CENTER Retail Private Limited (**"TUDEE SHOPPING CENTER"**) takes the security of our customers and their data seriously. We value the work of security researchers and welcome reports of vulnerabilities in our website, app and infrastructure.
 
 This page sets out how to report a security issue to us and what you can expect in return.
 
@@ -902,7 +902,7 @@ One issue per report, please. If you need to share sensitive details, ask us for
 
 ## Recognition
 
-With your consent, we are happy to acknowledge researchers who report valid, previously unknown issues. Grocerly does not currently run a paid bug-bounty programme; any reward is at our discretion.
+With your consent, we are happy to acknowledge researchers who report valid, previously unknown issues. TUDEE SHOPPING CENTER does not currently run a paid bug-bounty programme; any reward is at our discretion.
 
 ## Contact
 

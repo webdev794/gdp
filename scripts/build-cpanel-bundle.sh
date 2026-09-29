@@ -84,7 +84,7 @@ HTACCESS
 
 echo "==> .env"
 cat > "$DEST/.env" <<PHP
-APP_NAME=Grocerly
+APP_NAME="TUDEE SHOPPING CENTER"
 APP_ENV=production
 APP_KEY=${APP_KEY}
 APP_DEBUG=false
@@ -124,7 +124,7 @@ MAIL_ENCRYPTION=ssl
 MAIL_USERNAME=no-reply@testcaresortwork.co.in
 MAIL_PASSWORD=CHANGE_ME
 MAIL_FROM_ADDRESS=no-reply@testcaresortwork.co.in
-MAIL_FROM_NAME=Grocerly
+MAIL_FROM_NAME="TUDEE SHOPPING CENTER"
 
 # Stripe TEST keys (rotate in the dashboard if you ever share this bundle).
 STRIPE_PUBLISHABLE_KEY=__STRIPE_PK__
@@ -177,7 +177,7 @@ rm -f "$DEST/storage/logs/"*.log 2>/dev/null || true
 
 echo "==> READ_ME_FIRST.txt"
 cat > "$STAGE/READ_ME_FIRST.txt" <<'TXT'
-GROCERLY - cPanel deployment bundle (single folder, DB imported by hand)
+TUDEE SHOPPING CENTER - cPanel deployment bundle (single folder, DB imported by hand)
 ======================================================================
 
 1. In cPanel > File Manager, open  public_html/

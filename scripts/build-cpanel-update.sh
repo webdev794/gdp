@@ -114,7 +114,7 @@ find "$DEST/storage" "$DEST/bootstrap/cache" -name '.gitignore' -delete 2>/dev/n
 
 echo "==> READ_ME_FIRST.txt"
 cat > "$STAGE/READ_ME_FIRST.txt" <<'TXT'
-GROCERLY - code update bundle
+TUDEE SHOPPING CENTER - code update bundle
 =============================
 Updated application code + built frontend. No .env, no database, no installer -
 nothing of yours is touched. Runs as-is: on the first page load after upload,

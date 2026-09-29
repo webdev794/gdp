@@ -139,7 +139,7 @@ function StarPicker({ value, onChange, readOnly }) {
 
 /**
  * Customer's 1–5 rating and optional private note for the rider on an order or a
- * delivery chat. The comment is shown only to the Grocerly team, never the rider.
+ * delivery chat. The comment is shown only to the TUDEE SHOPPING CENTER team, never the rider.
  */
 function RiderRating({ orderId, existing, source, onSaved }) {
   const [rating, setRating] = useState(existing?.rating ?? 0)
@@ -179,7 +179,7 @@ function RiderRating({ orderId, existing, source, onSaved }) {
     <div className="rider-rating">
       <span className="rider-rating-h">Rate your delivery rider</span>
       <StarPicker value={rating} onChange={setRating} />
-      <textarea rows="2" maxLength="1000" placeholder="Add a note for the Grocerly team (optional, private — the rider never sees it)" value={comment} onChange={(event) => setComment(event.target.value)} />
+      <textarea rows="2" maxLength="1000" placeholder="Add a note for the TUDEE SHOPPING CENTER team (optional, private — the rider never sees it)" value={comment} onChange={(event) => setComment(event.target.value)} />
       <div className="rider-rating-actions">
         <button type="button" className="text-button" disabled={busy} onClick={submit}>{existing ? 'Update rating' : 'Submit rating'}</button>
         {existing && <button type="button" className="text-button" onClick={() => { setEditing(false); setRating(existing.rating); setComment(existing.comment ?? '') }}>Cancel</button>}
@@ -513,7 +513,7 @@ export default function Storefront() {
     s.setProperty('--shell-max', branding.layout_width === 'full' ? 'none' : '1280px')
     root.style.colorScheme = dark ? 'dark' : 'light'
 
-    const name = branding.store_name || 'Grocerly'
+    const name = branding.store_name || 'TUDEE SHOPPING CENTER'
     document.title = branding.tagline ? `${name} | ${branding.tagline}` : name
     if (branding.favicon_url) {
       let link = document.querySelector("link[rel='icon']")
@@ -1483,9 +1483,9 @@ export default function Storefront() {
   return <><div className="app-shell">
     <header className="topbar">
       <div className="topbar-row">
-        <a className="brand" href={import.meta.env.BASE_URL || '/'} aria-label={`${branding?.store_name || 'Grocerly'} home`}>{branding === undefined ? <span className="brand-logo" aria-hidden /> : branding?.logo_url
-          ? <img className="brand-logo" src={mediaUrl(branding.logo_url)} alt={branding?.store_name || 'Grocerly'} />
-          : <><span className="brand-mark">{(branding?.store_name || 'g').trim().charAt(0).toLowerCase() || 'g'}</span>{(branding?.store_name || 'grocerly').toLowerCase()}</>}</a>
+        <a className="brand" href={import.meta.env.BASE_URL || '/'} aria-label={`${branding?.store_name || 'TUDEE SHOPPING CENTER'} home`}>{branding === undefined ? <span className="brand-logo" aria-hidden /> : branding?.logo_url
+          ? <img className="brand-logo" src={mediaUrl(branding.logo_url)} alt={branding?.store_name || 'TUDEE SHOPPING CENTER'} />
+          : <><span className="brand-mark">{(branding?.store_name || 'g').trim().charAt(0).toLowerCase() || 'g'}</span>{(branding?.store_name || 'TUDEE SHOPPING CENTER').toLowerCase()}</>}</a>
         <button className="deliver-to" type="button" onClick={() => { setLocationOpen(true); setLocationMsg('') }}><span className="deliver-eta">{etaText}</span><strong>{location ? location.label : 'Set your location'} <em aria-hidden>&#9662;</em></strong></button>
         <label className="searchbar">
           <span className="search-icon" aria-hidden><svg viewBox="0 0 24 24" width="22" height="22"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm9 2-4.35-4.35"/></svg></span>
@@ -1834,7 +1834,7 @@ export default function Storefront() {
       </div>
     </div>
     <div className="site-footer-bottom">
-      <span className="site-footer-copy">{(footer?.copyright || '© {year} Grocerly').replace('{year}', String(new Date().getFullYear()))}</span>
+      <span className="site-footer-copy">{(footer?.copyright || '© {year} TUDEE SHOPPING CENTER').replace('{year}', String(new Date().getFullYear()))}</span>
       {(footer?.app_store_url || footer?.play_store_url) && <span className="site-footer-app">
         {footer?.app_store_url && <a className="app-badge" href={footer.app_store_url} target="_blank" rel="noopener noreferrer" aria-label="Download on the App Store">
           <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path fill="currentColor" d="M17.05 12.53c-.03-2.79 2.28-4.13 2.38-4.19-1.3-1.9-3.32-2.16-4.04-2.19-1.72-.17-3.35 1.01-4.22 1.01-.87 0-2.21-.99-3.63-.96-1.87.03-3.59 1.09-4.55 2.76-1.94 3.37-.5 8.36 1.39 11.09.92 1.34 2.02 2.84 3.46 2.79 1.39-.06 1.91-.9 3.59-.9 1.67 0 2.15.9 3.62.87 1.49-.03 2.44-1.37 3.36-2.71 1.06-1.56 1.5-3.07 1.52-3.15-.03-.02-2.92-1.12-2.95-4.46zM14.28 4.38c.77-.93 1.29-2.23 1.15-3.52-1.11.04-2.45.74-3.24 1.67-.71.82-1.33 2.13-1.16 3.39 1.24.1 2.5-.63 3.25-1.54z"/></svg>

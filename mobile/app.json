@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Grocerly",
+    "name": "TUDEE SHOPPING CENTER",
     "slug": "grocerly-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -32,7 +32,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Grocerly uses your location to show items your nearest store stocks and to estimate delivery."
+          "locationWhenInUsePermission": "TUDEE SHOPPING CENTER uses your location to show items your nearest store stocks and to estimate delivery."
         }
       ]
     ]
