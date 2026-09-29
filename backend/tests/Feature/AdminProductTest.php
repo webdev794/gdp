@@ -85,6 +85,64 @@ class AdminProductTest extends TestCase
         $this->assertDatabaseMissing('products', ['id' => $product->id]);
     }
 
+    public function test_admin_can_flag_a_product_as_demo_and_filter_by_it(): void
+    {
+        $category = Category::factory()->create();
+        $real = Product::factory()->create(['category_id' => $category->id]);
+        $demo = Product::factory()->create(['category_id' => $category->id]);
+        Sanctum::actingAs($this->admin());
+
+        $this->patchJson("/api/admin/products/{$demo->id}", ['is_demo' => true])
+            ->assertOk()->assertJsonPath('data.is_demo', true);
+
+        $this->getJson('/api/admin/products?demo=demo')->assertOk()
+            ->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $demo->id);
+        $this->getJson('/api/admin/products?demo=real')->assertOk()
+            ->assertJsonCount(1, 'data')->assertJsonPath('data.0.id', $real->id);
+    }
+
+    public function test_admin_can_hide_and_show_all_demo_products(): void
+    {
+        $category = Category::factory()->create();
+        $real = Product::factory()->create(['category_id' => $category->id, 'is_active' => true]);
+        $demo = Product::factory()->create(['category_id' => $category->id, 'is_active' => true, 'is_demo' => true]);
+        Sanctum::actingAs($this->admin());
+
+        $this->postJson('/api/admin/products/demo', ['action' => 'hide'])
+            ->assertOk()->assertJsonPath('data.updated', 1);
+        $this->assertDatabaseHas('products', ['id' => $demo->id, 'is_active' => false]);
+        $this->assertDatabaseHas('products', ['id' => $real->id, 'is_active' => true]);
+
+        $this->postJson('/api/admin/products/demo', ['action' => 'show'])->assertOk();
+        $this->assertDatabaseHas('products', ['id' => $demo->id, 'is_active' => true]);
+    }
+
+    public function test_delete_all_demo_removes_unused_ones_and_hides_those_on_orders(): void
+    {
+        $category = Category::factory()->create();
+        $real = Product::factory()->create(['category_id' => $category->id]);
+        $unused = Product::factory()->create(['category_id' => $category->id, 'is_demo' => true]);
+        $ordered = Product::factory()->create(['category_id' => $category->id, 'is_demo' => true, 'is_active' => true]);
+        $order = Order::create([
+            'user_id' => User::factory()->create()->id,
+            'status' => 'confirmed', 'payment_status' => 'paid',
+            'subtotal_cents' => 100, 'tax_cents' => 0, 'delivery_fee_cents' => 0, 'total_cents' => 100,
+            'delivery_address' => ['name' => 'X', 'line1' => 'Y', 'city' => 'Z', 'state' => 'NY', 'postal_code' => '11201'],
+        ]);
+        $order->items()->create([
+            'product_id' => $ordered->id, 'product_name' => $ordered->name, 'sku' => $ordered->sku,
+            'quantity' => 1, 'unit_price_cents' => 100, 'line_total_cents' => 100,
+        ]);
+        Sanctum::actingAs($this->admin());
+
+        $this->postJson('/api/admin/products/demo', ['action' => 'delete'])
+            ->assertOk()->assertJsonPath('data.deleted', 1)->assertJsonPath('data.hidden', 1);
+
+        $this->assertDatabaseMissing('products', ['id' => $unused->id]);
+        $this->assertDatabaseHas('products', ['id' => $ordered->id, 'is_active' => false]);
+        $this->assertDatabaseHas('products', ['id' => $real->id]);
+    }
+
     public function test_non_admin_cannot_manage_products(): void
     {
         $product = Product::factory()->create(['category_id' => Category::factory()->create()->id]);

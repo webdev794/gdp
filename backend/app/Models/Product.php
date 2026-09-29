@@ -24,6 +24,7 @@ class Product extends Model
         'inventory_quantity',
         'image_url',
         'is_active',
+        'is_demo',
     ];
 
     protected function casts(): array
@@ -33,6 +34,7 @@ class Product extends Model
             'compare_at_price_cents' => 'integer',
             'inventory_quantity' => 'integer',
             'is_active' => 'boolean',
+            'is_demo' => 'boolean',
         ];
     }
 

@@ -130,6 +130,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/products', [AdminProductController::class, 'index']);
     Route::post('/products', [AdminProductController::class, 'store']);
     Route::patch('/products/{product}', [AdminProductController::class, 'update']);
+    Route::post('/products/demo', [AdminProductController::class, 'demo']);
     Route::delete('/products/{product}', [AdminProductController::class, 'destroy']);
 
     Route::post('/media', [MediaController::class, 'store']);

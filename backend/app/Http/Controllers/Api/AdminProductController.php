@@ -22,6 +22,7 @@ class AdminProductController extends Controller
             'store_id' => ['sometimes', 'integer', 'exists:stores,id'],
             'sort' => ['sometimes', Rule::in(['newest', 'oldest', 'name', 'stock_low', 'stock_high'])],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:1000'],
+            'demo' => ['sometimes', Rule::in(['demo', 'real'])],
         ]);
 
         $storeId = $validated['store_id'] ?? null;
@@ -45,6 +46,7 @@ class AdminProductController extends Controller
                 fn ($inner) => $inner->where('products.name', 'like', "%{$search}%")->orWhere('products.sku', 'like', "%{$search}%")
             ))
             ->when($validated['category_id'] ?? null, fn ($query, $id) => $query->where('products.category_id', $id))
+            ->when($validated['demo'] ?? null, fn ($query, $demo) => $query->where('products.is_demo', $demo === 'demo'))
             ->when($sort === 'newest', fn ($query) => $query->orderByDesc('products.created_at')->orderByDesc('products.id'))
             ->when($sort === 'oldest', fn ($query) => $query->orderBy('products.created_at')->orderBy('products.id'))
             ->when($sort === 'name', fn ($query) => $query->orderBy('products.name'))
@@ -113,6 +115,42 @@ class AdminProductController extends Controller
         return response()->json(status: 204);
     }
 
+    /**
+     * Bulk action on every product flagged `is_demo`: hide or show them in the
+     * store, or delete them. A demo product that is on an existing order can't
+     * be deleted (order history keeps it), so it is hidden instead.
+     */
+    public function demo(Request $request): JsonResponse
+    {
+        $action = $request->validate([
+            'action' => ['required', Rule::in(['hide', 'show', 'delete'])],
+        ])['action'];
+
+        $demo = Product::query()->where('is_demo', true);
+
+        if ($action !== 'delete') {
+            $count = $demo->update(['is_active' => $action === 'show']);
+
+            return response()->json(['data' => ['action' => $action, 'updated' => $count]]);
+        }
+
+        $ids = $demo->pluck('id');
+        $onOrders = DB::table('order_items')->whereIn('product_id', $ids)->distinct()->pluck('product_id');
+        $deletable = $ids->diff($onOrders)->values();
+
+        DB::transaction(function () use ($deletable, $onOrders): void {
+            DB::table('cart_items')->whereIn('product_id', $deletable)->delete();
+            Product::whereIn('id', $deletable)->delete();
+            Product::whereIn('id', $onOrders)->update(['is_active' => false]);
+        });
+
+        return response()->json(['data' => [
+            'action' => 'delete',
+            'deleted' => $deletable->count(),
+            'hidden' => $onOrders->count(),
+        ]]);
+    }
+
     private function validated(Request $request, ?Product $product = null): array
     {
         $unique = Rule::unique('products')->ignore($product?->id);
@@ -128,6 +166,7 @@ class AdminProductController extends Controller
             'inventory_quantity' => ['sometimes', 'integer', 'min:0'],
             'image_url' => ['sometimes', 'nullable', 'string', 'max:2048'],
             'is_active' => ['sometimes', 'boolean'],
+            'is_demo' => ['sometimes', 'boolean'],
 
             // Extra gallery photos shown alongside image_url. A full replacement
             // list, same convention as variants: an id updates that row, no id

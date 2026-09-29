@@ -22,7 +22,7 @@ class SendOtpCode extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage())
-            ->subject('Your TUDEE SHOPPING CENTER verification code')
+            ->subject('Your Tudee Shopping Center verification code')
             ->greeting('Verification code')
             ->line("Enter this code to continue: **{$this->code}**")
             ->line("The code expires in {$this->ttlMinutes} minutes.")

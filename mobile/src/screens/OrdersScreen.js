@@ -53,7 +53,7 @@ function RiderRating({ order, onSaved }) {
       {stars}
       <TextInput
         style={styles.ratingInput}
-        placeholder="Private note for the TUDEE SHOPPING CENTER team (optional)"
+        placeholder="Private note for the Tudee Shopping Center team (optional)"
         placeholderTextColor={colors.muted}
         value={comment}
         onChangeText={setComment}

@@ -32,7 +32,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "TUDEE SHOPPING CENTER uses your location to show items your nearest store stocks and to estimate delivery."
+          "locationWhenInUsePermission": "Tudee Shopping Center uses your location to show items your nearest store stocks and to estimate delivery."
         }
       ]
     ]

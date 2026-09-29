@@ -120,7 +120,7 @@ const TAB_ICONS = {
 }
 const EMPTY_BRANDING = { store_name: '', tagline: '', logo_url: '', favicon_url: '', theme: 'light', layout_width: 'boxed', color_brand: '#1f7a3d', color_accent: '#ffd23f', color_heading: '#18211c' }
 const SOCIAL_PLATFORMS = [['facebook', 'Facebook'], ['x', 'X / Twitter'], ['instagram', 'Instagram'], ['linkedin', 'LinkedIn'], ['youtube', 'YouTube']]
-const EMPTY_FOOTER = { copyright: '© {year} TUDEE SHOPPING CENTER', note: '', app_store_url: '', play_store_url: '', socials: { facebook: '', x: '', instagram: '', linkedin: '', youtube: '' }, links: [] }
+const EMPTY_FOOTER = { copyright: '© {year} Tudee Shopping Center', note: '', app_store_url: '', play_store_url: '', socials: { facebook: '', x: '', instagram: '', linkedin: '', youtube: '' }, links: [] }
 
 const ISSUE_LABELS = {
   item_missing: 'Item missing', item_damaged: 'Item damaged', wrong_item: 'Wrong item',
@@ -128,7 +128,7 @@ const ISSUE_LABELS = {
   delivery: 'Delivery message',
 }
 
-const EMPTY_PRODUCT = { category_id: '', name: '', sku: '', price: '', compare_at: '', inventory_quantity: 0, description: '', image_url: '', is_active: true, per_store_stock: false, store_stock: {}, variants: [], images: [] }
+const EMPTY_PRODUCT = { category_id: '', name: '', sku: '', price: '', compare_at: '', inventory_quantity: 0, description: '', image_url: '', is_active: true, is_demo: false, per_store_stock: false, store_stock: {}, variants: [], images: [] }
 
 // Build the per-store stock grid ({ [storeId]: { is_stocked, base, variants: { [variantIndex]: qty } } })
 // from a product's store_inventory rows.
@@ -359,6 +359,7 @@ export default function Admin({ token, onClose }) {
   const [productSort, setProductSort] = useState('newest')
   const [productStore, setProductStore] = useState('')
   const [productCategory, setProductCategory] = useState('')
+  const [productDemo, setProductDemo] = useState('')
   // Rows per page — shared across every list, remembered per browser.
   const [pageSize, setPageSizeRaw] = useState(() => {
     const n = Number(localStorage.getItem('gdp_admin_page_size'))
@@ -496,9 +497,10 @@ export default function Admin({ token, onClose }) {
     if (productSearch.trim()) qs.set('search', productSearch.trim())
     if (productStore) qs.set('store_id', productStore)
     if (productCategory) qs.set('category_id', productCategory)
+    if (productDemo) qs.set('demo', productDemo)
     track('products', fetch(`${API_URL}/admin/products?${qs}`, { headers: authHeaders() }).then(readJson)
       .then((data) => { setProducts(data.data ?? []); setProductsMeta(data.meta ?? null) }).catch(() => setMessage('Could not load products.')))
-  }, [authHeaders, productSearch, productSort, productStore, productCategory, productsPage, pageSize, track])
+  }, [authHeaders, productSearch, productSort, productStore, productCategory, productDemo, productsPage, pageSize, track])
 
   const loadCategories = useCallback(() => {
     track('categories', fetch(`${API_URL}/admin/categories`, { headers: authHeaders() }).then(readJson)
@@ -1414,6 +1416,29 @@ export default function Admin({ token, onClose }) {
     } catch (error) { fail(error) }
   }
 
+  // Bulk action on every product marked "Demo product": hide, show or delete.
+  async function demoProducts(action) {
+    const ask = {
+      hide: 'Hide all demo products from the store?',
+      show: 'Show all demo products in the store again?',
+      delete: 'Permanently delete all demo products? Any that are on past orders will be hidden instead. This cannot be undone.',
+    }[action]
+    if (!window.confirm(ask)) return
+    setMessage('')
+    try {
+      const response = await fetch(`${API_URL}/admin/products/demo`, { method: 'POST', headers: jsonHeaders(), body: JSON.stringify({ action }) })
+      const data = await readJson(response)
+      if (!response.ok) throw new Error(data.message ?? 'Could not update demo products.')
+      const r = data.data ?? {}
+      setMessage(action === 'delete'
+        ? `Deleted ${r.deleted} demo product(s)${r.hidden ? `; ${r.hidden} on past orders were hidden instead` : ''}.`
+        : `${r.updated} demo product(s) ${action === 'hide' ? 'hidden from' : 'shown in'} the store.`)
+      setProductForm(null)
+      loadProducts()
+      loadMetrics()
+    } catch (error) { fail(error) }
+  }
+
   async function saveCategory(event) {
     event.preventDefault()
     setMessage('')
@@ -2013,7 +2038,20 @@ export default function Admin({ token, onClose }) {
                 </select>
               </label>
             )}
+            <label>Demo
+              <select value={productDemo} onChange={(event) => { setProductDemo(event.target.value); setProductsPage(1); setProductForm(null) }}>
+                <option value="">All products</option>
+                <option value="demo">Demo only</option>
+                <option value="real">Real only</option>
+              </select>
+            </label>
             <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ ...EMPTY_PRODUCT, category_id: categories[0]?.id ?? '' }); scrollFormIntoView('admin-product-form') }}>New product</button>
+          </div>
+          <div className="admin-toolbar">
+            <span className="muted">All demo products:</span>
+            <button className="act ghost" type="button" onClick={() => demoProducts('hide')}>Hide from store</button>
+            <button className="act ghost" type="button" onClick={() => demoProducts('show')}>Show in store</button>
+            <button className="act danger" type="button" onClick={() => demoProducts('delete')}>Delete all</button>
           </div>
 
           {productForm && (
@@ -2034,6 +2072,7 @@ export default function Admin({ token, onClose }) {
                   ? <label>Inventory<input type="text" value="Per store — see below" disabled title="This product tracks stock per store; the counts are in the Store stock section." /></label>
                   : <label>Inventory<input type="number" min="0" value={productForm.inventory_quantity} onChange={(event) => setProductForm({ ...productForm, inventory_quantity: event.target.value })} /></label>}
                 <label className="admin-check"><input type="checkbox" checked={productForm.is_active} onChange={(event) => setProductForm({ ...productForm, is_active: event.target.checked })} /> Active</label>
+                <label className="admin-check"><input type="checkbox" checked={!!productForm.is_demo} onChange={(event) => setProductForm({ ...productForm, is_demo: event.target.checked })} /> Demo product</label>
               </div>
               <label>Primary image <span className="muted">(shown on the product card)</span>
                 <div className="admin-image-field">
@@ -2140,7 +2179,7 @@ export default function Admin({ token, onClose }) {
 
           {listBusy.products && products.length === 0 ? <Loading>Loading products…</Loading> : products.length === 0 ? <p className="admin-empty">No products.</p> : (
             <table className="admin-table">
-              <thead><tr><th>Name</th><th>SKU</th><th>Category</th><th>Price</th><th>Stock</th><th>Variants</th><th>Active</th><th></th></tr></thead>
+              <thead><tr><th>Name</th><th>SKU</th><th>Category</th><th>Price</th><th>Stock</th><th>Variants</th><th>Active</th><th>Demo</th><th></th></tr></thead>
               <tbody>
                 {products.map((product) => {
                   const packs = (product.variants ?? []).filter((v) => v.is_active).length
@@ -2153,8 +2192,9 @@ export default function Admin({ token, onClose }) {
                     <td className={(product.effective_stock ?? product.inventory_quantity) <= 5 ? 'low' : ''}>{packs ? '—' : (product.effective_stock ?? product.inventory_quantity)}{productStore && !packs ? <span className="admin-note">at {stores.find((s) => String(s.id) === String(productStore))?.name ?? 'store'}</span> : null}</td>
                     <td>{packs || '—'}</td>
                     <td>{product.is_active ? 'Yes' : 'No'}</td>
+                    <td>{product.is_demo ? 'Yes' : ''}</td>
                     <td className="admin-actions">
-                      <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ id: product.id, category_id: product.category_id, name: product.name, sku: product.sku, price: (product.price_cents / 100).toFixed(2), compare_at: dollarsOrBlank(product.compare_at_price_cents), inventory_quantity: product.inventory_quantity, description: product.description ?? '', image_url: product.image_url ?? '', is_active: product.is_active, per_store_stock: (product.store_inventory ?? []).length > 0, store_stock: storeStockFrom(product), variants: variantRowsFrom(product), images: imageRowsFrom(product) }); scrollFormIntoView('admin-product-form') }}>Edit</button>
+                      <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ id: product.id, category_id: product.category_id, name: product.name, sku: product.sku, price: (product.price_cents / 100).toFixed(2), compare_at: dollarsOrBlank(product.compare_at_price_cents), inventory_quantity: product.inventory_quantity, description: product.description ?? '', image_url: product.image_url ?? '', is_active: product.is_active, is_demo: !!product.is_demo, per_store_stock: (product.store_inventory ?? []).length > 0, store_stock: storeStockFrom(product), variants: variantRowsFrom(product), images: imageRowsFrom(product) }); scrollFormIntoView('admin-product-form') }}>Edit</button>
                       <button className="act danger" type="button" onClick={() => removeProduct(product)}>Delete</button>
                     </td>
                   </tr>
@@ -2735,7 +2775,7 @@ export default function Admin({ token, onClose }) {
               <h3>Footer</h3>
               <p className="muted">The storefront footer. &ldquo;Useful Links&rdquo; also lists your published content pages; the links below are added after them.</p>
               <div className="admin-form-grid">
-                <label>Copyright line<input maxLength="160" value={footerForm.copyright} onChange={(event) => setFooterForm({ ...footerForm, copyright: event.target.value })} placeholder="© {year} TUDEE SHOPPING CENTER" /></label>
+                <label>Copyright line<input maxLength="160" value={footerForm.copyright} onChange={(event) => setFooterForm({ ...footerForm, copyright: event.target.value })} placeholder="© {year} Tudee Shopping Center" /></label>
                 <label>App Store URL<input value={footerForm.app_store_url} onChange={(event) => setFooterForm({ ...footerForm, app_store_url: event.target.value })} placeholder="https://apps.apple.com/…" /></label>
                 <label>Google Play URL<input value={footerForm.play_store_url} onChange={(event) => setFooterForm({ ...footerForm, play_store_url: event.target.value })} placeholder="https://play.google.com/…" /></label>
               </div>

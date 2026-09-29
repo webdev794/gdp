@@ -9,8 +9,8 @@
 
 return [
     // "{year}" is replaced with the current year by the storefront.
-    'copyright' => env('FOOTER_COPYRIGHT', '© {year} TUDEE SHOPPING CENTER'),
-    'note' => env('FOOTER_NOTE', 'TUDEE SHOPPING CENTER delivers fresh groceries and household essentials from a store near you.'),
+    'copyright' => env('FOOTER_COPYRIGHT', '© {year} Tudee Shopping Center'),
+    'note' => env('FOOTER_NOTE', 'Tudee Shopping Center delivers fresh groceries and household essentials from a store near you.'),
 
     'app_store_url' => env('FOOTER_APP_STORE_URL', ''),
     'play_store_url' => env('FOOTER_PLAY_STORE_URL', ''),
