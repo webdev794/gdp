@@ -48,6 +48,25 @@ class ApiService {
     } catch (_) {}
   }
 
+  /// Re-read the signed-in account from the store (GET /api/user), so name/phone
+  /// changes made on the website show in the app; signs out if the session was revoked.
+  static Future<void> refreshUser() async {
+    if (authToken == null || authToken!.isEmpty) {
+      if (MockAuthService.isLoggedIn) await clearSession();
+      return;
+    }
+    try {
+      final res = await http.get(Uri.parse('$baseUrl/user'), headers: _headers).timeout(const Duration(seconds: 10));
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        final raw = data is Map && data['data'] is Map ? data['data'] : data;
+        await saveSession(authToken!, UserModel.fromJson(Map<String, dynamic>.from(raw)));
+      } else if (res.statusCode == 401) {
+        await clearSession();
+      }
+    } catch (_) {} // offline: keep the saved session
+  }
+
   /// Persist session to device disk
   static Future<void> saveSession(String token, UserModel user) async {
     authToken = token;
@@ -142,9 +161,21 @@ class ApiService {
 
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
+        // With email codes switched on, the store sends a code instead of signing in.
+        if (data['requires_otp'] == true) {
+          return {
+            'success': false,
+            'requires_otp': true,
+            'purpose': data['purpose'] ?? 'login',
+            'message': data['message'] ?? 'We sent a verification code to your email.',
+          };
+        }
         final token = (data['token'] ?? data['access_token'] ?? '').toString();
+        if (token.isEmpty || data['user'] == null) {
+          return {'success': false, 'message': 'Sign-in failed. Please try again.'};
+        }
         isOnlineBackendAvailable = true;
-        final user = UserModel.fromJson(data['user'] ?? data['data'] ?? {});
+        final user = UserModel.fromJson(data['user']);
         await saveSession(token, user);
         return {'success': true, 'user': user, 'token': token};
       } else if (res.statusCode == 422) {
@@ -194,7 +225,7 @@ class ApiService {
         }),
       ).timeout(const Duration(seconds: 12));
 
-      if (res.statusCode == 200 || res.statusCode == 201) {
+      if (res.statusCode == 200 || res.statusCode == 201 || res.statusCode == 202) {
         final data = json.decode(res.body);
         // The store may email a code first; the account is created once it's verified.
         if (data['requires_otp'] == true) {

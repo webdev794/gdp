@@ -9,6 +9,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await BrandingService.init();
   await ApiService.initSession();
+  await ApiService.refreshUser();
   await ReviewService.init();
   runApp(const StoreApp());
 }
