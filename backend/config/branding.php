@@ -12,6 +12,13 @@ return [
     'tagline' => env('STORE_TAGLINE', 'Fresh groceries, less fuss'),
     'logo_url' => env('STORE_LOGO_URL', ''),
     'favicon_url' => env('STORE_FAVICON_URL', ''),
+
+    // Contact details, filled into page text wherever {email}, {phone} or
+    // {address} appear (see App\Support\PageTokens).
+    'contact_email' => env('STORE_CONTACT_EMAIL', ''),
+    'contact_phone' => env('STORE_CONTACT_PHONE', ''),
+    'contact_address' => env('STORE_CONTACT_ADDRESS', 'Kakatown Highway, Margibi County, Kataka, Liberia'),
+
     'theme' => env('STORE_THEME', 'light'), // light | dark
     'layout_width' => env('STORE_LAYOUT_WIDTH', 'boxed'), // boxed | full
 

@@ -304,7 +304,7 @@ class DatabaseSeeder extends Seeder
                         ['Behind the scenes', 'How the store hubs, picking and routing actually work.'],
                         ['Sustainability', 'Less waste, less packaging, shorter journeys.'],
                     ]),
-                    $mediaText('/img/pages/blog-dinner.jpg', 'right', 'Write for us', "Got a fast recipe, a market tip or a strong opinion about tinned tomatoes? We publish guest posts.\n\nEmail **hello@grocerly.example** with a two-line pitch."),
+                    $mediaText('/img/pages/blog-dinner.jpg', 'right', 'Write for us', "Got a fast recipe, a market tip or a strong opinion about tinned tomatoes? We publish guest posts.\n\nEmail **{email}** with a two-line pitch."),
                     $richText("**Editorial note** — nothing here is sponsored. Product mentions are picked by the writer, and prices and availability shown in posts can change."),
                     $cta('Get new posts by email', "A subscribe box is coming soon — for now, check back weekly for the next one."),
                 ],
@@ -494,15 +494,13 @@ class DatabaseSeeder extends Seeder
 
 Tudee Shopping Center
 
-Kakatown Highway
-
-Margibi County, Kataka, Liberia
+{address}
 
 ## Contact details
 
-**Customer support:** support@grocerly.example — replies within a few hours, every day 8am to 10pm.
+**Email:** {email}
 
-**Press and partnerships:** hello@grocerly.example
+**Phone:** {phone}
 
 ## Complaints
 
@@ -510,9 +508,9 @@ Complaints can be sent to our Grievance Officer.
 
 **Name:** Grievance Officer, Tudee Shopping Center
 
-**Email:** grievance@grocerly.example
+**Email:** {email}
 
-**Address:** Kakatown Highway, Margibi County, Kataka, Liberia
+**Address:** {address}
 
 We acknowledge every complaint within 48 hours and aim to resolve it within one month of receipt.
 MD,
@@ -544,7 +542,7 @@ MD,
                     $faq('Your account', [
                         ['How do I sign in?', "Use the email-code option, or set a password and sign in with your email and password. Staff accounts sign in on a separate admin page."],
                         ['How do I change my address or phone number?', "Edit them in your account. The details on an order that is already placed are frozen at the time you placed it."],
-                        ['How do I delete my account?', "Contact support or email privacy@grocerly.example. The Privacy Policy explains what happens to your data."],
+                        ['How do I delete my account?', "Contact us through the Contact page and we will delete it for you. The Privacy Policy explains what happens to your data."],
                         ['I am not getting order updates.', "Check the email address on your account and your spam folder. You can always see live status on the order in your account."],
                     ]),
                     $cta('Still need help?', "Open the order in your account and tap “Get help” — it reaches support with the order already attached."),
@@ -658,9 +656,9 @@ For questions about this Policy or to exercise your rights, contact:
 
 Grievance Officer, Tudee Shopping Center
 
-Email: privacy@grocerly.example
+Email: {email}
 
-Address: Kakatown Highway, Margibi County, Kataka, Liberia
+Address: {address}
 
 We acknowledge complaints within 48 hours and aim to resolve them within one month of receipt.
 
@@ -769,9 +767,9 @@ For complaints or questions about these Terms, contact:
 
 Grievance Officer, Tudee Shopping Center
 
-Email: grievance@grocerly.example
+Email: {email}
 
-Address: Kakatown Highway, Margibi County, Kataka, Liberia
+Address: {address}
 
 We acknowledge complaints within 48 hours and aim to resolve them within one month of receipt.
 
@@ -847,7 +845,7 @@ The following generally do **not** qualify on their own, unless you can show a c
 
 ## How to report
 
-Email **security@grocerly.example** with:
+Email **{email}** with:
 
 1. a clear description of the vulnerability and the affected URL, endpoint or app screen;
 2. step-by-step instructions to reproduce it;
@@ -869,7 +867,7 @@ With your consent, we are happy to acknowledge researchers who report valid, pre
 
 ## Contact
 
-Security reports: **security@grocerly.example**
+Security reports: **{email}**
 
 For anything else, see the [Contact](/#/p/contact) page.
 MD,

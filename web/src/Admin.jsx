@@ -118,7 +118,7 @@ const TAB_ICONS = {
   customers: '\u{1F465}', riders: '\u{1F6F5}', stores: '\u{1F3EC}', branding: '\u{1F3A8}', secure: '\u{1F510}',
   homepage: '\u{1F5BC}️',
 }
-const EMPTY_BRANDING = { store_name: '', tagline: '', logo_url: '', favicon_url: '', theme: 'light', layout_width: 'boxed', color_brand: '#1f7a3d', color_accent: '#ffd23f', color_heading: '#18211c' }
+const EMPTY_BRANDING = { store_name: '', tagline: '', logo_url: '', favicon_url: '', contact_email: '', contact_phone: '', contact_address: '', theme: 'light', layout_width: 'boxed', color_brand: '#1f7a3d', color_accent: '#ffd23f', color_heading: '#18211c' }
 const SOCIAL_PLATFORMS = [['facebook', 'Facebook'], ['x', 'X / Twitter'], ['instagram', 'Instagram'], ['linkedin', 'LinkedIn'], ['youtube', 'YouTube']]
 const EMPTY_FOOTER = { copyright: '© {year} Tudee Shopping Center', note: '', app_store_url: '', play_store_url: '', socials: { facebook: '', x: '', instagram: '', linkedin: '', youtube: '' }, links: [] }
 
@@ -952,6 +952,9 @@ export default function Admin({ token, onClose }) {
       tagline: brandingForm.tagline.trim(),
       logo_url: brandingForm.logo_url.trim(),
       favicon_url: brandingForm.favicon_url.trim(),
+      contact_email: brandingForm.contact_email.trim(),
+      contact_phone: brandingForm.contact_phone.trim(),
+      contact_address: brandingForm.contact_address.trim(),
       theme: brandingForm.theme,
       layout_width: brandingForm.layout_width,
       color_brand: brandingForm.color_brand,
@@ -2563,7 +2566,7 @@ export default function Admin({ token, onClose }) {
         <section className="admin-panel">
           <div className="admin-toolbar">
             <button className="act" type="button" onClick={() => newPage()}>New page</button>
-            <span className="muted">Content pages linked from the storefront footer. Content is Markdown (## heading, **bold**, - list, [text](url)).</span>
+            <span className="muted">Content pages linked from the storefront footer. Content is Markdown (## heading, **bold**, - list, [text](url)). Type {'{email}'}, {'{phone}'}, {'{address}'} or {'{store_name}'} to insert the values from Store settings — a line whose value is blank is hidden.</span>
           </div>
 
           {pageForm && (
@@ -2841,6 +2844,9 @@ export default function Admin({ token, onClose }) {
               <div className="admin-form-grid">
                 <label>Store name<input required maxLength="60" value={brandingForm.store_name} onChange={(event) => setBrandingForm({ ...brandingForm, store_name: event.target.value })} /></label>
                 <label>Tagline<input maxLength="120" value={brandingForm.tagline} onChange={(event) => setBrandingForm({ ...brandingForm, tagline: event.target.value })} /></label>
+                <label>Contact email<input type="email" maxLength="120" placeholder="shown wherever a page says {email}" value={brandingForm.contact_email ?? ''} onChange={(event) => setBrandingForm({ ...brandingForm, contact_email: event.target.value })} /></label>
+                <label>Contact phone<input maxLength="40" placeholder="shown wherever a page says {phone}" value={brandingForm.contact_phone ?? ''} onChange={(event) => setBrandingForm({ ...brandingForm, contact_phone: event.target.value })} /></label>
+                <label>Store address<input maxLength="300" placeholder="shown wherever a page says {address}" value={brandingForm.contact_address ?? ''} onChange={(event) => setBrandingForm({ ...brandingForm, contact_address: event.target.value })} /></label>
                 <label>Theme
                   <select value={brandingForm.theme} onChange={(event) => setBrandingForm({ ...brandingForm, theme: event.target.value })}>
                     <option value="light">Light</option>

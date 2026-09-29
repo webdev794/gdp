@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Page;
+use App\Support\PageTokens;
 use Illuminate\Http\JsonResponse;
 
 class PageController extends Controller
@@ -22,13 +23,14 @@ class PageController extends Controller
     public function show(string $slug): JsonResponse
     {
         $page = Page::query()->published()->where('slug', $slug)->firstOrFail();
+        $tokens = PageTokens::values();
 
         return response()->json(['data' => [
             'slug' => $page->slug,
             'title' => $page->title,
             'banner_image' => $page->banner_image,
-            'content' => (string) $page->content,
-            'sections' => is_array($page->sections) ? array_values($page->sections) : [],
+            'content' => PageTokens::fill((string) $page->content, $tokens),
+            'sections' => is_array($page->sections) ? array_values(PageTokens::fillArray($page->sections, $tokens)) : [],
             'updated_at' => $page->updated_at,
         ]]);
     }

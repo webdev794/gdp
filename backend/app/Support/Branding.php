@@ -7,7 +7,7 @@ use App\Models\Setting;
 class Branding
 {
     /** @var list<string> */
-    private const STRINGS = ['store_name', 'tagline', 'logo_url', 'favicon_url'];
+    private const STRINGS = ['store_name', 'tagline', 'logo_url', 'favicon_url', 'contact_email', 'contact_phone', 'contact_address'];
 
     /** @var list<string> */
     private const COLORS = ['color_brand', 'color_accent', 'color_heading'];

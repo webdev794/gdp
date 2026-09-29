@@ -138,6 +138,29 @@ class PageTest extends TestCase
             ->assertJsonPath('data.sections', []);
     }
 
+    public function test_contact_placeholders_are_filled_from_store_settings(): void
+    {
+        Page::create([
+            'slug' => 'contact', 'title' => 'Contact',
+            'content' => "## Our address\n\n{address}\n\n## Contact details\n\n**Email:** {email}\n\n**Phone:** {phone}\n\n## Hours\n\nDaily.",
+            'sections' => [['type' => 'rich_text', 'markdown' => "Write to **{email}**.\n\nThanks."]],
+        ]);
+
+        // Phone and email unset: their lines go, and the emptied heading with them.
+        $this->getJson('/api/pages/contact')->assertOk()
+            ->assertJsonPath('data.content', "## Our address\n\n".config('branding.contact_address')."\n\n## Hours\n\nDaily.")
+            ->assertJsonPath('data.sections.0.markdown', 'Thanks.');
+
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+        $this->patchJson('/api/admin/settings', [
+            'contact_email' => 'help@shop.test', 'contact_phone' => '+231 555 0100', 'contact_address' => '1 Main St',
+        ])->assertOk()->assertJsonPath('data.branding.contact_email', 'help@shop.test');
+
+        $this->getJson('/api/pages/contact')->assertOk()
+            ->assertJsonPath('data.content', "## Our address\n\n1 Main St\n\n## Contact details\n\n**Email:** help@shop.test\n\n**Phone:** +231 555 0100\n\n## Hours\n\nDaily.")
+            ->assertJsonPath('data.sections.0.markdown', "Write to **help@shop.test**.\n\nThanks.");
+    }
+
     public function test_non_admin_cannot_manage_pages(): void
     {
         $this->getJson('/api/admin/pages')->assertUnauthorized();
