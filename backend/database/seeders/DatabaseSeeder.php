@@ -180,14 +180,14 @@ class DatabaseSeeder extends Seeder
 
         \App\Models\Setting::put('footer', [
             'copyright' => '© {year} Tudee Shopping Center',
-            'app_store_url' => 'https://apps.apple.com/app/grocerly-demo',
-            'play_store_url' => 'https://play.google.com/store/apps/details?id=com.grocerly.demo',
+            'app_store_url' => '' /* client to supply */,
+            'play_store_url' => '',
             'socials' => [
-                'facebook' => 'https://facebook.com/grocerly',
-                'x' => 'https://x.com/grocerly',
-                'instagram' => 'https://instagram.com/grocerly',
-                'linkedin' => 'https://www.linkedin.com/company/grocerly',
-                'youtube' => 'https://www.youtube.com/@grocerly',
+                'facebook' => '',
+                'x' => '',
+                'instagram' => '',
+                'linkedin' => '',
+                'youtube' => '',
             ],
             'links' => [],
         ]);

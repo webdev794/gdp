@@ -1,6 +1,6 @@
 # GDP Grocery Delivery Platform
 
-start "GDP API" cmd /k "cd /d D:\gdp\backend && D:\xampp8-2-12\php84\php.exe -d display_errors=0 artisan serve" && start "GDP Web" cmd /k "cd /d D:\gdp\web && npm.cmd --cache D:\gdp\.tmp\npm-cache run dev -- --host 127.0.0.1 --port 5173"
+start "GDP API" cmd /k "cd /d D:\gdp\backend && D:\xampp\php84\php.exe -d display_errors=0 artisan serve" && start "GDP Web" cmd /k "cd /d D:\gdp\web && npm.cmd --cache D:\gdp\.tmp\npm-cache run dev -- --host 127.0.0.1 --port 5173"
                                   
 /admin:	test@example.com
 [client](http://127.0.0.1:5173/): testcaresort@outlook.com
@@ -22,7 +22,7 @@ Open Windows Command Prompt and run:
 
 ```cmd
 cd /d D:\gdp\backend
-"D:\xampp8-2-12\php84\php.exe" -d display_errors=0 artisan serve
+"D:\xampp\php84\php.exe" -d display_errors=0 artisan serve
 ```
 
 Open the application in a browser:
@@ -539,7 +539,7 @@ The same flows are in the Expo app (`Support` / `SupportThread` screens,
 Grant admin rights to an existing account:
 
 ```cmd
-"D:\xampp8-2-12\php84\php.exe" artisan tinker --execute="App\Models\User::where('email','test@example.com')->update(['is_admin'=>true]);"
+"D:\xampp\php84\php.exe" artisan tinker --execute="App\Models\User::where('email','test@example.com')->update(['is_admin'=>true]);"
 ```
 
 The database seeder already flags `test@example.com` as an administrator.
@@ -571,7 +571,7 @@ Local development: `MAIL_MAILER=log`, so the email is written to
 line as `OTP for <email> (<purpose>): <code>`. Watch it live with:
 
 ```cmd
-"D:\xampp8-2-12\php84\php.exe" artisan pail
+"D:\xampp\php84\php.exe" artisan pail
 ```
 
 To sign in with password only (no code), set `AUTH_OTP_ENABLED=false` in `backend/.env` and
@@ -683,8 +683,8 @@ the CA bundle committed at `backend/resources/certs/cacert.pem` when the ini has
 none. The proper fix is to point `php.ini` at a real bundle:
 
 ```ini
-curl.cainfo = "D:\xampp8-2-12\php84\extras\ssl\cacert.pem"
-openssl.cafile = "D:\xampp8-2-12\php84\extras\ssl\cacert.pem"
+curl.cainfo = "D:\xampp\php84\extras\ssl\cacert.pem"
+openssl.cafile = "D:\xampp\php84\extras\ssl\cacert.pem"
 ```
 
 ## Product Variants
@@ -914,9 +914,9 @@ set "TMP=D:\gdp\.tmp"
 set "TEMP=D:\gdp\.tmp"
 cd /d D:\gdp\backend
 
-"D:\xampp8-2-12\php84\php.exe" artisan migrate
-"D:\xampp8-2-12\php84\php.exe" artisan storage:link
-"D:\xampp8-2-12\php84\php.exe" -d display_errors=0 artisan serve
+"D:\xampp\php84\php.exe" artisan migrate
+"D:\xampp\php84\php.exe" artisan storage:link
+"D:\xampp\php84\php.exe" -d display_errors=0 artisan serve
 ```
 
 The local API is available at `http://127.0.0.1:8000`.
@@ -977,7 +977,7 @@ Run tests with:
 ```cmd
 set "TMP=D:\gdp\.tmp"
 set "TEMP=D:\gdp\.tmp"
-"D:\xampp8-2-12\php84\php.exe" artisan test
+"D:\xampp\php84\php.exe" artisan test
 ```
 
 Never commit `.env`, Stripe keys, database passwords, customer data, `vendor/`, `node_modules/`, logs, or generated local files.
