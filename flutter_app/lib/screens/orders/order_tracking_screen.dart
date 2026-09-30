@@ -31,8 +31,11 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     _currentOrder = widget.order;
     _refresh();
     // Status changes made by the store/rider (or on the website) show up here.
-    _poll = Timer.periodic(const Duration(seconds: 20), (_) {
-      if (!_isFinal) _refresh();
+    // Status changes made by the store/rider (or on the website) show up here;
+    // checks every 5 s while the rider is on the way so the handover code pops up fast.
+    _poll = Timer.periodic(const Duration(seconds: 5), (tick) {
+      if (_isFinal) return;
+      if (_currentOrder.status == 'out_for_delivery' || tick.tick % 4 == 0) _refresh();
     });
   }
 
@@ -45,8 +48,34 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   Future<void> _refresh() async {
     try {
       final fresh = await ApiService.fetchOrder(_currentOrder.id);
-      if (mounted) setState(() => _currentOrder = fresh);
+      if (!mounted) return;
+      final newCode = fresh.deliveryCode.isNotEmpty && fresh.deliveryCode != _currentOrder.deliveryCode;
+      setState(() => _currentOrder = fresh);
+      if (newCode) _showHandoverCode(fresh.deliveryCode);
     } catch (_) {}
+  }
+
+  /// The rider asked for the handover code: show it straight away.
+  void _showHandoverCode(String code) {
+    HapticFeedback.heavyImpact();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Your rider has arrived', textAlign: TextAlign.center),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Read this delivery code to your rider:', textAlign: TextAlign.center),
+            const SizedBox(height: 14),
+            SelectableText(
+              code,
+              style: const TextStyle(fontSize: 38, fontWeight: FontWeight.w900, letterSpacing: 8, color: AppTheme.emeraldPrimary),
+            ),
+          ],
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
+      ),
+    );
   }
 
   void _openReviewModal() {
@@ -479,7 +508,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
           ),
           const SizedBox(height: 10),
           const Text(
-            'Share this 4-digit PIN with your rider upon arrival to receive your package.',
+            'Read this code to your rider on arrival to receive your package.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w500),
           ),

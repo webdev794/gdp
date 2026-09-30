@@ -1333,6 +1333,40 @@ export default function Storefront() {
     return () => { stopped = true; clearInterval(timer) }
   }, [currentUser, supportView])
 
+  // Delivery handover code: when the rider asks for it, pop it up for the buyer
+  // on any page (plus a browser notification if allowed) — no need to open orders.
+  const [handover, setHandover] = useState(null) // { orderId, code }
+  const seenCodes = useRef({})
+  useEffect(() => {
+    if (!currentUser) return
+    let stopped = false
+    let timer
+    const check = async () => {
+      let onTheWay = false
+      try {
+        const d = await responseJson(await authGet('/orders'))
+        for (const o of d.data ?? []) {
+          if (o.status === 'out_for_delivery') onTheWay = true
+          const live = o.status === 'out_for_delivery' && o.delivery_code && new Date(o.delivery_code_expires_at) > new Date()
+          if (!live) continue
+          const key = `${o.id}:${o.delivery_code}`
+          if (seenCodes.current[key]) continue
+          seenCodes.current[key] = true
+          if (stopped) return
+          setHandover({ orderId: o.id, code: o.delivery_code })
+          if ('Notification' in window && Notification.permission === 'granted') {
+            try { new Notification('Your rider has arrived', { body: `Delivery code for order #${o.id}: ${o.delivery_code}` }) } catch { /* ignore */ }
+          }
+        }
+      } catch { /* keep last */ }
+      if (!stopped) timer = setTimeout(check, onTheWay ? 8000 : 30000)
+    }
+    // Ask once so the code can also arrive as a browser notification.
+    if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission().catch(() => {})
+    check()
+    return () => { stopped = true; clearTimeout(timer) }
+  }, [currentUser])
+
   // Poll the open conversation for new staff replies.
   const activeThreadId = (supportView && typeof supportView === 'object') ? supportView.id : null
   useEffect(() => {
@@ -1820,6 +1854,7 @@ export default function Storefront() {
         {accountMsg && <p className="auth-message">{accountMsg}</p>}
       </div>
     </div>}
+    {handover && <div className="overlay" role="presentation" onClick={() => setHandover(null)}><div className="auth-modal handover-modal" role="alertdialog" aria-modal="true" aria-labelledby="handover-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setHandover(null)} aria-label="Close">x</button><h2 id="handover-title">Your rider has arrived</h2><p className="auth-intro">Read this code to your rider to receive order #{handover.orderId}:</p><p className="handover-code">{handover.code}</p><button className="checkout-button" type="button" onClick={() => setHandover(null)}>OK</button></div></div>}
     {ordersOpen && <div className="overlay" role="presentation" onClick={() => setOrdersOpen(false)}><div className="auth-modal orders-modal" role="dialog" aria-modal="true" aria-labelledby="orders-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setOrdersOpen(false)} aria-label="Close orders">x</button><p className="eyebrow">Your grocery runs</p><h2 id="orders-title">Order history</h2>{ordersLoading ? <p className="auth-intro">Loading your orders...</p> : orders.length === 0 ? <p className="auth-intro">No orders yet. Your completed checkouts will appear here.</p> : <ul className="orders-list">{orders.map((entry) => <li className="order-row" key={entry.id}><div className="order-row-head"><strong>Order #{entry.id}</strong><span className={`order-badge order-badge-${entry.payment_status}`}>{orderLabel(entry)}</span></div><div className="order-row-meta"><span>{new Date(entry.created_at).toLocaleDateString()}</span><span>{entry.items?.length ?? 0} {entry.items?.length === 1 ? 'item' : 'items'}</span><strong>{price(entry.total_cents)}</strong></div>{(entry.payment_status === 'paid' || entry.payment_method === 'cod') && DELIVERY_STAGES.includes(entry.status) && <div className="order-track" aria-label={`Delivery status: ${DELIVERY_LABELS[entry.status]}`}>{DELIVERY_STAGES.map((stage, index) => <span key={stage} className={index <= DELIVERY_STAGES.indexOf(entry.status) ? 'track-step done' : 'track-step'} title={DELIVERY_LABELS[stage]} />)}<em>{DELIVERY_LABELS[entry.status]}</em></div>}{entry.status === 'cancelled' && <p className="order-track-note">Cancelled</p>}{entry.status === 'out_for_delivery' && entry.delivery_code && new Date(entry.delivery_code_expires_at) > new Date() && <p className="order-handover">Delivery code <b>{entry.delivery_code}</b> — read this to your rider to confirm you got the order.</p>}{entry.payment_method !== 'cod' && entry.status !== 'cancelled' && entry.payment_status !== 'paid' && entry.payment_status !== 'cancelled' && <button className="text-button order-pay" type="button" onClick={() => resumePayment(entry)}>Complete payment <span>&gt;</span></button>}{CANCELLABLE_STAGES.includes(entry.status) && <button className="text-button order-cancel" type="button" onClick={() => cancelOrder(entry)}>Cancel order</button>}{(entry.payment_status === 'paid' || entry.payment_method === 'cod') && entry.status !== 'cancelled' && <button className="text-button order-receipt" type="button" onClick={() => downloadReceipt(entry.id)}>Download bill (PDF)</button>}<button className="text-button order-help" type="button" onClick={() => { setOrdersOpen(false); openSupport(entry) }}>Get help</button><OrderItemReviews order={entry} onSaved={(rv) => setOrders((current) => current.map((row) => row.id === entry.id ? { ...row, product_reviews: [...(row.product_reviews ?? []), rv] } : row))} />{entry.status === 'completed' && entry.delivery_partner_id && <RiderRating orderId={entry.id} existing={entry.rider_review} source="delivery" onSaved={(rv) => setOrders((current) => current.map((row) => row.id === entry.id ? { ...row, rider_review: rv } : row))} />}</li>)}</ul>}{ordersMessage && <p className="auth-message">{ordersMessage}</p>}</div></div>}
     {locationOpen && <div className="overlay" role="presentation" onClick={() => setLocationOpen(false)}><div className="auth-modal location-modal" role="dialog" aria-modal="true" aria-labelledby="loc-title" onClick={(event) => event.stopPropagation()}><button className="close-button" type="button" onClick={() => setLocationOpen(false)} aria-label="Close location">x</button><p className="eyebrow">Deliver to</p><h2 id="loc-title">Where are you?</h2><p className="auth-intro">Drop the pin on your building — that&rsquo;s the location we deliver to. Search or &ldquo;detect&rdquo; just move the map near your area.</p>
       {outOfArea && <p className="loc-unserviceable">{UNSERVICEABLE_MSG}</p>}
