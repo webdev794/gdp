@@ -409,7 +409,7 @@ export default function Storefront() {
   const [galleryIndex, setGalleryIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [offline, setOffline] = useState(false)
-  const [pages, setPages] = useState([])
+  const [pages, setPages] = useState(() => { try { return JSON.parse(localStorage.getItem('gdp_pages') || '[]') } catch { return [] } })
   const [pageView, setPageView] = useState(null) // { slug, title, content } | 'loading' | null
   const [location, setLocation] = useState(() => {
     try { return JSON.parse(localStorage.getItem('gdp_location') ?? 'null') }
@@ -694,7 +694,10 @@ export default function Storefront() {
   // with a #/p/<slug> hash so links are shareable and Back works.
   useEffect(() => {
     fetch(`${API_URL}/pages`, { headers: { Accept: 'application/json' } })
-      .then(responseJson).then((data) => setPages(data.data ?? [])).catch(() => setPages([]))
+      .then(responseJson).then((data) => {
+        setPages(data.data ?? [])
+        try { localStorage.setItem('gdp_pages', JSON.stringify(data.data ?? [])) } catch { /* ignore */ }
+      }).catch(() => {})
   }, [])
 
   useEffect(() => {
