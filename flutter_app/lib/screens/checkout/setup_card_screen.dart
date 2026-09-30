@@ -6,30 +6,23 @@ import 'package:webview_flutter/webview_flutter.dart';
 import '../../theme/app_theme.dart';
 import 'stripe_card_form.dart';
 
-/// Stripe card form (Stripe Elements) for one order's PaymentIntent.
-/// Pops with `true` once the card payment succeeds, `false`/null otherwise.
-class CardPaymentScreen extends StatefulWidget {
+/// Stripe card form that confirms a SetupIntent (save card to the account).
+/// Pops with `true` once the card is saved, `false`/null otherwise.
+class SetupCardScreen extends StatefulWidget {
   final String clientSecret;
   final String publishableKey;
-  final double amount;
 
-  /// When true, Stripe attaches the card to the customer for future use
-  /// (same as the website "Save this card for next time" checkbox).
-  final bool saveCard;
-
-  const CardPaymentScreen({
+  const SetupCardScreen({
     super.key,
     required this.clientSecret,
     required this.publishableKey,
-    required this.amount,
-    this.saveCard = false,
   });
 
   @override
-  State<CardPaymentScreen> createState() => _CardPaymentScreenState();
+  State<SetupCardScreen> createState() => _SetupCardScreenState();
 }
 
-class _CardPaymentScreenState extends State<CardPaymentScreen> {
+class _SetupCardScreenState extends State<SetupCardScreen> {
   late final WebViewController _controller;
   bool _ready = false;
   String _message = '';
@@ -66,7 +59,8 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
       case 'error':
         setState(() {
           _ready = true;
-          _message = payload['message']?.toString() ?? 'Payment failed.';
+          _message =
+              payload['message']?.toString() ?? 'Could not save this card.';
         });
     }
   }
@@ -74,10 +68,9 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
   String _html() => stripeCardFormHtml(
         publishableKey: widget.publishableKey,
         clientSecret: widget.clientSecret,
-        confirmCall: 'stripe.confirmCardPayment',
-        intentKey: 'paymentIntent',
-        buttonLabel: 'Pay \$${widget.amount.toStringAsFixed(2)} securely',
-        saveForLater: widget.saveCard,
+        confirmCall: 'stripe.confirmCardSetup',
+        intentKey: 'setupIntent',
+        buttonLabel: 'Save card securely',
       );
 
   @override
@@ -86,7 +79,7 @@ class _CardPaymentScreenState extends State<CardPaymentScreen> {
       backgroundColor: AppTheme.bgLight,
       appBar: AppBar(
         title: const Text(
-          'Card payment',
+          'Add a card',
           style: TextStyle(fontWeight: FontWeight.w900),
         ),
       ),

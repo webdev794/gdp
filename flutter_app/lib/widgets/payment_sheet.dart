@@ -32,13 +32,17 @@ class PaymentSheet extends StatefulWidget {
 
 class _PaymentSheetState extends State<PaymentSheet> {
   // A new card is typed into Stripe's card form in a web view — Android/iOS only.
-  bool get _cardAvailable => !kIsWeb && ApiService.stripePublishableKey.isNotEmpty;
+  bool get _cardAvailable =>
+      !kIsWeb && ApiService.stripePublishableKey.isNotEmpty;
   // Cards saved on the account (website or app) can be used everywhere.
   List<Map<String, dynamic>> _savedCards = [];
-  bool get _anyMethod => _cardAvailable || _savedCards.isNotEmpty || ApiService.codEnabled;
+  bool get _anyMethod =>
+      _cardAvailable || _savedCards.isNotEmpty || ApiService.codEnabled;
 
   late String _method;
-  final _phone = TextEditingController(text: MockAuthService.currentUser?.phone ?? '');
+  final _phone = TextEditingController(
+    text: MockAuthService.currentUser?.phone ?? '',
+  );
   final _notes = TextEditingController();
   final _giftCode = TextEditingController();
   final _giftPin = TextEditingController();
@@ -46,6 +50,7 @@ class _PaymentSheetState extends State<PaymentSheet> {
   String _giftMsg = '';
   bool _giftOk = false;
   bool _busy = false;
+  bool _saveCard = true;
   String _error = '';
 
   @override
@@ -59,7 +64,10 @@ class _PaymentSheetState extends State<PaymentSheet> {
     if (ApiService.stripePublishableKey.isEmpty) return;
     final cards = await ApiService.getPaymentMethods();
     if (!mounted || cards.isEmpty) return;
-    final def = cards.firstWhere((c) => c['is_default'] == true, orElse: () => cards.first);
+    final def = cards.firstWhere(
+      (c) => c['is_default'] == true,
+      orElse: () => cards.first,
+    );
     setState(() {
       _savedCards = cards;
       _method = 'saved:${def['id']}';
@@ -78,7 +86,10 @@ class _PaymentSheetState extends State<PaymentSheet> {
   Future<void> _checkGift() async {
     setState(() => _giftMsg = 'Checking…');
     try {
-      final balance = await ApiService.checkGiftCard(_giftCode.text, _giftPin.text);
+      final balance = await ApiService.checkGiftCard(
+        _giftCode.text,
+        _giftPin.text,
+      );
       setState(() {
         _giftOk = balance > 0;
         _giftMsg = balance > 0
@@ -94,9 +105,11 @@ class _PaymentSheetState extends State<PaymentSheet> {
   }
 
   Future<void> _chooseAddress() async {
-    await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => LocationPickerScreen(onAddressSelected: (_) {}),
-    ));
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => LocationPickerScreen(onAddressSelected: (_) {}),
+      ),
+    );
     if (mounted) setState(() => _error = '');
   }
 
@@ -131,31 +144,43 @@ class _PaymentSheetState extends State<PaymentSheet> {
       if (_method != 'cod' && order.paymentStatus != 'paid') {
         final secret = await ApiService.paymentIntent(order.id);
         if (secret != null && _method.startsWith('saved:')) {
-          final failure = await ApiService.payWithSavedCard(secret, _method.substring(6));
+          final failure = await ApiService.payWithSavedCard(
+            secret,
+            _method.substring(6),
+          );
           if (failure != null) {
             setState(() {
               _busy = false;
-              _error = '$failure Order ${order.orderNumber} is saved — pay for it from the website, or it will be cancelled.';
+              _error =
+                  '$failure Order ${order.orderNumber} is saved — pay for it from the website, or it will be cancelled.';
             });
             return;
           }
-          await ApiService.paymentIntent(order.id); // confirms the payment with the store
+          await ApiService.paymentIntent(
+            order.id,
+          ); // confirms the payment with the store
         } else if (secret != null) {
-          final paid = await navigator.push<bool>(MaterialPageRoute(
-            builder: (_) => CardPaymentScreen(
-              clientSecret: secret,
-              publishableKey: ApiService.stripePublishableKey,
-              amount: order.total,
+          final paid = await navigator.push<bool>(
+            MaterialPageRoute(
+              builder: (_) => CardPaymentScreen(
+                clientSecret: secret,
+                publishableKey: ApiService.stripePublishableKey,
+                amount: order.total,
+                saveCard: _saveCard,
+              ),
             ),
-          ));
+          );
           if (paid != true) {
             setState(() {
               _busy = false;
-              _error = 'Payment was not completed. Order ${order.orderNumber} is saved — pay for it from My Orders, or it will be cancelled.';
+              _error =
+                  'Payment was not completed. Order ${order.orderNumber} is saved — pay for it from My Orders, or it will be cancelled.';
             });
             return;
           }
-          await ApiService.paymentIntent(order.id); // confirms the payment with the store
+          await ApiService.paymentIntent(
+            order.id,
+          ); // confirms the payment with the store
         }
         order = await ApiService.fetchOrder(order.id);
       }
@@ -175,8 +200,15 @@ class _PaymentSheetState extends State<PaymentSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
-      padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + MediaQuery.of(context).viewInsets.bottom),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.9,
+      ),
+      padding: EdgeInsets.fromLTRB(
+        20,
+        20,
+        20,
+        20 + MediaQuery.of(context).viewInsets.bottom,
+      ),
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -191,7 +223,10 @@ class _PaymentSheetState extends State<PaymentSheet> {
                 child: Container(
                   width: 40,
                   height: 4,
-                  decoration: BoxDecoration(color: AppTheme.borderSubtle, borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(
+                    color: AppTheme.borderSubtle,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -201,20 +236,41 @@ class _PaymentSheetState extends State<PaymentSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Checkout', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppTheme.slateDark)),
+                        const Text(
+                          'Checkout',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.slateDark,
+                          ),
+                        ),
                         Text(
                           '${widget.itemCount} item${widget.itemCount == 1 ? '' : 's'} · final total confirmed by the store',
-                          style: const TextStyle(fontSize: 12, color: AppTheme.slateMuted, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.slateMuted,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(color: AppTheme.sageLight, borderRadius: BorderRadius.circular(8)),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.sageLight,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     child: Text(
                       '~\$${widget.totalAmount.toStringAsFixed(2)}',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.emeraldPrimary),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.emeraldPrimary,
+                      ),
                     ),
                   ),
                 ],
@@ -223,34 +279,67 @@ class _PaymentSheetState extends State<PaymentSheet> {
               Row(
                 children: [
                   const Expanded(
-                    child: Text('Deliver to', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.slateMuted)),
+                    child: Text(
+                      'Deliver to',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.slateMuted,
+                      ),
+                    ),
                   ),
                   TextButton.icon(
                     onPressed: _busy ? null : _chooseAddress,
                     icon: const Icon(Icons.location_on_outlined, size: 18),
-                    label: Text(LocationService.hasAddress ? 'CHANGE' : 'CHOOSE ADDRESS'),
+                    label: Text(
+                      LocationService.hasAddress ? 'CHANGE' : 'CHOOSE ADDRESS',
+                    ),
                   ),
                 ],
               ),
-              Text(LocationService.activeAddress.fullAddress, style: const TextStyle(fontSize: 13, color: AppTheme.slateDark)),
-              if (LocationService.hasAddress && !LocationService.activeAddress.isDeliverable)
+              Text(
+                LocationService.activeAddress.fullAddress,
+                style: const TextStyle(fontSize: 13, color: AppTheme.slateDark),
+              ),
+              if (LocationService.hasAddress &&
+                  !LocationService.activeAddress.isDeliverable)
                 const Padding(
                   padding: EdgeInsets.only(top: 4),
-                  child: Text('This address is outside our delivery area.', style: TextStyle(fontSize: 12, color: AppTheme.errorRed, fontWeight: FontWeight.w700)),
+                  child: Text(
+                    'This address is outside our delivery area.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.errorRed,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               const SizedBox(height: 14),
               TextField(
                 controller: _phone,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'Phone for the delivery rider', isDense: true),
+                decoration: const InputDecoration(
+                  labelText: 'Phone for the delivery rider',
+                  isDense: true,
+                ),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: _notes,
-                decoration: const InputDecoration(labelText: 'Delivery instructions (optional)', isDense: true),
+                decoration: const InputDecoration(
+                  labelText: 'Delivery instructions (optional)',
+                  isDense: true,
+                ),
               ),
               const SizedBox(height: 16),
-              const Text('Payment', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppTheme.slateMuted)),
+              const Text(
+                'Payment',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.slateMuted,
+                ),
+              ),
               const SizedBox(height: 8),
               for (final c in _savedCards) ...[
                 _option(
@@ -262,11 +351,39 @@ class _PaymentSheetState extends State<PaymentSheet> {
                 const SizedBox(height: 10),
               ],
               if (_cardAvailable) ...[
-                _option('card', _savedCards.isEmpty ? 'Credit / Debit Card' : 'New card', 'Visa, Mastercard, Amex — paid securely via Stripe', Icons.add_card),
+                _option(
+                  'card',
+                  _savedCards.isEmpty ? 'Credit / Debit Card' : 'Add new card',
+                  'Enter card number, expiry & CVC on the next screen (secure, via Stripe)',
+                  Icons.add_card,
+                ),
+                if (_method == 'card' && _cardAvailable)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, bottom: 8),
+                    child: CheckboxListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      controlAffinity: ListTileControlAffinity.leading,
+                      value: _saveCard,
+                      onChanged: (v) => setState(() => _saveCard = v ?? true),
+                      title: const Text(
+                        'Save this card for next time',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 10),
               ],
               if (ApiService.codEnabled)
-                _option('cod', 'Cash on Delivery', 'Pay the rider when your order arrives', Icons.local_shipping),
+                _option(
+                  'cod',
+                  'Cash on Delivery',
+                  'Pay the rider when your order arrives',
+                  Icons.local_shipping,
+                ),
               if (!_anyMethod)
                 const Text(
                   'No payment method is available right now. Please try again later.',
@@ -275,8 +392,10 @@ class _PaymentSheetState extends State<PaymentSheet> {
               if (kIsWeb && ApiService.stripePublishableKey.isNotEmpty)
                 const Padding(
                   padding: EdgeInsets.only(top: 8),
-                  child: Text('Adding a new card is available in the Android / iPhone app.',
-                      style: TextStyle(fontSize: 11, color: AppTheme.slateMuted)),
+                  child: Text(
+                    'Adding a new card is available in the Android / iPhone app.',
+                    style: TextStyle(fontSize: 11, color: AppTheme.slateMuted),
+                  ),
                 ),
               const SizedBox(height: 12),
               InkWell(
@@ -285,12 +404,25 @@ class _PaymentSheetState extends State<PaymentSheet> {
                   padding: const EdgeInsets.symmetric(vertical: 6),
                   child: Row(
                     children: [
-                      const Icon(Icons.card_giftcard, size: 18, color: AppTheme.coralAccent),
+                      const Icon(
+                        Icons.card_giftcard,
+                        size: 18,
+                        color: AppTheme.coralAccent,
+                      ),
                       const SizedBox(width: 8),
                       const Expanded(
-                        child: Text('Use a gift card', style: TextStyle(fontWeight: FontWeight.w800, color: AppTheme.slateDark)),
+                        child: Text(
+                          'Use a gift card',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AppTheme.slateDark,
+                          ),
+                        ),
                       ),
-                      Icon(_showGift ? Icons.expand_less : Icons.expand_more, color: AppTheme.slateMuted),
+                      Icon(
+                        _showGift ? Icons.expand_less : Icons.expand_more,
+                        color: AppTheme.slateMuted,
+                      ),
                     ],
                   ),
                 ),
@@ -302,7 +434,10 @@ class _PaymentSheetState extends State<PaymentSheet> {
                       child: TextField(
                         controller: _giftCode,
                         textCapitalization: TextCapitalization.characters,
-                        decoration: const InputDecoration(labelText: 'Gift card code', isDense: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Gift card code',
+                          isDense: true,
+                        ),
                         onChanged: (_) => setState(() => _giftOk = false),
                       ),
                     ),
@@ -311,12 +446,18 @@ class _PaymentSheetState extends State<PaymentSheet> {
                       child: TextField(
                         controller: _giftPin,
                         obscureText: true,
-                        decoration: const InputDecoration(labelText: 'Password', isDense: true),
+                        decoration: const InputDecoration(
+                          labelText: 'Password',
+                          isDense: true,
+                        ),
                         onChanged: (_) => setState(() => _giftOk = false),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    TextButton(onPressed: _checkGift, child: const Text('APPLY')),
+                    TextButton(
+                      onPressed: _checkGift,
+                      child: const Text('APPLY'),
+                    ),
                   ],
                 ),
                 if (_giftMsg.isNotEmpty)
@@ -324,13 +465,26 @@ class _PaymentSheetState extends State<PaymentSheet> {
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       _giftMsg,
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _giftOk ? AppTheme.emeraldPrimary : AppTheme.errorRed),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: _giftOk
+                            ? AppTheme.emeraldPrimary
+                            : AppTheme.errorRed,
+                      ),
                     ),
                   ),
               ],
               if (_error.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                Text(_error, style: const TextStyle(color: AppTheme.errorRed, fontWeight: FontWeight.w700, fontSize: 13)),
+                Text(
+                  _error,
+                  style: const TextStyle(
+                    color: AppTheme.errorRed,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
               ],
               const SizedBox(height: 16),
               ElevatedButton(
@@ -339,13 +493,27 @@ class _PaymentSheetState extends State<PaymentSheet> {
                   backgroundColor: AppTheme.emeraldPrimary,
                   foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 54),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                 ),
                 child: _busy
-                    ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
+                      )
                     : Text(
-                        _method == 'cod' ? 'PLACE ORDER (PAY ON DELIVERY)' : 'PLACE ORDER & PAY BY CARD',
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
+                        _method == 'cod'
+                            ? 'PLACE ORDER (PAY ON DELIVERY)'
+                            : (_method == 'card' ? 'PLACE ORDER & ENTER CARD DETAILS' : 'PLACE ORDER & PAY BY CARD'),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 15,
+                        ),
                       ),
               ),
             ],
@@ -367,7 +535,10 @@ class _PaymentSheetState extends State<PaymentSheet> {
         decoration: BoxDecoration(
           color: selected ? AppTheme.sageLight.withAlpha(120) : Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: selected ? AppTheme.emeraldPrimary : AppTheme.borderSubtle, width: selected ? 2 : 1.2),
+          border: Border.all(
+            color: selected ? AppTheme.emeraldPrimary : AppTheme.borderSubtle,
+            width: selected ? 2 : 1.2,
+          ),
         ),
         child: Row(
           children: [
@@ -377,14 +548,29 @@ class _PaymentSheetState extends State<PaymentSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: TextStyle(fontSize: 14, fontWeight: selected ? FontWeight.w900 : FontWeight.w700, color: AppTheme.slateDark)),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
+                      color: AppTheme.slateDark,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(subtitle, style: const TextStyle(fontSize: 11, color: AppTheme.slateMuted)),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.slateMuted,
+                    ),
+                  ),
                 ],
               ),
             ),
-            Icon(selected ? Icons.radio_button_checked : Icons.radio_button_off,
-                color: selected ? AppTheme.emeraldPrimary : AppTheme.slateMuted),
+            Icon(
+              selected ? Icons.radio_button_checked : Icons.radio_button_off,
+              color: selected ? AppTheme.emeraldPrimary : AppTheme.slateMuted,
+            ),
           ],
         ),
       ),

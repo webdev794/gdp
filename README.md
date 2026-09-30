@@ -8,8 +8,14 @@ start "GDP API" cmd /k "cd /d D:\gdp\backend && D:\xampp8-2-12\php84\php.exe -d 
 
 password: password
 
-https://www.loom.com/share/f8d2cde4e5344ea9bb0f703d42493c54
+Videos: 
+1) Demo1 (card, refund): https://www.loom.com/share/f8d2cde4e5344ea9bb0f703d42493c54
 
+2) Demo2 (cash on delivery): https://www.loom.com/share/fe0b9fc6759b4e9ba222ba6c8ce61113
+3) Demo2 (rider): https://www.loom.com/share/07403769985a4d828be70831e314df68
+4) Demo2 (gift card, refund): https://www.loom.com/share/0ac37b63782e4f5e824070cdda0b24cc
+
+5) Demo3 (app, partial refund): https://www.loom.com/share/d28131761043420b8c10e36c9b85451e
 ## See Output Quickly
 
 Open Windows Command Prompt and run:
