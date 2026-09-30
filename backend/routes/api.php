@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\Api\AdminAddressController;
 use App\Http\Controllers\Api\AdminBannerController;
 use App\Http\Controllers\Api\AdminCategoryController;
 use App\Http\Controllers\Api\AdminController;
@@ -139,6 +140,8 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::post('/products', [AdminProductController::class, 'store']);
     Route::patch('/products/{product}', [AdminProductController::class, 'update']);
     Route::post('/products/demo', [AdminProductController::class, 'demo']);
+    Route::post('/products/delete-without-images', [AdminProductController::class, 'deleteWithoutImages']);
+    Route::post('/addresses/prune-outside-area', [AdminAddressController::class, 'pruneOutsideArea']);
     Route::delete('/products/{product}', [AdminProductController::class, 'destroy']);
 
     Route::post('/media', [MediaController::class, 'store']);

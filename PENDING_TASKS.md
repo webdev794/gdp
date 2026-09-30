@@ -5,7 +5,7 @@ Only what is still open. Finished work is listed in `work_done.md` (features) an
 ## Waiting on you
 
 - [ ] **Deploy to live.** Upload `.tmp/deploy/gdp-cpanel-update.zip` (backend + website + Android app) to `public_html/` and extract. New database tables are added automatically on the first page load (log: `storage/logs/deploy-migrate.log`). Needed on the live site for: product reviews, End chat, delivery-code pop-up, gift-card split, demo-product hiding, contact settings and the Android download link.
-- [ ] **After deploying, in Admin:** Products → hide demo products (54 seeded demo products are still active on live); Pages → Footer → clear the placeholder "grocerly" app-store/social links.
+- [ ] **After deploying, in Admin (live site):** Products → **Delete products without images** (removes icon-only products; ones on past orders are hidden) and hide demo products; Stores → **Remove saved addresses outside delivery area** (removes Mohali etc. and addresses with no map pin; store radius is 5 km); Pages → Footer → clear the placeholder "grocerly" links. (Already done on the local store.)
 - [ ] **Try the apps once:** Android from `https://testcaresortwork.co.in/gdp/downloads/tudee-shopping-center.apk` (after deploy) or Appetize; iPhone simulator build on Appetize (GitHub → Actions → Flutter iOS build → Artifacts → `TudeeShoppingCenter-iOS-simulator`).
 
 ## Waiting on the client

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Sep 30, 2026 at 06:59 AM
+-- Generation Time: Sep 30, 2026 at 01:02 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -137,12 +137,16 @@ CREATE TABLE `cache` (
 --
 
 INSERT INTO `cache` (`key`, `value`, `expiration`) VALUES
-('gdp-cache-5c785c036466adea360111aa28563bfd556b5fba', 'i:1;', 1790666292),
-('gdp-cache-5c785c036466adea360111aa28563bfd556b5fba:timer', 'i:1790666292;', 1790666292),
+('gdp-cache-5c785c036466adea360111aa28563bfd556b5fba', 'i:2;', 1790763976),
+('gdp-cache-5c785c036466adea360111aa28563bfd556b5fba:timer', 'i:1790763976;', 1790763976),
+('gdp-cache-geo:reverse:3601e925f58a0c5cbe4b1bb1ef81765d', 'a:8:{s:5:\"label\";s:17:\"Sector 60, Mohali\";s:4:\"full\";s:98:\"Sector 60, Mohali, S.A.S. Nagar (Mohali) Tahsil, Sahibzada Ajit Singh Nagar, Punjab, 160059, India\";s:5:\"line1\";s:9:\"Sector 60\";s:4:\"city\";s:6:\"Mohali\";s:5:\"state\";s:6:\"Punjab\";s:11:\"postal_code\";s:6:\"160059\";s:3:\"lat\";d:30.7119189;s:3:\"lon\";d:76.717548;}', 1790837824),
+('gdp-cache-geo:reverse:7acaf3aa6e1c3cff118ecb55e907421f', 'a:8:{s:5:\"label\";s:20:\"Thinda, Dasua Tahsil\";s:4:\"full\";s:55:\"Thinda, Dasua Tahsil, Hoshiarpur, Punjab, 144207, India\";s:5:\"line1\";s:32:\"Thinda, Dasua Tahsil, Hoshiarpur\";s:4:\"city\";s:6:\"Thinda\";s:5:\"state\";s:6:\"Punjab\";s:11:\"postal_code\";s:6:\"144207\";s:3:\"lat\";d:31.7332308;s:3:\"lon\";d:75.7093481;}', 1790839993),
+('gdp-cache-geo:reverse:d56288f3aeafbd090a610ff7b25f2aac', 'a:8:{s:5:\"label\";s:15:\"101, RohtakVibe\";s:4:\"full\";s:115:\"101, RohtakVibe, Sector 60, Mohali, S.A.S. Nagar (Mohali) Tahsil, Sahibzada Ajit Singh Nagar, Punjab, 160059, India\";s:5:\"line1\";s:14:\"101 RohtakVibe\";s:4:\"city\";s:6:\"Mohali\";s:5:\"state\";s:6:\"Punjab\";s:11:\"postal_code\";s:6:\"160059\";s:3:\"lat\";d:30.7131931;s:3:\"lon\";d:76.7202451;}', 1790837823),
+('gdp-cache-geo:reverse:ea006f64fe0a965bb6f549db58d96a33', 'a:8:{s:5:\"label\";s:23:\"Ramdaspur, Dasua Tahsil\";s:4:\"full\";s:58:\"Ramdaspur, Dasua Tahsil, Hoshiarpur, Punjab, 144207, India\";s:5:\"line1\";s:35:\"Ramdaspur, Dasua Tahsil, Hoshiarpur\";s:4:\"city\";s:9:\"Ramdaspur\";s:5:\"state\";s:6:\"Punjab\";s:11:\"postal_code\";s:6:\"144207\";s:3:\"lat\";d:31.7281148;s:3:\"lon\";d:75.7143831;}', 1790839991),
+('gdp-cache-geo:reverse:ea018f6a1059f922b08b650c48bdf423', 'a:8:{s:5:\"label\";s:21:\"Galowal, Dasua Tahsil\";s:4:\"full\";s:56:\"Galowal, Dasua Tahsil, Hoshiarpur, Punjab, 144207, India\";s:5:\"line1\";s:33:\"Galowal, Dasua Tahsil, Hoshiarpur\";s:4:\"city\";s:7:\"Galowal\";s:5:\"state\";s:6:\"Punjab\";s:11:\"postal_code\";s:6:\"144207\";s:3:\"lat\";d:31.732432;s:3:\"lon\";d:75.750802;}', 1790837820),
 ('gdp-cache-setting:branding', 'a:1:{s:1:\"v\";a:10:{s:10:\"store_name\";s:21:\"TUDEE SHOPPING CENTER\";s:7:\"tagline\";s:26:\"Fresh groceries, less fuss\";s:8:\"logo_url\";s:69:\"/api/media/file/products/6ECwKgzIG0wA7s2ieBehAp3jO5V9rrPJyJGLdYWo.png\";s:11:\"favicon_url\";s:69:\"/api/media/file/products/JKutAMU8COTNwZAHl1LEPmh1Rjf2SU39wQF5HYnR.jpg\";s:5:\"theme\";s:5:\"light\";s:12:\"layout_width\";s:5:\"boxed\";s:11:\"color_brand\";s:7:\"#1f7a3d\";s:12:\"color_accent\";s:7:\"#ffd23f\";s:13:\"color_heading\";s:7:\"#18211c\";s:13:\"contact_email\";s:16:\"test@example.com\";}}', 2106019222),
 ('gdp-cache-setting:checkout_fees', 'a:1:{s:1:\"v\";a:9:{s:13:\"delivery_mode\";s:5:\"fixed\";s:18:\"delivery_fee_cents\";i:299;s:23:\"delivery_near_fee_cents\";i:199;s:22:\"delivery_far_fee_cents\";i:599;s:29:\"free_delivery_threshold_cents\";i:3500;s:18:\"handling_fee_cents\";i:99;s:20:\"small_cart_fee_cents\";i:199;s:20:\"small_cart_min_cents\";i:1000;s:12:\"tax_rate_bps\";i:887;}}', 2106025722),
 ('gdp-cache-setting:cod_enabled', 'a:1:{s:1:\"v\";b:1;}', 2106025722),
-('gdp-cache-setting:footer', 'a:1:{s:1:\"v\";a:6:{s:9:\"copyright\";s:31:\"© {year} Tudee Shopping Center\";s:13:\"app_store_url\";s:40:\"https://apps.apple.com/app/grocerly-demo\";s:14:\"play_store_url\";s:63:\"https://play.google.com/store/apps/details?id=com.grocerly.demo\";s:7:\"socials\";a:5:{s:8:\"facebook\";s:29:\"https://facebook.com/grocerly\";s:1:\"x\";s:22:\"https://x.com/grocerly\";s:9:\"instagram\";s:30:\"https://instagram.com/grocerly\";s:8:\"linkedin\";s:41:\"https://www.linkedin.com/company/grocerly\";s:7:\"youtube\";s:33:\"https://www.youtube.com/@grocerly\";}s:5:\"links\";a:0:{}s:4:\"note\";s:94:\"Tudee Shopping Center delivers fresh groceries and household essentials from a store near you.\";}}', 2106025722),
 ('gdp-cache-setting:payments', 'a:1:{s:7:\"missing\";b:1;}', 2106019222);
 
 -- --------------------------------------------------------
@@ -810,7 +814,10 @@ INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `n
 (178, 'App\\Models\\User', 17, 'customer', 'f5bfeddf7a06a60bf7ff3e9ec30b94916c75b3a198c4ade61e33869b9b27fa3f', '[\"*\"]', '2026-09-29 01:39:45', NULL, '2026-09-28 23:11:41', '2026-09-29 01:39:45'),
 (179, 'App\\Models\\User', 15, 'customer', '52d06a76a51beff09b1dd4c12dbb0df06d55e1253dd9e29476ab5511adff23b7', '[\"*\"]', '2026-09-29 01:38:43', NULL, '2026-09-29 01:38:42', '2026-09-29 01:38:43'),
 (180, 'App\\Models\\User', 15, 'customer', 'd80b8b3b46e2239137c68b3a223041de029cb14783fe168b4155806d5aac31b8', '[\"*\"]', '2026-09-29 01:39:05', NULL, '2026-09-29 01:39:04', '2026-09-29 01:39:05'),
-(181, 'App\\Models\\User', 15, 'customer', '5cb9f6ec072e7c8dcfdcae91ade51537f58de36a196063e75021a611a543c7a2', '[\"*\"]', '2026-09-29 01:47:14', NULL, '2026-09-29 01:47:13', '2026-09-29 01:47:14');
+(181, 'App\\Models\\User', 15, 'customer', '5cb9f6ec072e7c8dcfdcae91ade51537f58de36a196063e75021a611a543c7a2', '[\"*\"]', '2026-09-29 01:47:14', NULL, '2026-09-29 01:47:13', '2026-09-29 01:47:14'),
+(182, 'App\\Models\\User', 17, 'customer', '822c6f3bec0193035dee8c3e16538326039274b085f221ed66bc4532fbafecf5', '[\"*\"]', '2026-09-30 02:03:24', NULL, '2026-09-30 01:26:35', '2026-09-30 02:03:24'),
+(183, 'App\\Models\\User', 15, 'customer', '85923a6f2c8812a444e87085f00ba95ed08447b27ae8fcd28a5f113a957207a9', '[\"*\"]', '2026-09-30 04:55:35', NULL, '2026-09-30 04:55:17', '2026-09-30 04:55:35'),
+(184, 'App\\Models\\User', 15, 'customer', '104dd7eceef9314bb018c03c5f86a1df3a20dcc4e7bcb9f46f435ca3e9f2fefb', '[\"*\"]', '2026-09-30 04:56:30', NULL, '2026-09-30 04:56:10', '2026-09-30 04:56:30');
 
 -- --------------------------------------------------------
 
@@ -842,60 +849,60 @@ CREATE TABLE `products` (
 --
 
 INSERT INTO `products` (`id`, `category_id`, `name`, `slug`, `description`, `sku`, `price_cents`, `compare_at_price_cents`, `inventory_quantity`, `image_url`, `is_active`, `is_demo`, `rating_avg`, `rating_count`, `created_at`, `updated_at`) VALUES
-(1, 1, 'Organic Bananas', 'organic-bananas', NULL, 'GDP-PROD-001', 299, NULL, 99, 'https://www.themealdb.com/images/ingredients/Banana-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-15 07:53:25'),
-(2, 1, 'Gala Apples', 'gala-apples', NULL, 'GDP-PROD-002', 449, 561, 94, 'https://www.themealdb.com/images/ingredients/Apples-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-29 01:38:44'),
-(3, 1, 'Baby Spinach', 'baby-spinach', NULL, 'GDP-PROD-007', 349, NULL, 99, 'https://www.themealdb.com/images/ingredients/Spinach-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-15 07:53:25'),
-(4, 1, 'Roma Tomatoes', 'roma-tomatoes', NULL, 'GDP-PROD-008', 279, NULL, 98, 'https://www.themealdb.com/images/ingredients/Tomato-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-15 07:53:25'),
-(5, 1, 'Hass Avocados', 'hass-avocados', NULL, 'GDP-PROD-009', 599, NULL, 99, 'https://www.themealdb.com/images/ingredients/Avocado-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-15 07:53:25'),
-(6, 2, 'Large Brown Eggs', 'large-brown-eggs', NULL, 'GDP-PROD-003', 599, NULL, 80, 'https://www.themealdb.com/images/ingredients/Egg-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-11 04:19:58'),
-(7, 2, 'Whole Milk', 'whole-milk', NULL, 'GDP-PROD-004', 429, NULL, 100, 'https://www.themealdb.com/images/ingredients/Milk-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(8, 2, 'Greek Yogurt', 'greek-yogurt', NULL, 'GDP-PROD-010', 519, 649, 90, 'https://www.themealdb.com/images/ingredients/Yogurt-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-21 23:18:37'),
-(9, 2, 'Sharp Cheddar', 'sharp-cheddar', NULL, 'GDP-PROD-011', 649, NULL, 89, 'https://www.themealdb.com/images/ingredients/Cheddar%20Cheese-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-11 04:35:06'),
-(10, 2, 'Unsalted Butter', 'unsalted-butter', NULL, 'GDP-PROD-012', 399, NULL, 98, 'https://www.themealdb.com/images/ingredients/Butter-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-11 04:35:06'),
-(11, 3, 'Long Grain Rice', 'long-grain-rice', NULL, 'GDP-PROD-005', 699, NULL, 99, 'https://www.themealdb.com/images/ingredients/Rice-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-10 23:19:31'),
-(12, 3, 'Pasta', 'pasta', NULL, 'GDP-PROD-006', 249, NULL, 99, 'https://www.themealdb.com/images/ingredients/Spaghetti-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-10 23:19:31'),
-(13, 3, 'Extra Virgin Olive Oil', 'extra-virgin-olive-oil', NULL, 'GDP-PROD-013', 899, NULL, 100, 'https://www.themealdb.com/images/ingredients/Olive%20Oil-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(14, 3, 'Rolled Oats', 'rolled-oats', NULL, 'GDP-PROD-014', 459, NULL, 99, 'https://www.themealdb.com/images/ingredients/Oats-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-10 23:19:31'),
-(15, 3, 'Peanut Butter', 'peanut-butter', NULL, 'GDP-PROD-015', 549, NULL, 99, 'https://www.themealdb.com/images/ingredients/Peanut%20Butter-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-10 23:19:31'),
-(16, 4, 'Salted Potato Chips', 'salted-potato-chips', NULL, 'GDP-PROD-016', 199, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(17, 4, 'Butter Popcorn', 'butter-popcorn', NULL, 'GDP-PROD-017', 249, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(18, 4, 'Roasted Trail Mix', 'roasted-trail-mix', NULL, 'GDP-PROD-018', 549, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(19, 5, 'Orange Juice', 'orange-juice', NULL, 'GDP-PROD-019', 399, NULL, 100, 'https://www.themealdb.com/images/ingredients/Orange-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(20, 5, 'Sparkling Water', 'sparkling-water', NULL, 'GDP-PROD-020', 149, NULL, 100, 'https://www.themealdb.com/images/ingredients/Water-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(21, 5, 'Cola 6-Pack', 'cola-6-pack', NULL, 'GDP-PROD-021', 499, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(22, 6, 'Sourdough Loaf', 'sourdough-loaf', NULL, 'GDP-PROD-022', 449, NULL, 100, 'https://www.themealdb.com/images/ingredients/Bread-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(23, 6, 'Burger Buns', 'burger-buns', NULL, 'GDP-PROD-023', 279, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(24, 6, 'Butter Croissants', 'butter-croissants', NULL, 'GDP-PROD-024', 399, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(25, 7, 'Corn Flakes', 'corn-flakes', NULL, 'GDP-PROD-025', 429, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(26, 7, 'Honey Granola', 'honey-granola', NULL, 'GDP-PROD-026', 549, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(27, 7, 'Pancake Mix', 'pancake-mix', NULL, 'GDP-PROD-027', 389, NULL, 100, 'https://www.themealdb.com/images/ingredients/Flour-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(28, 8, 'Dark Chocolate Bar', 'dark-chocolate-bar', NULL, 'GDP-PROD-028', 299, 374, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(29, 8, 'Choc Chip Cookies', 'choc-chip-cookies', NULL, 'GDP-PROD-029', 349, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(30, 8, 'Gummy Bears', 'gummy-bears', NULL, 'GDP-PROD-030', 199, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(31, 9, 'Chicken Breast', 'chicken-breast', NULL, 'GDP-PROD-031', 899, NULL, 100, 'https://www.themealdb.com/images/ingredients/Chicken-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(32, 9, 'Salmon Fillet', 'salmon-fillet', NULL, 'GDP-PROD-032', 1299, NULL, 100, 'https://www.themealdb.com/images/ingredients/Salmon-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(33, 9, 'Pork Sausages', 'pork-sausages', NULL, 'GDP-PROD-033', 649, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(34, 10, 'Frozen Peas', 'frozen-peas', NULL, 'GDP-PROD-034', 249, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(35, 10, 'Vanilla Ice Cream', 'vanilla-ice-cream', NULL, 'GDP-PROD-035', 549, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(36, 10, 'Crispy Fries', 'crispy-fries', NULL, 'GDP-PROD-036', 399, NULL, 99, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-15 07:53:25'),
-(37, 11, 'Ground Coffee', 'ground-coffee', NULL, 'GDP-PROD-037', 899, NULL, 100, 'https://www.themealdb.com/images/ingredients/Coffee-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(38, 11, 'Green Tea Bags', 'green-tea-bags', NULL, 'GDP-PROD-038', 449, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(39, 11, 'Masala Chai', 'masala-chai', NULL, 'GDP-PROD-039', 399, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(40, 12, 'Tomato Ketchup', 'tomato-ketchup', NULL, 'GDP-PROD-040', 249, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(41, 12, 'Mayonnaise', 'mayonnaise', NULL, 'GDP-PROD-041', 329, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(42, 12, 'Strawberry Jam', 'strawberry-jam', NULL, 'GDP-PROD-042', 299, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(43, 13, 'Dish Soap', 'dish-soap', NULL, 'GDP-PROD-043', 279, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(44, 13, 'Laundry Detergent', 'laundry-detergent', NULL, 'GDP-PROD-044', 899, 1124, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(45, 13, 'Surface Cleaner', 'surface-cleaner', NULL, 'GDP-PROD-045', 349, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(46, 14, 'Shampoo', 'shampoo', NULL, 'GDP-PROD-046', 549, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(47, 14, 'Toothpaste', 'toothpaste', NULL, 'GDP-PROD-047', 199, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(48, 14, 'Hand Soap', 'hand-soap', NULL, 'GDP-PROD-048', 249, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(49, 15, 'Diapers Value Pack', 'diapers-value-pack', NULL, 'GDP-PROD-049', 1499, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(50, 15, 'Baby Wipes', 'baby-wipes', NULL, 'GDP-PROD-050', 299, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(51, 15, 'Baby Lotion', 'baby-lotion', NULL, 'GDP-PROD-051', 449, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
-(52, 16, 'Paper Towels', 'paper-towels', NULL, 'GDP-PROD-052', 399, NULL, 98, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-21 23:45:34'),
-(53, 16, 'Trash Bags', 'trash-bags', NULL, 'GDP-PROD-053', 349, NULL, 98, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-21 23:45:34'),
-(54, 16, 'Aluminium Foil', 'aluminium-foil', NULL, 'GDP-PROD-054', 299, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-09 01:12:49'),
+(1, 1, 'Organic Bananas', 'organic-bananas', NULL, 'GDP-PROD-001', 299, NULL, 99, 'https://www.themealdb.com/images/ingredients/Banana-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(2, 1, 'Gala Apples', 'gala-apples', NULL, 'GDP-PROD-002', 449, 561, 94, 'https://www.themealdb.com/images/ingredients/Apples-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(3, 1, 'Baby Spinach', 'baby-spinach', NULL, 'GDP-PROD-007', 349, NULL, 99, 'https://www.themealdb.com/images/ingredients/Spinach-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(4, 1, 'Roma Tomatoes', 'roma-tomatoes', NULL, 'GDP-PROD-008', 279, NULL, 98, 'https://www.themealdb.com/images/ingredients/Tomato-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(5, 1, 'Hass Avocados', 'hass-avocados', NULL, 'GDP-PROD-009', 599, NULL, 99, 'https://www.themealdb.com/images/ingredients/Avocado-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(6, 2, 'Large Brown Eggs', 'large-brown-eggs', NULL, 'GDP-PROD-003', 599, NULL, 80, 'https://www.themealdb.com/images/ingredients/Egg-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(7, 2, 'Whole Milk', 'whole-milk', NULL, 'GDP-PROD-004', 429, NULL, 100, 'https://www.themealdb.com/images/ingredients/Milk-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(8, 2, 'Greek Yogurt', 'greek-yogurt', NULL, 'GDP-PROD-010', 519, 649, 90, 'https://www.themealdb.com/images/ingredients/Yogurt-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(9, 2, 'Sharp Cheddar', 'sharp-cheddar', NULL, 'GDP-PROD-011', 649, NULL, 89, 'https://www.themealdb.com/images/ingredients/Cheddar%20Cheese-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(10, 2, 'Unsalted Butter', 'unsalted-butter', NULL, 'GDP-PROD-012', 399, NULL, 98, 'https://www.themealdb.com/images/ingredients/Butter-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(11, 3, 'Long Grain Rice', 'long-grain-rice', NULL, 'GDP-PROD-005', 699, NULL, 99, 'https://www.themealdb.com/images/ingredients/Rice-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(12, 3, 'Pasta', 'pasta', NULL, 'GDP-PROD-006', 249, NULL, 99, 'https://www.themealdb.com/images/ingredients/Spaghetti-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(13, 3, 'Extra Virgin Olive Oil', 'extra-virgin-olive-oil', NULL, 'GDP-PROD-013', 899, NULL, 100, 'https://www.themealdb.com/images/ingredients/Olive%20Oil-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(14, 3, 'Rolled Oats', 'rolled-oats', NULL, 'GDP-PROD-014', 459, NULL, 99, 'https://www.themealdb.com/images/ingredients/Oats-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(15, 3, 'Peanut Butter', 'peanut-butter', NULL, 'GDP-PROD-015', 549, NULL, 99, 'https://www.themealdb.com/images/ingredients/Peanut%20Butter-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(16, 4, 'Salted Potato Chips', 'salted-potato-chips', NULL, 'GDP-PROD-016', 199, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(17, 4, 'Butter Popcorn', 'butter-popcorn', NULL, 'GDP-PROD-017', 249, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(18, 4, 'Roasted Trail Mix', 'roasted-trail-mix', NULL, 'GDP-PROD-018', 549, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(19, 5, 'Orange Juice', 'orange-juice', NULL, 'GDP-PROD-019', 399, NULL, 100, 'https://www.themealdb.com/images/ingredients/Orange-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(20, 5, 'Sparkling Water', 'sparkling-water', NULL, 'GDP-PROD-020', 149, NULL, 100, 'https://www.themealdb.com/images/ingredients/Water-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(21, 5, 'Cola 6-Pack', 'cola-6-pack', NULL, 'GDP-PROD-021', 499, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(22, 6, 'Sourdough Loaf', 'sourdough-loaf', NULL, 'GDP-PROD-022', 449, NULL, 100, 'https://www.themealdb.com/images/ingredients/Bread-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(23, 6, 'Burger Buns', 'burger-buns', NULL, 'GDP-PROD-023', 279, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(24, 6, 'Butter Croissants', 'butter-croissants', NULL, 'GDP-PROD-024', 399, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(25, 7, 'Corn Flakes', 'corn-flakes', NULL, 'GDP-PROD-025', 429, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(26, 7, 'Honey Granola', 'honey-granola', NULL, 'GDP-PROD-026', 549, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(27, 7, 'Pancake Mix', 'pancake-mix', NULL, 'GDP-PROD-027', 389, NULL, 100, 'https://www.themealdb.com/images/ingredients/Flour-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(28, 8, 'Dark Chocolate Bar', 'dark-chocolate-bar', NULL, 'GDP-PROD-028', 299, 374, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(29, 8, 'Choc Chip Cookies', 'choc-chip-cookies', NULL, 'GDP-PROD-029', 349, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(30, 8, 'Gummy Bears', 'gummy-bears', NULL, 'GDP-PROD-030', 199, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(31, 9, 'Chicken Breast', 'chicken-breast', NULL, 'GDP-PROD-031', 899, NULL, 100, 'https://www.themealdb.com/images/ingredients/Chicken-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(32, 9, 'Salmon Fillet', 'salmon-fillet', NULL, 'GDP-PROD-032', 1299, NULL, 100, 'https://www.themealdb.com/images/ingredients/Salmon-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(33, 9, 'Pork Sausages', 'pork-sausages', NULL, 'GDP-PROD-033', 649, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(34, 10, 'Frozen Peas', 'frozen-peas', NULL, 'GDP-PROD-034', 249, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(35, 10, 'Vanilla Ice Cream', 'vanilla-ice-cream', NULL, 'GDP-PROD-035', 549, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(36, 10, 'Crispy Fries', 'crispy-fries', NULL, 'GDP-PROD-036', 399, NULL, 99, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(37, 11, 'Ground Coffee', 'ground-coffee', NULL, 'GDP-PROD-037', 899, NULL, 100, 'https://www.themealdb.com/images/ingredients/Coffee-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(38, 11, 'Green Tea Bags', 'green-tea-bags', NULL, 'GDP-PROD-038', 449, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(39, 11, 'Masala Chai', 'masala-chai', NULL, 'GDP-PROD-039', 399, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(40, 12, 'Tomato Ketchup', 'tomato-ketchup', NULL, 'GDP-PROD-040', 249, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(41, 12, 'Mayonnaise', 'mayonnaise', NULL, 'GDP-PROD-041', 329, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(42, 12, 'Strawberry Jam', 'strawberry-jam', NULL, 'GDP-PROD-042', 299, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(43, 13, 'Dish Soap', 'dish-soap', NULL, 'GDP-PROD-043', 279, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(44, 13, 'Laundry Detergent', 'laundry-detergent', NULL, 'GDP-PROD-044', 899, 1124, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(45, 13, 'Surface Cleaner', 'surface-cleaner', NULL, 'GDP-PROD-045', 349, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(46, 14, 'Shampoo', 'shampoo', NULL, 'GDP-PROD-046', 549, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(47, 14, 'Toothpaste', 'toothpaste', NULL, 'GDP-PROD-047', 199, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(48, 14, 'Hand Soap', 'hand-soap', NULL, 'GDP-PROD-048', 249, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(49, 15, 'Diapers Value Pack', 'diapers-value-pack', NULL, 'GDP-PROD-049', 1499, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(50, 15, 'Baby Wipes', 'baby-wipes', NULL, 'GDP-PROD-050', 299, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(51, 15, 'Baby Lotion', 'baby-lotion', NULL, 'GDP-PROD-051', 449, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(52, 16, 'Paper Towels', 'paper-towels', NULL, 'GDP-PROD-052', 399, NULL, 98, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(53, 16, 'Trash Bags', 'trash-bags', NULL, 'GDP-PROD-053', 349, NULL, 98, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(54, 16, 'Aluminium Foil', 'aluminium-foil', NULL, 'GDP-PROD-054', 299, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
 (55, 1, 'Organic Lemon', 'organic-lemon', 'Fresh lemons are vibrant, smooth, and citrus-scented oval fruits packed with a sharp, clean sourness and rich Vitamin C content.', 'LM343235', 100, 200, 99, '/api/media/file/products/gJE1AAvXFXjxY2CH8ViP0UIRt53SNXLZOD89SVxt.webp', 1, 0, NULL, 0, '2026-09-15 07:49:05', '2026-09-21 23:15:32');
 
 -- --------------------------------------------------------
@@ -1091,12 +1098,36 @@ CREATE TABLE `sessions` (
 --
 
 INSERT INTO `sessions` (`id`, `user_id`, `ip_address`, `user_agent`, `payload`, `last_activity`) VALUES
+('23HIggRBQzr3mW38Gu1N5PJ4QyLZdCVJfRNjTDCj', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJNOUhLNzlBejVUR011cWFkOGRoV0lEZDNuRkR2dmQyMG5sc29sN1lJIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvcGFudHJ5LXN0YXBsZXMucG5nIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1790747655),
+('24JMEEBSYiJRSIj5sTt0kQ0wlb7K1AcQYVMRwTr5', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiIxWUFZRkl6TVkxOTRBQlFzb3VnQ2tmM2RLc0t3dFU3RjBrUThpd0Z3IiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvY2xlYW5pbmctZXNzZW50aWFscy5wbmciLCJyb3V0ZSI6bnVsbH0sIl9mbGFzaCI6eyJvbGQiOltdLCJuZXciOltdfX0=', 1790747658),
+('28JVMJ34nYlj5vfWE0NBi0wXDfoosx8nNcbJpgCs', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJTT3VCcURQeWxWenAycjlmOXN4enNTcmxSSTlqNUQ5cmhCbmJFOTBMIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvYmFrZXJ5LWFuZC1icmVhZHMucG5nIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1790747656),
 ('3oISb7Njdw4tKH5J5FntsNvMPeZvdPZt82SXyr4x', NULL, '127.0.0.1', 'curl/8.21.0', 'eyJfdG9rZW4iOiI5eHZJQzA1M1FNRWFFdDh0ZTM3S3lsMlFMY1ZJbklLdGVweGNnWjVEIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9hcGlcL2Jhbm5lcnMiLCJyb3V0ZSI6bnVsbH0sIl9mbGFzaCI6eyJvbGQiOltdLCJuZXciOltdfX0=', 1789017213),
+('5WOr37WSJjeu35XamXiUK46lHTg8weDD6R1iKqGv', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJoQk56TXkyZ2tpNkR6ZE5FenlHTTRoU2pCa1ZTR2wyVG9GR1lKRUVzIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvcGFhbi1jb3JuZXIucG5nIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1790751343),
+('71NZbaRf0ET33UxuunTJwdZ4SmsEXrFqE9ltoWly', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiIybEhqMmpSeFBhMFBEdnh4eHU1d1ltUnR6NHdnZkY5UWpYUmR0RnM3IiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvbWVhdC1hbmQtc2VhZm9vZC5wbmciLCJyb3V0ZSI6bnVsbH0sIl9mbGFzaCI6eyJvbGQiOltdLCJuZXciOltdfX0=', 1790747657),
+('8THd2RBRgtBlkI4EzKWqxXjGIiHHeax9YhNfIH8r', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJrRnFJeVVvRmI1bkxjT1pPcG42Umx2dFNWQjFmeHVkNkZnSFpKdU5DIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvYmV2ZXJhZ2VzLnBuZyIsInJvdXRlIjpudWxsfSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119fQ==', 1790747656),
+('aPCuDrrx8PZ7FVTDTwTOsiUN4lhdAo9yhYbK1Gvb', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0', 'eyJfdG9rZW4iOiJXQ3lYWGxMRlVKVUQ5ZTZKOUFiMEdJMTUxb0hLNnozMUlGazBUN0VJIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1790750101),
+('c3a4Z4MJ2sV1kZ5pNKaDyMEjUSO7oGcOpKa30M2m', NULL, '127.0.0.1', 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36', 'eyJfdG9rZW4iOiJRcEYwWU5jMktqZkRKMjgyeVBDdWw2MzJJMldkSFFIa1hpaEhGYUJGIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvZGFpcnktYW5kLWVnZ3MucG5nIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1790753559),
+('Dh7nYC8MPg3hP94XJGFYtP8Y2HVsrs6VEXW7tUva', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJOTzc5M0NCY0RvNEpZVXQzSXFNNnN4aVNXZHpvbEY5eVNLSDJiWW9WIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvYmFieS1jYXJlLnBuZyIsInJvdXRlIjpudWxsfSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119fQ==', 1790751343),
+('DhBDM3GEoWbGuwdGWMm1Ps75mZg7vJoHV8EppBoM', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJFZWJLa0NEcTc2ZzZQNUN5aU96RWltYWNFUGNydjBkdFBJd2FiUDZhIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvZnJlc2gtcHJvZHVjZS5wbmciLCJyb3V0ZSI6bnVsbH0sIl9mbGFzaCI6eyJvbGQiOltdLCJuZXciOltdfX0=', 1790747654),
+('dW8gBoSMYg7aHTJQpG1hwrhBZxtWTicfAbMnGTEi', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJIdWpPbm5EekFFbFQ4TVp0U2U1RlB1SVFZWE1qWGlMUzFOaFFjajdLIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvYnJlYWtmYXN0LWFuZC1jZXJlYWwucG5nIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1790747656),
 ('E3uiXV8elXX319hZg99S3K9ivwaG5bNMZA1NgvB2', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0', 'eyJfdG9rZW4iOiJnWTFvWmlTVjVOcDZoWXRaYUJBOEJYcUtNdHhET2R3ME1WbVEwSlVoIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1789044363),
 ('EcUaxHeMLWcyD1TPvFwuchfWw7Xg7nmdGwJgXbJ4', NULL, '127.0.0.1', 'curl/8.21.0', 'eyJfdG9rZW4iOiI2a05aWWFqaEY0UHlabVdRbTh1VXJTWlE3cG9MTFI4ZzhLRUdwSmN4IiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9hcGlcL2hlYWx0aCIsInJvdXRlIjpudWxsfSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119fQ==', 1789032140),
+('fnUtE5tM8Wnveh5Y5e6MmXDEkXv2hzm96igVduko', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJqZ3hyRnRlUldaMHJmdW5zZEFaWXo4dGVLV3hJanJtQllpTlhYVXJQIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvZnJvemVuLWZvb2RzLnBuZyIsInJvdXRlIjpudWxsfSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119fQ==', 1790747657),
+('futRoPSyE3InRDgzDTqQFBzzvV2RH8KpmCuOa5Q6', NULL, '127.0.0.1', 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36', 'eyJfdG9rZW4iOiJTaDJ0eURRYUVseHFPcTc2RHFiRDB0eko0WVhGSlVobURzTjZtbnNVIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvYmV2ZXJhZ2VzLnBuZyIsInJvdXRlIjpudWxsfSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119fQ==', 1790753560),
+('HRXwnBQfCbX49wuJHf7r0523KgR9KILKwqFSLKID', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJQYVVaTHNGamljUVVWeDJJSHlwSTl2NWNkWk1NelBpaGxVck9ER2JTIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvcGVyc29uYWwtY2FyZS5wbmciLCJyb3V0ZSI6bnVsbH0sIl9mbGFzaCI6eyJvbGQiOltdLCJuZXciOltdfX0=', 1790751342),
+('HUmKy68CB2tvg4VHgS5DmC9oBJkD8z8thdyNn198', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiIzM1B0TmttSHlxNWljUVJEYlNDWkRUdk9Xc3k4cmUxa0tGbjVuOHpnIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvZGFpcnktYW5kLWVnZ3MucG5nIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1790747655),
 ('LfYGkhTNNaonvFh2fAxz8ISJrItMdWw9bqKz8LRi', NULL, '127.0.0.1', 'curl/8.21.0', 'eyJfdG9rZW4iOiI5Sk9ONTNjUEczU2ViWDhZUGVFNlpiUXlvSjc2akROV3FuR21Vdm44IiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9hcGlcL2F1dGhcL21lIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1789111585),
+('loPTemlsrLXR195IOd31Ik6KEmLMlGeVA6ExbOct', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJyT1JHalVReFNJSWduUVFXS2p0OFc0N1FxbE1IcEZPR0R0Vk9lcTZ5IiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvdGVhLWFuZC1jb2ZmZWUucG5nIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1790747657),
+('mCESzOa1EJTTrD1ZDcMEOkIbyop6Myiyib5EGscp', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJIRTQ0eFVBcTV6T25VbjRHNGpvVVB5RTlQNzFLRVg0elJlQWZBYjFyIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvc2F1Y2VzLWFuZC1zcHJlYWRzLnBuZyIsInJvdXRlIjpudWxsfSwiX2ZsYXNoIjp7Im9sZCI6W10sIm5ldyI6W119fQ==', 1790747658),
+('MMBDQ7Ng6gi9K7P2pLCJ1CSYSqc98EtCqEtENKTW', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJGd2RwN040Q2dJZ2J4UVpiMlkxRklJN213VlNEUE5mbEI1RkNzQloxIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvaG9tZS1hbmQta2l0Y2hlbi5wbmciLCJyb3V0ZSI6bnVsbH0sIl9mbGFzaCI6eyJvbGQiOltdLCJuZXciOltdfX0=', 1790751343),
+('OpuLf3lM68EJyfqOhnnhYRkv9xJRkvSho7zlzWD8', NULL, '127.0.0.1', 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36', 'eyJfdG9rZW4iOiJIRDY4WE82ZDgxMHkxbmpMTTJsTHR4Q2hIZ01QMHVnUjJoemptZExqIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvcGFudHJ5LXN0YXBsZXMucG5nIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1790753559),
+('rN9w4oRUSLvMoWmJ8MxiJcJfy3icZuCC8GkvpwvS', NULL, '127.0.0.1', 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36', 'eyJfdG9rZW4iOiJ2Y3BlODdKVUhleWdJRm1zclJKWEZ0RmhTR2JQelNuZ2drRzJReUhpIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvc25hY2tzLWFuZC1tdW5jaGllcy5wbmciLCJyb3V0ZSI6bnVsbH0sIl9mbGFzaCI6eyJvbGQiOltdLCJuZXciOltdfX0=', 1790753559),
 ('UTbg5UPwPiWkoC54ywTxGtgu03viEwtrup5vfuf8', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0', 'eyJfdG9rZW4iOiJjM0RBT05GUWNJb1FPTWl3WElPTTJsY0hCbTh0TUtHZUR0dU54WllzIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1788953496),
-('VbUeTGNJe0w12iJenDsJSM2ByZjaYiW3lC3tldpR', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0', 'eyJfdG9rZW4iOiJpZFl1WTh3Y09tUUQ4SlhJZVNYaGhHRURIamVodU1oSGFjTm1wY3h5IiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1788940289);
+('VbUeTGNJe0w12iJenDsJSM2ByZjaYiW3lC3tldpR', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 Edg/152.0.0.0', 'eyJfdG9rZW4iOiJpZFl1WTh3Y09tUUQ4SlhJZVNYaGhHRURIamVodU1oSGFjTm1wY3h5IiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cL2xvY2FsaG9zdDo4MDAwIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1788940289),
+('Voklse8ZsZEABWYcD1mrowKlRVSON6mkjvvg1R3N', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJPdDR2M0NJWk9EN014WTdxR0VJS0luck9NdmJkdml0YXdsbFdacVZ6IiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvc25hY2tzLWFuZC1tdW5jaGllcy5wbmciLCJyb3V0ZSI6bnVsbH0sIl9mbGFzaCI6eyJvbGQiOltdLCJuZXciOltdfX0=', 1790747656),
+('WytcDAqW1osgM3Ivi9nAbi93BZAELoEcb2DJjZVo', NULL, '127.0.0.1', 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36', 'eyJfdG9rZW4iOiI1TGRCa0xrTTFuS3d5ZWtkazZVMlNIOHU2MFdYMGQySHZGcmtod0JwIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvYmFrZXJ5LWFuZC1icmVhZHMucG5nIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1790753560),
+('ZMDiJ3obRdzoC7NwihBfmVOiNBbMMXTe1FllpLid', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36', 'eyJfdG9rZW4iOiJwcWNBcWcwOExwWDB4YXp1bGpBRjN4b0tGd284OTFMQmFsajFSU3BlIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvc3dlZXRzLWFuZC1jaG9jb2xhdGUucG5nIiwicm91dGUiOm51bGx9LCJfZmxhc2giOnsib2xkIjpbXSwibmV3IjpbXX19', 1790747657),
+('ZRTsklRKWbSz0unDVpux0QXFoYcYX8cTnKuGliFz', NULL, '127.0.0.1', 'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Mobile Safari/537.36', 'eyJfdG9rZW4iOiJ4VjNRTTNxYUoza0dVZ0VZcXdFNW1YMEhHaTY0YU1rM0ttMGFSRFpLIiwiX3ByZXZpb3VzIjp7InVybCI6Imh0dHA6XC9cLzEyNy4wLjAuMTo4MDAwXC9pbWdcL2NhdFwvZnJlc2gtcHJvZHVjZS5wbmciLCJyb3V0ZSI6bnVsbH0sIl9mbGFzaCI6eyJvbGQiOltdLCJuZXciOltdfX0=', 1790753558);
 
 -- --------------------------------------------------------
 
@@ -1119,7 +1150,7 @@ INSERT INTO `settings` (`key`, `value`, `created_at`, `updated_at`) VALUES
 ('branding', '{\"v\": {\"store_name\": \"TUDEE SHOPPING CENTER\", \"tagline\": \"Fresh groceries, less fuss\", \"logo_url\": \"\\/api\\/media\\/file\\/products\\/6ECwKgzIG0wA7s2ieBehAp3jO5V9rrPJyJGLdYWo.png\", \"favicon_url\": \"\\/api\\/media\\/file\\/products\\/JKutAMU8COTNwZAHl1LEPmh1Rjf2SU39wQF5HYnR.jpg\", \"theme\": \"light\", \"layout_width\": \"boxed\", \"color_brand\": \"#1f7a3d\", \"color_accent\": \"#ffd23f\", \"color_heading\": \"#18211c\", \"contact_email\": \"test@example.com\"}}', '2026-09-09 01:31:48', '2026-09-28 23:09:03'),
 ('checkout_fees', '{\"v\":{\"delivery_mode\":\"fixed\",\"delivery_fee_cents\":299,\"delivery_near_fee_cents\":199,\"delivery_far_fee_cents\":599,\"free_delivery_threshold_cents\":3500,\"handling_fee_cents\":99,\"small_cart_fee_cents\":199,\"small_cart_min_cents\":1000,\"tax_rate_bps\":887}}', '2026-09-10 07:26:50', '2026-09-10 07:26:50'),
 ('cod_enabled', '{\"v\":true}', '2026-09-10 07:26:49', '2026-09-10 07:26:49'),
-('footer', '{\"v\": {\"copyright\": \"\\u00a9 {year} Tudee Shopping Center\", \"app_store_url\": \"https:\\/\\/apps.apple.com\\/app\\/grocerly-demo\", \"play_store_url\": \"https:\\/\\/play.google.com\\/store\\/apps\\/details?id=com.grocerly.demo\", \"socials\": {\"facebook\": \"https:\\/\\/facebook.com\\/grocerly\", \"x\": \"https:\\/\\/x.com\\/grocerly\", \"instagram\": \"https:\\/\\/instagram.com\\/grocerly\", \"linkedin\": \"https:\\/\\/www.linkedin.com\\/company\\/grocerly\", \"youtube\": \"https:\\/\\/www.youtube.com\\/@grocerly\"}, \"links\": [], \"note\": \"Tudee Shopping Center delivers fresh groceries and household essentials from a store near you.\"}}', '2026-09-09 01:12:49', '2026-09-09 01:12:49');
+('footer', '{\"v\":{\"copyright\":\"\\u00a9 {year} Tudee Shopping Center\",\"app_store_url\":\"\",\"play_store_url\":\"\",\"socials\":{\"facebook\":\"\",\"x\":\"\",\"instagram\":\"\",\"linkedin\":\"\",\"youtube\":\"\"},\"links\":[],\"note\":\"Tudee Shopping Center delivers fresh groceries and household essentials from a store near you.\"}}', '2026-09-09 01:12:49', '2026-09-30 05:01:33');
 
 -- --------------------------------------------------------
 
@@ -1328,7 +1359,7 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`id`, `name`, `email`, `phone`, `stripe_customer_id`, `is_admin`, `is_rider`, `rider_is_active`, `rider_rating_avg`, `rider_rating_count`, `rider_declined_count`, `rider_missed_count`, `rider_offers_count`, `rider_daily_target_minutes`, `rider_since`, `rider_available`, `rider_unavailable_reason`, `rider_last_seen_at`, `rider_base_address`, `rider_base_lat`, `rider_base_lng`, `rider_last_lat`, `rider_last_lng`, `rider_last_located_at`, `email_verified_at`, `password`, `remember_token`, `created_at`, `updated_at`) VALUES
 (15, 'Test User', 'test@example.com', '+231555000', 'cus_VEAEdiTnuYPjHz', 1, 0, 1, NULL, 0, 0, 0, 0, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-09 01:12:48', '$2y$12$skX3B4/nh5s/002bOYkfZ.uO5eeXCokTCYPh.8Q.Z28wpSnfcUDvy', NULL, '2026-09-09 01:12:48', '2026-09-29 01:38:43'),
-(16, 'Sam Rider', 'rider@example.com', NULL, NULL, 0, 1, 1, 4.33, 6, 0, 2, 12, NULL, '2026-09-10 01:17:26', 1, NULL, '2026-09-21 23:49:20', NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-09 01:12:48', '$2y$12$skX3B4/nh5s/002bOYkfZ.uO5eeXCokTCYPh.8Q.Z28wpSnfcUDvy', NULL, '2026-09-09 01:12:48', '2026-09-21 23:49:25'),
+(16, 'Sam Rider', 'rider@example.com', NULL, NULL, 0, 1, 1, 4.33, 6, 0, 2, 12, NULL, '2026-09-10 01:17:26', 1, NULL, '2026-09-30 04:59:42', NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-09 01:12:48', '$2y$12$skX3B4/nh5s/002bOYkfZ.uO5eeXCokTCYPh.8Q.Z28wpSnfcUDvy', NULL, '2026-09-09 01:12:48', '2026-09-30 04:59:42'),
 (17, 'Testcaresort', 'testcaresort@outlook.com', '+15551234567', 'cus_VE8eecdx05e2pN', 0, 0, 1, NULL, 0, 0, 0, 0, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '$2y$12$skX3B4/nh5s/002bOYkfZ.uO5eeXCokTCYPh.8Q.Z28wpSnfcUDvy', NULL, '2026-09-09 02:25:33', '2026-09-10 07:25:57'),
 (18, 'New Ride', 'new_ride@example.com', NULL, NULL, 0, 1, 1, NULL, 0, 0, 0, 0, 480, '2026-09-09 05:14:36', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '$2y$12$kvtzqkILF65K1f7Zekch8ux7wHqhyNNSBFQG0zutKPpuhtETcpLZe', NULL, '2026-09-09 05:14:36', '2026-09-11 01:33:45'),
 (19, 'Ride Example', 'ride_example@gmail.com', NULL, NULL, 0, 0, 0, NULL, 0, 0, 0, 0, NULL, '2026-09-09 05:15:06', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '$2y$12$s8TjsvlZWoF3ROrlOuTM2ucqQDyws.3wK9rRNdYSEe4Y6x/JnNos2', NULL, '2026-09-09 05:15:06', '2026-09-11 01:34:32'),
@@ -1668,7 +1699,7 @@ ALTER TABLE `carts`
 -- AUTO_INCREMENT for table `cart_items`
 --
 ALTER TABLE `cart_items`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=46;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=51;
 
 --
 -- AUTO_INCREMENT for table `categories`
@@ -1716,13 +1747,13 @@ ALTER TABLE `migrations`
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
 
 --
 -- AUTO_INCREMENT for table `order_items`
 --
 ALTER TABLE `order_items`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=52;
 
 --
 -- AUTO_INCREMENT for table `order_refunds`
@@ -1740,7 +1771,7 @@ ALTER TABLE `pages`
 -- AUTO_INCREMENT for table `personal_access_tokens`
 --
 ALTER TABLE `personal_access_tokens`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=182;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=189;
 
 --
 -- AUTO_INCREMENT for table `products`
@@ -1770,7 +1801,7 @@ ALTER TABLE `product_variants`
 -- AUTO_INCREMENT for table `rider_reviews`
 --
 ALTER TABLE `rider_reviews`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `rider_shifts`

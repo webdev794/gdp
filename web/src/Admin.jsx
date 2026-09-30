@@ -1441,6 +1441,33 @@ export default function Admin({ token, onClose }) {
   }
 
   // Bulk action on every product marked "Demo product": hide, show or delete.
+  async function deleteProductsWithoutImages() {
+    if (!window.confirm('Permanently delete every product that has no photo (only a placeholder icon)? Any that are on past orders will be hidden instead. This cannot be undone.')) return
+    setMessage('')
+    try {
+      const response = await fetch(`${API_URL}/admin/products/delete-without-images`, { method: 'POST', headers: jsonHeaders() })
+      const data = await readJson(response)
+      if (!response.ok) throw new Error(data.message ?? 'Could not delete products without images.')
+      const r = data.data ?? {}
+      setMessage(`Deleted ${r.deleted} product(s) without images${r.hidden ? `; ${r.hidden} on past orders were hidden instead` : ''}.`)
+      setProductForm(null)
+      loadProducts()
+      loadMetrics()
+    } catch (error) { fail(error) }
+  }
+
+  async function pruneAddressesOutsideArea() {
+    if (!window.confirm('Delete every customer\'s saved address that is outside all stores\' delivery areas or has no map pin? Past orders keep their own copy of the address. This cannot be undone.')) return
+    setMessage('')
+    try {
+      const response = await fetch(`${API_URL}/admin/addresses/prune-outside-area`, { method: 'POST', headers: jsonHeaders() })
+      const data = await readJson(response)
+      if (!response.ok) throw new Error(data.message ?? 'Could not remove addresses.')
+      const r = data.data ?? {}
+      setMessage(`Removed ${r.deleted} saved address(es) outside the delivery area; ${r.kept} kept.`)
+    } catch (error) { fail(error) }
+  }
+
   async function demoProducts(action) {
     const ask = {
       hide: 'Hide all demo products from the store?',
@@ -2076,6 +2103,8 @@ export default function Admin({ token, onClose }) {
             <button className="act ghost" type="button" onClick={() => demoProducts('hide')}>Hide from store</button>
             <button className="act ghost" type="button" onClick={() => demoProducts('show')}>Show in store</button>
             <button className="act danger" type="button" onClick={() => demoProducts('delete')}>Delete all</button>
+            <span className="muted">Products with no photo:</span>
+            <button className="act danger" type="button" onClick={deleteProductsWithoutImages}>Delete products without images</button>
           </div>
 
           {productForm && (
@@ -2446,6 +2475,7 @@ export default function Admin({ token, onClose }) {
           <div className="admin-toolbar">
             <button className="act" type="button" onClick={() => { setStoreForm({ ...EMPTY_STORE }); scrollFormIntoView('admin-store-form') }}>New store</button>
             <span className="muted">Customers outside every active store&rsquo;s radius can browse but can&rsquo;t check out.</span>
+            <button className="act danger" type="button" onClick={pruneAddressesOutsideArea}>Remove saved addresses outside delivery area</button>
           </div>
 
           {storeForm && (

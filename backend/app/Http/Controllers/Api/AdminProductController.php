@@ -151,6 +151,35 @@ class AdminProductController extends Controller
         ]]);
     }
 
+    /**
+     * Bulk clean-up: remove products that have no photo at all (no main image,
+     * no gallery image, no variant image) — they only show a placeholder icon.
+     * Same safety rule as the demo delete: products already on orders are
+     * hidden instead, so past orders and bills keep working.
+     */
+    public function deleteWithoutImages(): JsonResponse
+    {
+        $ids = Product::query()
+            ->where(fn ($q) => $q->whereNull('image_url')->orWhere('image_url', ''))
+            ->whereDoesntHave('images')
+            ->whereDoesntHave('variants', fn ($q) => $q->whereNotNull('image_url')->where('image_url', '!=', ''))
+            ->pluck('id');
+
+        $onOrders = DB::table('order_items')->whereIn('product_id', $ids)->distinct()->pluck('product_id');
+        $deletable = $ids->diff($onOrders)->values();
+
+        DB::transaction(function () use ($deletable, $onOrders): void {
+            DB::table('cart_items')->whereIn('product_id', $deletable)->delete();
+            Product::whereIn('id', $deletable)->delete();
+            Product::whereIn('id', $onOrders)->update(['is_active' => false]);
+        });
+
+        return response()->json(['data' => [
+            'deleted' => $deletable->count(),
+            'hidden' => $onOrders->count(),
+        ]]);
+    }
+
     private function validated(Request $request, ?Product $product = null): array
     {
         $unique = Rule::unique('products')->ignore($product?->id);
