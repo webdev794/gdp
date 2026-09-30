@@ -228,6 +228,12 @@ class CheckoutController extends Controller
             return $order->load('items');
         });
 
+        // Tell the customer what is left on the gift card for a later order
+        // (response only — not stored on the order).
+        if ($giftCard) {
+            $order->setAttribute('gift_card_remaining_cents', (int) GiftCard::whereKey($giftCard->id)->value('balance_cents'));
+        }
+
         return response()->json(['data' => $order], 201);
     }
 

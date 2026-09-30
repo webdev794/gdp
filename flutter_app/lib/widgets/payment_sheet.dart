@@ -90,11 +90,18 @@ class _PaymentSheetState extends State<PaymentSheet> {
         _giftCode.text,
         _giftPin.text,
       );
+      // The store spends up to the order total and keeps the rest on the card.
+      final total = widget.totalAmount;
+      String money(double v) => '\$${v.toStringAsFixed(2)}';
       setState(() {
         _giftOk = balance > 0;
-        _giftMsg = balance > 0
-            ? 'Gift card balance: \$${balance.toStringAsFixed(2)} — applied at checkout.'
-            : 'This gift card has no balance left.';
+        _giftMsg = balance <= 0
+            ? 'This gift card has no balance left.'
+            : balance >= total
+                ? 'Gift card balance ${money(balance)}: about ${money(total)} will be used for this order '
+                    'and about ${money(balance - total)} stays on the card for your next order.'
+                : 'Gift card balance ${money(balance)} will be used for this order; '
+                    'pay the remaining about ${money(total - balance)} by card or cash.';
       });
     } catch (e) {
       setState(() {

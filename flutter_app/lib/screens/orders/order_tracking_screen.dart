@@ -21,6 +21,8 @@ class OrderTrackingScreen extends StatefulWidget {
 
 class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   late OrderModel _currentOrder;
+  // From the checkout reply only; kept when the order refreshes.
+  late final double? _giftLeft = widget.order.giftCardRemaining;
   Timer? _poll;
 
   bool get _isFinal => _currentOrder.status == 'delivered' || _currentOrder.status == 'cancelled';
@@ -715,7 +717,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
           _buildCostRow('Delivery Fee', _currentOrder.deliveryFee == 0 ? 'FREE' : '\$${_currentOrder.deliveryFee.toStringAsFixed(2)}'),
           _buildCostRow('Tax','\$${_currentOrder.tax.toStringAsFixed(2)}'),
           if (_currentOrder.discount > 0)
-            _buildCostRow('Discount Saved', '-\$${_currentOrder.discount.toStringAsFixed(2)}', isGreen: true),
+            _buildCostRow('Gift card applied', '-\$${_currentOrder.discount.toStringAsFixed(2)}', isGreen: true),
+          if (_giftLeft != null && _giftLeft > 0)
+            _buildCostRow('Left on your gift card for next order', '\$${_giftLeft.toStringAsFixed(2)}', isGreen: true),
 
           const SizedBox(height: 8),
           const Divider(height: 1, color: AppTheme.borderSubtle),

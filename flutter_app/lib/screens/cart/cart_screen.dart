@@ -747,7 +747,13 @@ class _CartScreenState extends State<CartScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Order ${createdOrder.orderNumber} is confirmed!\nDelivery PIN: ${createdOrder.deliveryCode}',
+                [
+                  'Order ${createdOrder.orderNumber} is confirmed!',
+                  if (createdOrder.discount > 0) 'Gift card applied: \$${createdOrder.discount.toStringAsFixed(2)}',
+                  if ((createdOrder.giftCardRemaining ?? 0) > 0)
+                    '\$${createdOrder.giftCardRemaining!.toStringAsFixed(2)} is left on your gift card for your next order.',
+                  'Your rider will ask for a delivery code on arrival — it pops up in the app.',
+                ].join('\n'),
                 style: const TextStyle(color: AppTheme.slateMuted, fontSize: 13),
                 textAlign: TextAlign.center,
               ),

@@ -283,6 +283,8 @@ class GiftCardTest extends TestCase
 
         $card->refresh();
         $this->assertSame(5000 - $gross, $card->balance_cents);
+        // The customer is told what stays on the card for the next order.
+        $this->assertSame(5000 - $gross, $res->json('data.gift_card_remaining_cents'));
         $this->assertDatabaseHas('gift_card_redemptions', [
             'gift_card_id' => $card->id, 'order_id' => $res->json('data.id'), 'amount_cents' => $gross,
         ]);
