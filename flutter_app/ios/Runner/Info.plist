@@ -14,13 +14,13 @@
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Grocerly needs your location to deliver groceries within 10-15 minutes and calculate store delivery ETA.</string>
+	<string>Tudee Shopping Center uses your location to check delivery to your address and show the delivery time.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Grocerly needs your location to deliver groceries and provide live order tracking.</string>
+	<string>Tudee Shopping Center uses your location to check delivery to your address and show the delivery time.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Grocerly needs access to your photo library for support chat and profile updates.</string>
+	<string>Tudee Shopping Center uses your photos only when you attach one to a support chat.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Grocerly needs camera access for taking support and order verification photos.</string>
+	<string>Tudee Shopping Center uses the camera only when you take a photo for a support chat.</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
 	<key>CFBundleExecutable</key>
@@ -30,7 +30,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>supermarket</string>
+	<string>Tudee</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

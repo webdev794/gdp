@@ -124,7 +124,7 @@ class _BlinkitMapWidgetState extends State<BlinkitMapWidget> {
               children: [
                 TileLayer(
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.grocerly.app',
+                  userAgentPackageName: 'com.example.supermarket',
                 ),
               ],
             ),
