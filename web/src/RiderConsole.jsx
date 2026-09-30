@@ -43,10 +43,13 @@ function DeliveryCard({ order, pool, headers, onDone, onChat }) {
 
   const simpleAct = async (path, body) => { try { await post(path, body); onDone() } catch { /* err shown */ } }
 
+  const [sends, setSends] = useState(0)
   const sendCode = async () => {
     try {
       const { data } = await post('delivery-otp')
       setSentTo(data?.to || 'the customer')
+      setSends((count) => count + 1)
+      setCode('')
     } catch { /* err shown */ }
   }
   const confirmWithCode = async () => { try { await post('deliver', { code: code.trim() }); onDone() } catch { /* err shown */ } }
@@ -88,12 +91,12 @@ function DeliveryCard({ order, pool, headers, onDone, onChat }) {
           {!sentTo
             ? <button className="rider-btn" type="button" disabled={working} onClick={sendCode}>Send code to customer</button>
             : <>
-                <p className="rider-deliver-sent">Code sent to {sentTo}. Ask them to read it out.</p>
+                <p className="rider-deliver-sent">{sends > 1 ? 'New code sent' : 'Code sent'} to {sentTo}. It also pops up in the customer's app and on the website — ask them to check and read it out.</p>
                 <div className="rider-deliver-row">
                   <input inputMode="numeric" maxLength={6} placeholder="6-digit code" value={code} onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, ''))} />
                   <button className="rider-btn primary" type="button" disabled={working || code.length < 4} onClick={confirmWithCode}>Confirm delivery</button>
                 </div>
-                <button className="rider-link-btn" type="button" onClick={sendCode} disabled={working}>Resend</button>
+                <button className="rider-link-btn" type="button" onClick={sendCode} disabled={working}>Resend a new code</button>
               </>}
           {err && <p className="rider-deliver-err">{err}</p>}
           <button className="rider-link-btn danger" type="button" onClick={() => { setStage('override'); setErr('') }}>Can’t verify? Mark delivered without a code</button>
