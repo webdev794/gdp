@@ -1030,3 +1030,25 @@ See `flutter_app/README.md` for building the apps and `mobile/README.md` for the
 
 GitHub repository: <https://github.com/webdev794/gdp>
 
+-----
+Short list — chemical → feeling:
+
+Dopamine → wanting, motivation, reward
+
+Serotonin → mood, calm, well-being
+
+Oxytocin → bonding, trust, love, attachment
+
+Endorphins → pleasure, pain relief, euphoria
+
+Adrenaline → alertness, fear, excitement
+
+Cortisol → stress, anxiety, vigilance
+
+GABA → calm, relaxation, less anxiety
+
+Glutamate → excitement, learning, memory
+
+Testosterone → dominance, aggression, drive
+
+Estrogen/Progesterone → mood, bonding, maternal feelings
