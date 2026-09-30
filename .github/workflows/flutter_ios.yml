@@ -1,0 +1,51 @@
+name: Flutter iOS build
+
+# Builds the customer app (flutter_app/) for iPhone on a GitHub macOS runner.
+# Run it from GitHub -> Actions -> "Flutter iOS build" -> Run workflow, or it
+# runs on pushes to main that change the app. The .ipa is unsigned: installing
+# on iPhones / TestFlight needs an Apple Developer account and signing setup.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths: [ 'flutter_app/**', '.github/workflows/flutter_ios.yml' ]
+
+jobs:
+  build-ios:
+    name: Build iOS app (.ipa)
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: flutter_app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.5
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build unsigned IPA
+        run: |
+          flutter build ipa --no-codesign
+          cd build/ios/archive/Runner.xcarchive/Products/Applications
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -qr "$GITHUB_WORKSPACE/TudeeShoppingCenter.ipa" Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: TudeeShoppingCenter-iOS
+          path: TudeeShoppingCenter.ipa
+          retention-days: 14

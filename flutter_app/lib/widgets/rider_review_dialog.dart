@@ -35,11 +35,25 @@ class _RiderReviewDialogState extends State<RiderReviewDialog> {
     HapticFeedback.heavyImpact();
     setState(() => _isSubmitting = true);
 
-    await ApiService.submitRiderReview(
+    final saved = await ApiService.submitRiderReview(
       widget.orderId,
       _selectedRating,
       _commentController.text.trim(),
     );
+
+    if (!saved) {
+      // Store refused (e.g. the order isn't on its way yet) or no connection.
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Your rating could not be saved. You can rate the rider once the order is on its way.'),
+            backgroundColor: AppTheme.errorRed,
+          ),
+        );
+      }
+      return;
+    }
 
     if (mounted) {
       widget.onReviewSubmitted(_selectedRating, _commentController.text.trim());
@@ -114,7 +128,7 @@ class _RiderReviewDialogState extends State<RiderReviewDialog> {
                 controller: _commentController,
                 maxLines: 3,
                 decoration: InputDecoration(
-                  hintText: 'Add a tip or note about the delivery (optional)...',
+                  hintText: 'How was the delivery? (optional — only the store sees this)',
                   hintStyle: const TextStyle(fontSize: 13, color: AppTheme.slateMuted),
                   fillColor: AppTheme.bgLight,
                   border: OutlineInputBorder(

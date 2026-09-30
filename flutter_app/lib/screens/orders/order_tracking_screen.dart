@@ -571,6 +571,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
               ),
             ],
           ),
+          // Delivery feedback once delivered (same as the website): stars go to the
+          // rider, the comment is seen by the store only.
+          if (_currentOrder.status == 'delivered') ...[
           const SizedBox(height: 14),
           const Divider(height: 1, color: AppTheme.borderSubtle),
           const SizedBox(height: 12),
@@ -599,6 +602,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
               ),
             ],
           ),
+          ],
         ],
       ),
     );
