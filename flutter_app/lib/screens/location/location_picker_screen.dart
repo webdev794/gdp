@@ -1069,7 +1069,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                     Text(
                       _selectedAddress.isDeliverable
                           ? 'CONFIRM LOCATION (${_selectedAddress.distanceKm.toStringAsFixed(1)} KM) ➔'
-                          : 'Service Not Available Yet (>15 KM)',
+                          : 'OUTSIDE DELIVERY AREA (${LocationService.maxDeliveryRadiusKm.toStringAsFixed(0)} KM)',
                       style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14.5),
                     ),
                   ],

@@ -384,11 +384,11 @@ class _CartScreenState extends State<CartScreen> {
 
     String buttonLabel;
     if (!isDeliverable) {
-      buttonLabel = 'OUT OF RANGE (>15KM)';
+      buttonLabel = 'OUTSIDE DELIVERY AREA';
     } else if (!isLoggedIn) {
       buttonLabel = 'LOG IN TO CHECKOUT ➔';
     } else {
-      buttonLabel = isIOS ? 'CHECKOUT WITH PAY' : 'CHECKOUT NOW';
+      buttonLabel = 'CHECKOUT NOW'; // no Apple Pay in this app, so no Apple wording on iPhone
     }
 
     return ElevatedButton(
@@ -398,7 +398,7 @@ class _CartScreenState extends State<CartScreen> {
             ? AppTheme.errorRed
             : (!isLoggedIn
                 ? AppTheme.coralAccent
-                : (isIOS ? AppTheme.applePayBlack : AppTheme.emeraldPrimary)),
+                : AppTheme.emeraldPrimary),
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         minimumSize: const Size(140, 48),
@@ -410,8 +410,6 @@ class _CartScreenState extends State<CartScreen> {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (isIOS && isDeliverable && isLoggedIn) const Icon(Icons.apple, size: 20),
-            if (isIOS && isDeliverable && isLoggedIn) const SizedBox(width: 6),
             Text(
               buttonLabel,
               style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13.5),

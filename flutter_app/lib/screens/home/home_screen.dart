@@ -659,7 +659,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
 
-      // Adaptive Floating Bottom Checkout Bar (iOS Apple Pay / Android Payment Sheet)
+      // Floating bottom checkout bar
       bottomNavigationBar: _totalCartCount > 0
           ? Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
@@ -781,9 +781,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ? AppTheme.errorRed
                             : (!MockAuthService.isLoggedIn
                                 ? AppTheme.coralAccent
-                                : ((defaultTargetPlatform == TargetPlatform.iOS)
-                                    ? AppTheme.applePayBlack
-                                    : AppTheme.emeraldPrimary)),
+                                : AppTheme.emeraldPrimary),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                         minimumSize: const Size(160, 48),
@@ -793,13 +791,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (defaultTargetPlatform == TargetPlatform.iOS && LocationService.activeAddress.isDeliverable && MockAuthService.isLoggedIn)
-                            const Icon(Icons.apple, size: 18),
-                          if (defaultTargetPlatform == TargetPlatform.iOS && LocationService.activeAddress.isDeliverable && MockAuthService.isLoggedIn)
-                            const SizedBox(width: 6),
                           Text(
                             !LocationService.activeAddress.isDeliverable
-                                ? 'UNAVAILABLE (>15KM)'
+                                ? 'OUTSIDE DELIVERY AREA'
                                 : (!MockAuthService.isLoggedIn
                                     ? 'LOG IN TO BUY ➔'
                                     : ((defaultTargetPlatform == TargetPlatform.iOS) ? 'BUY NOW Pay' : 'BUY NOW ➔')),
