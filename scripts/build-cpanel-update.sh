@@ -25,7 +25,7 @@ rm -rf "$DEST/storage/framework/cache/data/"* \
        "$DEST/storage/framework/views/"*.php \
        "$DEST/storage/framework/testing" 2>/dev/null || true
 rm -f  "$DEST/bootstrap/cache/"*.php
-# storage/app is runtime data on the server (uploaded media) — never ship it
+# storage/app is copied fresh below (only the public uploads)
 rm -rf "$DEST/storage/app" 2>/dev/null || true
 
 echo "==> merging built React storefront"
@@ -138,14 +138,23 @@ mkdir -p "$DEST/storage/framework/cache/data" \
          "$DEST/storage/logs" \
          "$DEST/storage/app/public" \
          "$DEST/bootstrap/cache"
+
+# Uploaded images (logo, favicon, product and chat photos). The live database is
+# imported from local, so it points at these local files — ship them too.
+# Extracting only adds/overwrites same-named files; nothing on the server is removed.
+if [ -d "$SRC/backend/storage/app/public" ]; then
+  echo "==> adding uploaded images (storage/app/public)"
+  cp -r "$SRC/backend/storage/app/public/." "$DEST/storage/app/public/"
+fi
 find "$DEST/storage" "$DEST/bootstrap/cache" -name '.gitignore' -delete 2>/dev/null || true
 
 echo "==> READ_ME_FIRST.txt"
 cat > "$STAGE/READ_ME_FIRST.txt" <<'TXT'
 TUDEE SHOPPING CENTER - code update bundle
 =============================
-Updated application code + built frontend. No .env, no database, no installer -
-nothing of yours is touched. Runs as-is: on the first page load after upload,
+Full update: application code + built website + uploaded images (logo, product
+photos) + Android app. No .env and no database - import the database yourself.
+Your .env is not touched. Runs as-is: on the first page load after upload,
 index.php clears the old compiled caches and resets OPcache by itself, and
 applies any new database tables/columns (additive only - existing data is
 kept). Result: public_html/gdp/storage/logs/deploy-migrate.log (no Terminal
