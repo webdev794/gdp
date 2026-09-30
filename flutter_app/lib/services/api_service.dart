@@ -62,7 +62,7 @@ class ApiService {
     try {
       final res = await http
           .get(Uri.parse('$baseUrl/user'), headers: _headers)
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         final raw = data is Map && data['data'] is Map ? data['data'] : data;
@@ -124,7 +124,7 @@ class ApiService {
     try {
       final res = await http
           .get(Uri.parse('$baseUrl/config'), headers: _headers)
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 200) {
         final data = json.decode(res.body)['data'] ?? json.decode(res.body);
         isOnlineBackendAvailable = true;
@@ -147,7 +147,7 @@ class ApiService {
             Uri.parse('$baseUrl/delivery-eta?lat=$lat&lng=$lng'),
             headers: _headers,
           )
-          .timeout(const Duration(seconds: 4));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         return data['eta_minutes'] ?? 10;
@@ -173,7 +173,7 @@ class ApiService {
             headers: _headers,
             body: json.encode({'email': identifier.trim()}),
           )
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 200) {
         return {
           'success': true,
@@ -207,7 +207,7 @@ class ApiService {
             headers: _headers,
             body: json.encode({'email': email.trim(), 'password': password}),
           )
-          .timeout(const Duration(seconds: 8));
+          .timeout(const Duration(seconds: 20));
 
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
@@ -289,7 +289,7 @@ class ApiService {
               'password_confirmation': passwordConfirmation ?? password,
             }),
           )
-          .timeout(const Duration(seconds: 12));
+          .timeout(const Duration(seconds: 20));
 
       if (res.statusCode == 200 ||
           res.statusCode == 201 ||
@@ -369,7 +369,7 @@ class ApiService {
               'purpose': purpose,
             }),
           )
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
         final token = (data['token'] ?? data['access_token'] ?? '').toString();
@@ -410,7 +410,7 @@ class ApiService {
             headers: _headers,
             body: json.encode({'email': email.trim(), 'purpose': purpose}),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 200) {
         return {
           'success': true,
@@ -434,7 +434,7 @@ class ApiService {
     try {
       await http
           .post(Uri.parse('$baseUrl/auth/logout'), headers: _headers)
-          .timeout(const Duration(seconds: 3));
+          .timeout(const Duration(seconds: 20));
     } catch (_) {}
     await clearSession();
   }
@@ -451,7 +451,7 @@ class ApiService {
             headers: _headers,
             body: json.encode({'name': name.trim(), 'phone': phone.trim()}),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
 
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
@@ -515,7 +515,7 @@ class ApiService {
               'password_confirmation': confirmPassword,
             }),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
 
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
@@ -549,7 +549,7 @@ class ApiService {
     try {
       final res = await http
           .get(Uri.parse('$baseUrl/categories'), headers: _headers)
-          .timeout(const Duration(seconds: 6));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 200) {
         final List raw = json.decode(res.body)['data'] ?? [];
         isOnlineBackendAvailable = true;
@@ -581,7 +581,7 @@ class ApiService {
 
       final res = await http
           .get(Uri.parse('$baseUrl/products?$query'), headers: _headers)
-          .timeout(const Duration(seconds: 8));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 200) {
         final Map<String, dynamic> body = json.decode(res.body);
         final List raw = body['data'] ?? [];
@@ -597,7 +597,7 @@ class ApiService {
                     Uri.parse('$baseUrl/products?$query&page=$page'),
                     headers: _headers,
                   )
-                  .timeout(const Duration(seconds: 5));
+                  .timeout(const Duration(seconds: 20));
               if (nextRes.statusCode == 200) {
                 final List nextRaw = json.decode(nextRes.body)['data'] ?? [];
                 allProducts.addAll(
@@ -626,7 +626,7 @@ class ApiService {
     try {
       final res = await http
           .get(Uri.parse('$baseUrl/products/$slug'), headers: _headers)
-          .timeout(const Duration(seconds: 6));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 200) {
         final Map<String, dynamic> body = json.decode(res.body);
         final data = body['data'] ?? body;
@@ -656,7 +656,7 @@ class ApiService {
       }
       final res = await http
           .get(Uri.parse(url), headers: _headers)
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 200) {
         final List raw = json.decode(res.body)['data'] ?? [];
         if (raw.isNotEmpty) {
@@ -682,7 +682,7 @@ class ApiService {
                   'gdp-grocery/1.0 (+https://github.com/webdev794/gdp)',
             },
           )
-          .timeout(const Duration(seconds: 4));
+          .timeout(const Duration(seconds: 20));
 
       if (nomRes.statusCode == 200) {
         final List raw = json.decode(nomRes.body);
@@ -732,7 +732,7 @@ class ApiService {
             Uri.parse('$baseUrl/geocode/reverse?lat=$lat&lng=$lng'),
             headers: _headers,
           )
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 200) {
         final data = json.decode(res.body)['data'];
         if (data != null) return Map<String, dynamic>.from(data);
@@ -752,7 +752,7 @@ class ApiService {
                   'gdp-grocery/1.0 (+https://github.com/webdev794/gdp)',
             },
           )
-          .timeout(const Duration(seconds: 4));
+          .timeout(const Duration(seconds: 20));
 
       if (nomRes.statusCode == 200) {
         final item = json.decode(nomRes.body);
@@ -792,28 +792,38 @@ class ApiService {
   // -------------------------------------------------------------
   // 4. ADDRESS & PAYMENT APIS (/api/addresses, /api/billing/*)
   // -------------------------------------------------------------
+  /// Set when the last saved-address load failed (shown with a Retry button).
+  static String? addressesError;
+
   static Future<List<AddressModel>> getAddresses() async {
-    try {
-      final res = await http
-          .get(Uri.parse('$baseUrl/addresses'), headers: _headers)
-          .timeout(const Duration(seconds: 5));
-      if (res.statusCode == 200) {
-        final List raw = json.decode(res.body)['data'] ?? [];
-        // The store's list is the truth (also when empty), so it matches the website.
-        final list = raw.map((a) => AddressModel.fromJson(a)).toList();
-        LocationService.userAddresses
-          ..clear()
-          ..addAll(list);
-        if (list.isNotEmpty) {
-          final defaultAddr = list.firstWhere(
-            (a) => a.isDefault,
-            orElse: () => list.first,
-          );
-          LocationService.setActiveAddress(defaultAddr);
+    // Slow networks / debug builds on cloud simulators: allow time and retry once.
+    for (var attempt = 1; attempt <= 2; attempt++) {
+      try {
+        final res = await http
+            .get(Uri.parse('$baseUrl/addresses'), headers: _headers)
+            .timeout(const Duration(seconds: 20));
+        if (res.statusCode == 200) {
+          final List raw = json.decode(res.body)['data'] ?? [];
+          // The store's list is the truth (also when empty), so it matches the website.
+          final list = raw.map((a) => AddressModel.fromJson(Map<String, dynamic>.from(a))).toList();
+          LocationService.userAddresses
+            ..clear()
+            ..addAll(list);
+          if (list.isNotEmpty && !LocationService.hasAddress) {
+            final defaultAddr = list.firstWhere((a) => a.isDefault, orElse: () => list.first);
+            LocationService.setActiveAddress(defaultAddr);
+          }
+          addressesError = null;
+          return list;
         }
-        return list;
+        addressesError = res.statusCode == 401
+            ? 'Please sign in again to see your saved addresses.'
+            : _errorMessage(res, 'Could not load your saved addresses.');
+        if (res.statusCode < 500) break;
+      } catch (_) {
+        addressesError = 'Could not load your saved addresses. Check your connection.';
       }
-    } catch (_) {}
+    }
     return LocationService.userAddresses;
   }
 
@@ -827,7 +837,7 @@ class ApiService {
             headers: _headers,
             body: json.encode(addressData),
           )
-          .timeout(const Duration(seconds: 8));
+          .timeout(const Duration(seconds: 20));
 
       if (res.statusCode == 200 || res.statusCode == 201) {
         final data = json.decode(res.body);
@@ -865,7 +875,7 @@ class ApiService {
             headers: _headers,
             body: json.encode(addressData),
           )
-          .timeout(const Duration(seconds: 8));
+          .timeout(const Duration(seconds: 20));
 
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
@@ -899,7 +909,7 @@ class ApiService {
     try {
       final res = await http
           .delete(Uri.parse('$baseUrl/addresses/$id'), headers: _headers)
-          .timeout(const Duration(seconds: 6));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 200 || res.statusCode == 204) {
         await getAddresses();
         return true;
@@ -916,7 +926,7 @@ class ApiService {
             headers: _headers,
             body: json.encode({'is_default': true}),
           )
-          .timeout(const Duration(seconds: 6));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 200) {
         await getAddresses();
         return true;
@@ -929,7 +939,7 @@ class ApiService {
     try {
       final res = await http
           .get(Uri.parse('$baseUrl/billing/payment-methods'), headers: _headers)
-          .timeout(const Duration(seconds: 8));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 200) {
         final List raw = json.decode(res.body)['data'] ?? [];
         return raw.cast<Map<String, dynamic>>();
@@ -942,7 +952,7 @@ class ApiService {
   static Future<String> createSetupIntent() async {
     final res = await http
         .post(Uri.parse('$baseUrl/billing/setup-intent'), headers: _headers)
-        .timeout(const Duration(seconds: 15));
+        .timeout(const Duration(seconds: 20));
     if (res.statusCode != 200) {
       throw ApiException(_errorMessage(res, 'Could not start card setup.'));
     }
@@ -966,7 +976,7 @@ class ApiService {
           ),
           headers: _headers,
         )
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 20));
     if (res.statusCode >= 400) {
       throw ApiException(
         _errorMessage(res, 'Could not update your default card.'),
@@ -980,7 +990,7 @@ class ApiService {
           Uri.parse('$baseUrl/billing/payment-methods/$paymentMethodId'),
           headers: _headers,
         )
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 20));
     if (res.statusCode >= 400) {
       throw ApiException(_errorMessage(res, 'Could not remove that card.'));
     }
@@ -1015,7 +1025,7 @@ class ApiService {
   static Future<List<OrderModel>> fetchOrders() async {
     final res = await http
         .get(Uri.parse('$baseUrl/orders'), headers: _headers)
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 20));
     if (res.statusCode != 200) {
       throw ApiException(_errorMessage(res, 'Could not load your orders.'));
     }
@@ -1032,7 +1042,7 @@ class ApiService {
   static Future<OrderModel> fetchOrder(String orderId) async {
     final res = await http
         .get(Uri.parse('$baseUrl/orders/$orderId'), headers: _headers)
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 20));
     if (res.statusCode != 200) {
       throw ApiException(_errorMessage(res, 'Could not load this order.'));
     }
@@ -1150,7 +1160,7 @@ class ApiService {
           Uri.parse('$baseUrl/orders/$orderId/payment-intent'),
           headers: _headers,
         )
-        .timeout(const Duration(seconds: 15));
+        .timeout(const Duration(seconds: 20));
     if (res.statusCode != 200) {
       throw ApiException(
         _errorMessage(res, 'Card payment could not be started.'),
@@ -1215,7 +1225,7 @@ class ApiService {
   static Future<void> cancelOrder(String orderId) async {
     final res = await http
         .post(Uri.parse('$baseUrl/orders/$orderId/cancel'), headers: _headers)
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 20));
     if (res.statusCode >= 400) {
       throw ApiException(
         _errorMessage(res, 'This order could not be cancelled.'),
@@ -1231,7 +1241,7 @@ class ApiService {
           headers: _headers,
           body: json.encode({'code': code.trim(), 'pin': pin.trim()}),
         )
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 20));
     if (res.statusCode != 200) {
       throw ApiException(
         _errorMessage(res, 'That gift card and password don\'t match.'),
@@ -1258,7 +1268,7 @@ class ApiService {
               'source': source,
             }),
           )
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode == 200 || res.statusCode == 201) {
         final idx = _cachedOrders.indexWhere((o) => o.id == orderId);
         if (idx != -1) {
@@ -1285,7 +1295,7 @@ class ApiService {
   static Future<List<SupportThread>> fetchSupportThreads() async {
     final res = await http
         .get(Uri.parse('$baseUrl/support/threads'), headers: _headers)
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 20));
     if (res.statusCode != 200) {
       throw ApiException(
         _errorMessage(res, 'Could not load your support chats.'),
@@ -1304,7 +1314,7 @@ class ApiService {
   static Future<SupportThread> fetchSupportThread(String threadId) async {
     final res = await http
         .get(Uri.parse('$baseUrl/support/threads/$threadId'), headers: _headers)
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 20));
     if (res.statusCode != 200) {
       throw ApiException(_errorMessage(res, 'Could not load this chat.'));
     }
@@ -1329,7 +1339,7 @@ class ApiService {
             if (orderId != null) 'order_id': int.tryParse(orderId) ?? orderId,
           }),
         )
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 20));
     if (res.statusCode != 200 && res.statusCode != 201) {
       throw ApiException(_errorMessage(res, 'Could not open a support chat.'));
     }
@@ -1347,7 +1357,7 @@ class ApiService {
           Uri.parse('$baseUrl/support/threads/$threadId/close'),
           headers: _headers,
         )
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 20));
     if (res.statusCode != 200) {
       throw ApiException(_errorMessage(res, 'Could not end the chat.'));
     }
@@ -1371,7 +1381,7 @@ class ApiService {
             'comment': comment.trim().isEmpty ? null : comment.trim(),
           }),
         )
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 20));
     if (res.statusCode != 200) {
       throw ApiException(_errorMessage(res, 'Could not save your rating.'));
     }
@@ -1390,7 +1400,7 @@ class ApiService {
           headers: _headers,
           body: json.encode({'body': message}),
         )
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 20));
     if (res.statusCode >= 400) {
       throw ApiException(
         _errorMessage(res, 'Your message was not sent. Please try again.'),

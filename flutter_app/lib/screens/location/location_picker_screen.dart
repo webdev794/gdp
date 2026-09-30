@@ -939,6 +939,31 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                   ),
                   const SizedBox(height: 8),
 
+                  if (LocationService.userAddresses.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: !MockAuthService.isLoggedIn
+                          ? const Text('Sign in to see the addresses saved on your account.',
+                              style: TextStyle(fontSize: 12.5, color: AppTheme.slateMuted))
+                          : ApiService.addressesError != null
+                              ? Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(ApiService.addressesError!,
+                                          style: const TextStyle(fontSize: 12.5, color: AppTheme.errorRed)),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => ApiService.getAddresses().then((_) {
+                                        if (mounted) setState(() {});
+                                      }),
+                                      child: const Text('RETRY'),
+                                    ),
+                                  ],
+                                )
+                              : const Text('No saved addresses yet.',
+                                  style: TextStyle(fontSize: 12.5, color: AppTheme.slateMuted)),
+                    ),
+
                   ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),

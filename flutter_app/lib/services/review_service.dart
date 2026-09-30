@@ -30,7 +30,7 @@ class ReviewService {
     try {
       final res = await http
           .get(Uri.parse('${ApiService.baseUrl}/products/$slug/reviews'), headers: ApiService.headers)
-          .timeout(const Duration(seconds: 10));
+          .timeout(const Duration(seconds: 20));
       if (res.statusCode != 200) return;
       final data = json.decode(res.body);
       _reviewsByProduct[productId] = (data['data'] as List? ?? [])
@@ -55,7 +55,7 @@ class ReviewService {
           headers: ApiService.headers,
           body: json.encode({'product_id': int.tryParse(productId) ?? productId, 'rating': rating.clamp(1, 5), 'comment': comment.trim()}),
         )
-        .timeout(const Duration(seconds: 10));
+        .timeout(const Duration(seconds: 20));
     if (res.statusCode != 200 && res.statusCode != 201) {
       throw ApiException(ApiService.errorMessage(res, 'Your review could not be saved.'));
     }
