@@ -84,16 +84,18 @@ STRIPE_PUBLISHABLE_KEY / STRIPE_SECRET / STRIPE_WEBHOOK_SECRET
 
 ## Redeploying later
 
+Use the update bundle — it ships code only (no `.env`, no database), so your live settings and data stay:
+
 ```cmd
-cd /d D:\gdp\backend && php composer.phar install --no-dev --optimize-autoloader
 cd /d D:\gdp\web && npm run build
-bash D:\gdp\.tmp\deploy\build-deploy.sh
+bash D:\gdp\scripts\build-cpanel-update.sh
 ```
 
-Upload the new zip, extract over the old files (the hashed `assets/*` names change — remove
-stale ones), then in cPanel delete `public_html/gdp/bootstrap/cache/config.php` and hit any
-page so it re-caches. If migrations changed, re-run `_setup.php` (it is safe to re-run;
-`migrate` and the seeder are idempotent) or run `php artisan migrate --force` via Terminal.
+This writes `D:\gdp\.tmp\deploy\gdp-cpanel-update.zip` with its own `READ_ME_FIRST.txt`. Back up `public_html/gdp/`, upload the zip into `public_html/` and extract (overwrite). On the first page load after upload `index.php` clears the old caches, resets OPcache and **applies any new database migrations** (additive only; result in `storage/logs/deploy-migrate.log`) — no Terminal needed.
+
+**Android app download:** if `D:\gdp\.tmp\deploy	udee-app-release.apk` exists when the bundle is built, it is included and served at `https://testcaresortwork.co.in/gdp/downloads/tudee-shopping-center.apk`.
+
+After a deploy, check in Admin: demo products hidden (Products), footer links (Pages → Footer), contact email/phone (Store settings) — the bundle does not change live settings.
 
 ## Notes / limits on shared hosting
 

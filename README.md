@@ -16,6 +16,9 @@ Videos:
 4) Demo2 (gift card, refund): https://www.loom.com/share/0ac37b63782e4f5e824070cdda0b24cc
 
 5) Demo3 (app, partial refund): https://www.loom.com/share/d28131761043420b8c10e36c9b85451e
+
+Mobile apps (Flutter, `flutter_app/`): Android APK — https://testcaresortwork.co.in/gdp/downloads/tudee-shopping-center.apk (after deploy); iPhone — GitHub → Actions → "Flutter iOS build". See **Flutter mobile app** below.
+
 ## See Output Quickly
 
 Open Windows Command Prompt and run:
@@ -120,6 +123,8 @@ Android and iOS applications must provide the same essential customer shopping a
 - Customer support and live chat
 
 The mobile clients will use the Laravel API. They must not duplicate pricing, totals, payment, inventory, or order-state business logic.
+
+**Current mobile app:** the Flutter app in `flutter_app/` (Android + iPhone) covers all of the above against the same API — see **Flutter mobile app** below.
 
 ## Admin Panel Requirements
 
@@ -253,7 +258,8 @@ Administrators must be able to manage:
 7. [x] Order management
 8. [x] Delivery workflow
 9. [x] Admin panel
-10. [ ] Mobile applications for Android and iOS
+10. [x] Mobile applications for Android and iOS — **Flutter app** (`flutter_app/`): sign-in, catalogue, cart, checkout (saved/new card, cash on delivery, gift cards), orders + tracking + bill, delivery-code pop-up, item and rider ratings, support chat, account/addresses/cards. Android APK built on Windows; iPhone built by GitHub Actions (`.github/workflows/flutter_ios.yml`).
+    - Earlier Expo (React Native) app in `mobile/` — kept for reference:
     - [x] Android customer app (Expo): auth + OTP, catalog, cart, checkout, Stripe payment, order tracking
     - [x] Rider mode in the Expo app: a user with `is_rider` sees the delivery queue (pool + assigned) instead of the shop
     - [x] Location capture (`expo-location`): store-scoped catalog + serving-store checkout (see Per-store inventory); rider app pings its live position for auto-assignment
@@ -267,7 +273,7 @@ Administrators must be able to manage:
 ### Known Gaps To Revisit
 
 - `PaymentController::intent()` reconciliation and `PaymentController::refund()` call the live Stripe API; the guard/validation paths are tested, the SDK call itself is verified manually (needs a Stripe client fake).
-- Support chat is polling-based (~4 s while the thread is open). A customer isn't notified of a staff reply when the app is closed — push/email is priority 10.
+- Support chat and the delivery-code pop-up are polling-based (while the app/website is open). There are no phone push notifications when the app is closed; the delivery code is also emailed.
 - Auto-dispatch picks the nearest on-shift rider linked to the order's store (live GPS if fresh, else base) with a load-balancing penalty; **batching** (grouping several stops onto one rider) and a live rider-position map for the customer are still not built.
 - Phone + OTP login is not wired — the phone field is captured (required at checkout) but a real SMS gateway (Twilio/MSG91/SNS) is still a later config step; see **Authentication → Phone number**.
 - The React app has no router; the admin console is a full-screen overlay shown to `is_admin` users. Revisit if the panel grows.
@@ -982,23 +988,45 @@ set "TEMP=D:\gdp\.tmp"
 
 Never commit `.env`, Stripe keys, database passwords, customer data, `vendor/`, `node_modules/`, logs, or generated local files.
 
+## Flutter mobile app
+
+Customer app for **Android and iPhone** in `flutter_app/` (Flutter 3.47.5 / Dart 3.13). It uses the same API as the website — same accounts, orders, cards, addresses, chats, gift cards and reviews. Feature list: `work_done.md` → *Mobile apps*.
+
+**Website address:** `flutter_app/lib/config.dart` (`AppConfig.siteUrl`, default `https://testcaresortwork.co.in/gdp`), or build with `--dart-define=SITE_URL=https://client-domain.com`.
+
+**Tooling (all on D:, C: is full):** Flutter `D:\flutter`, JDK `D:\Java\jdk17`, Android SDK `D:\Android\Sdk`, `PUB_CACHE=D:\PubCache`, `GRADLE_USER_HOME=D:\Gradle`. VS Code: Run and Debug → **Flutter app (Chrome)**.
+
+```cmd
+cd /d D:\gdp\flutter_app
+flutter pub get
+flutter analyze
+flutter test
+flutter run -d chrome                 :: quick preview in the browser
+flutter build apk --release           :: Android app -> build\app\outputs\flutter-apk\app-release.apk
+```
+
+**Android download for phones:** copy the APK to `D:\gdp\.tmp\deploy\tudee-app-release.apk` before running `scripts/build-cpanel-update.sh`; the deploy bundle then serves it at `https://testcaresortwork.co.in/gdp/downloads/tudee-shopping-center.apk`.
+
+**iPhone:** built on GitHub's macOS runners by `.github/workflows/flutter_ios.yml` (runs on pushes to `main` / `TSC_*` that touch `flutter_app/`, or manually). Artifacts on the run page: `TudeeShoppingCenter-iOS-simulator` (upload to Appetize as iOS) and an unsigned `TudeeShoppingCenter.ipa`. Real iPhones / TestFlight need an Apple Developer account and signing.
+
+**Notes:** card entry uses Stripe Elements in a web view (phones only — the browser preview offers saved cards and cash on delivery). The APK is signed with the debug key and uses the ID `com.example.supermarket` — fine for testing, not for the Play Store.
+
 ## Repository Layout
 
 ```text
 gdp/
 ├── .github/agents/       Custom development agent
 ├── backend/              Laravel API
-├── web/                  React customer website (Vite)
-└── mobile/               React Native customer app (Expo) — Android first
+├── web/                  React customer website, admin and rider consoles (Vite)
+├── flutter_app/          Flutter customer app — Android + iPhone (current mobile app)
+├── mobile/               Earlier React Native app (Expo), kept for reference
+├── scripts/              cPanel deploy bundle builders
+└── .github/workflows/    Flutter iOS build on GitHub Actions
 ```
 
-See `mobile/README.md` for how to run the app in Expo Go and point it at the API.
+See `flutter_app/README.md` for building the apps and `mobile/README.md` for the older Expo app.
 
 ## Backup Repository
 
 GitHub repository: <https://github.com/webdev794/gdp>
 
------
-Tasks to do: 
-Mobile android app.
-Mobile ios app. 

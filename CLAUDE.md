@@ -23,7 +23,7 @@ Guidance for Claude Code when working in this repository.
 | `backend/` | Laravel 13, PHP 8.3, MySQL (db `gdp`) | REST API + serves the built SPA |
 | `web/` | React 19 + Vite 8 (plain JS, no TS) | Customer storefront, admin console, rider console |
 | `mobile/` | Expo ~52 / React Native | Customer mobile app |
-| `flutter_app/` | Flutter 3.47 (Dart 3.13) | Flutter mobile app (storefront, admin, rider) — talks to the live API (`lib/services/api_service.dart`) |
+| `flutter_app/` | Flutter 3.47 (Dart 3.13) | Customer mobile app for Android + iPhone (the current app) — same API as the website; site URL in `lib/config.dart` |
 
 The web app has three entry surfaces: storefront (`Storefront.jsx`), admin (`Admin.jsx` / `AdminEntry.jsx`), rider (`RiderConsole.jsx` / `RiderEntry.jsx`).
 
@@ -41,7 +41,7 @@ cd web && npm --cache D:/gdp/.tmp/npm-cache run dev -- --host 127.0.0.1 --port 5
 
 `web/` build: `npm run build` (outputs `web/dist/`). Lint: `npm run lint`.
 
-Flutter tooling lives on D: (C: is full): SDK `D:\flutter`, JDK `D:\Java\jdk17`, Android SDK `D:\Android\Sdk`; `PUB_CACHE=D:\PubCache`, `GRADLE_USER_HOME=D:\Gradle`. From `flutter_app/`: `flutter pub get`, `flutter analyze`, `flutter run -d chrome` or `flutter build apk`.
+Flutter tooling lives on D: (C: is full): SDK `D:\flutter`, JDK `D:\Java\jdk17`, Android SDK `D:\Android\Sdk`; `PUB_CACHE=D:\PubCache`, `GRADLE_USER_HOME=D:\Gradle`. From `flutter_app/`: `flutter pub get`, `flutter analyze`, `flutter run -d chrome` or `flutter build apk`. iPhone builds run on GitHub Actions (`.github/workflows/flutter_ios.yml`, artifacts on the run page).
 Test accounts and more detail live in `README.md`.
 
 ## Conventions
