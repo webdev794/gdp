@@ -2,13 +2,15 @@ name: Flutter iOS build
 
 # Builds the customer app (flutter_app/) for iPhone on a GitHub macOS runner.
 # Run it from GitHub -> Actions -> "Flutter iOS build" -> Run workflow, or it
-# runs on pushes to main that change the app. The .ipa is unsigned: installing
-# on iPhones / TestFlight needs an Apple Developer account and signing setup.
+# runs on pushes to main / TSC_* branches that change the app.
+# Outputs: TudeeShoppingCenter-simulator.zip (iPhone simulator build — upload to
+# Appetize for demos, no Apple account needed) and an unsigned .ipa (installing
+# on real iPhones / TestFlight needs an Apple Developer account and signing).
 
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, 'TSC_*' ]
     paths: [ 'flutter_app/**', '.github/workflows/flutter_ios.yml' ]
 
 jobs:
@@ -42,6 +44,19 @@ jobs:
           mkdir -p Payload
           cp -r Runner.app Payload/
           zip -qr "$GITHUB_WORKSPACE/TudeeShoppingCenter.ipa" Payload
+
+      - name: Build for iPhone simulator (Appetize)
+        run: |
+          flutter build ios --simulator --debug
+          cd build/ios/iphonesimulator
+          zip -qr "$GITHUB_WORKSPACE/TudeeShoppingCenter-simulator.zip" Runner.app
+
+      - name: Upload simulator build
+        uses: actions/upload-artifact@v4
+        with:
+          name: TudeeShoppingCenter-iOS-simulator
+          path: TudeeShoppingCenter-simulator.zip
+          retention-days: 14
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
