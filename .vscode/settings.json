@@ -1,0 +1,11 @@
+{
+  "dart.flutterSdkPath": "D:\\flutter",
+  "dart.sdkPath": "D:\\flutter\\bin\\cache\\dart-sdk",
+  "dart.env": {
+    "JAVA_HOME": "D:\\Java\\jdk17",
+    "ANDROID_HOME": "D:\\Android\\Sdk",
+    "ANDROID_USER_HOME": "D:\\Android\\.android",
+    "PUB_CACHE": "D:\\PubCache",
+    "GRADLE_USER_HOME": "D:\\Gradle"
+  }
+}
