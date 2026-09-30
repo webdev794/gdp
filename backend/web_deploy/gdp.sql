@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Sep 30, 2026 at 01:02 PM
+-- Generation Time: Sep 30, 2026 at 02:20 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -49,27 +49,6 @@ CREATE TABLE `addresses` (
 --
 
 INSERT INTO `addresses` (`id`, `user_id`, `label`, `name`, `line1`, `line2`, `city`, `state`, `postal_code`, `latitude`, `longitude`, `is_default`, `created_at`, `updated_at`) VALUES
-(1, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 1, '2026-09-09 02:28:05', '2026-09-09 02:28:05'),
-(2, 15, 'Home', 'Test User', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 1, '2026-09-09 04:04:43', '2026-09-09 04:04:43'),
-(3, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-10 05:14:36', '2026-09-10 05:14:36'),
-(4, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-10 05:14:44', '2026-09-10 05:14:44'),
-(5, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-10 07:25:56', '2026-09-10 07:25:56'),
-(6, 15, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-10 07:27:16', '2026-09-10 07:27:16'),
-(7, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-10 23:19:31', '2026-09-10 23:19:31'),
-(8, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-11 00:16:43', '2026-09-11 00:16:43'),
-(9, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-11 02:15:09', '2026-09-11 02:15:09'),
-(10, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-11 02:16:32', '2026-09-11 02:16:32'),
-(11, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-11 02:26:55', '2026-09-11 02:26:55'),
-(12, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-11 02:27:11', '2026-09-11 02:27:11'),
-(13, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-11 02:51:54', '2026-09-11 02:51:54'),
-(14, 15, 'Home', 'Test User', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-11 04:19:57', '2026-09-11 04:19:57'),
-(15, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-11 04:35:06', '2026-09-11 04:35:06'),
-(16, 17, 'Home', 'Testcaresort', '34 Jan Marg', NULL, 'Mohali', 'PB', '160061', 30.7149794, 76.7227993, 0, '2026-09-11 07:31:04', '2026-09-11 07:31:04'),
-(17, 15, 'Home', 'Test User', 'Jan Marg', NULL, 'Mohali', 'Punjab', '160059', 30.7128000, 76.7242000, 0, '2026-09-15 07:53:25', '2026-09-15 07:53:25'),
-(18, 32, 'Home', 'Suraj Kumar', 'Plot C-205, Phase 8B, Sector 74', NULL, 'Mohali', 'Punjab', '160055', NULL, NULL, 1, '2026-09-15 08:15:48', '2026-09-15 08:15:48'),
-(19, 15, 'Home', 'Test User', 'Sector 68, Sector 69', NULL, 'Mohali', 'Punjab', '140062', 30.6852518, 76.7184224, 0, '2026-09-21 23:18:37', '2026-09-21 23:18:37'),
-(20, 17, 'Home', 'Testcaresort', 'edge 27', NULL, 'Mohali', 'Punjab', '160055', 30.7197622, 76.7056954, 0, '2026-09-21 23:45:04', '2026-09-21 23:45:04'),
-(21, 17, 'Home', 'Testcaresort', 'edge 27', NULL, 'Mohali', 'Punjab', '160055', 30.7197622, 76.7056954, 0, '2026-09-21 23:45:33', '2026-09-21 23:45:33'),
 (22, 17, 'Home', 'Testcaresort', 'Kakata-Harbel Road (Firestone Gate 26)', NULL, 'Kakata', 'Margibi County', NULL, 6.5303248, -10.3505480, 0, '2026-09-28 23:12:36', '2026-09-28 23:12:36'),
 (23, 17, 'Home', 'Testcaresort', 'Kakata-Harbel Road (Firestone Gate 26)', NULL, 'Kakata', 'Margibi County', NULL, 6.5303248, -10.3505480, 0, '2026-09-28 23:12:45', '2026-09-28 23:12:45');
 
@@ -147,6 +126,7 @@ INSERT INTO `cache` (`key`, `value`, `expiration`) VALUES
 ('gdp-cache-setting:branding', 'a:1:{s:1:\"v\";a:10:{s:10:\"store_name\";s:21:\"TUDEE SHOPPING CENTER\";s:7:\"tagline\";s:26:\"Fresh groceries, less fuss\";s:8:\"logo_url\";s:69:\"/api/media/file/products/6ECwKgzIG0wA7s2ieBehAp3jO5V9rrPJyJGLdYWo.png\";s:11:\"favicon_url\";s:69:\"/api/media/file/products/JKutAMU8COTNwZAHl1LEPmh1Rjf2SU39wQF5HYnR.jpg\";s:5:\"theme\";s:5:\"light\";s:12:\"layout_width\";s:5:\"boxed\";s:11:\"color_brand\";s:7:\"#1f7a3d\";s:12:\"color_accent\";s:7:\"#ffd23f\";s:13:\"color_heading\";s:7:\"#18211c\";s:13:\"contact_email\";s:16:\"test@example.com\";}}', 2106019222),
 ('gdp-cache-setting:checkout_fees', 'a:1:{s:1:\"v\";a:9:{s:13:\"delivery_mode\";s:5:\"fixed\";s:18:\"delivery_fee_cents\";i:299;s:23:\"delivery_near_fee_cents\";i:199;s:22:\"delivery_far_fee_cents\";i:599;s:29:\"free_delivery_threshold_cents\";i:3500;s:18:\"handling_fee_cents\";i:99;s:20:\"small_cart_fee_cents\";i:199;s:20:\"small_cart_min_cents\";i:1000;s:12:\"tax_rate_bps\";i:887;}}', 2106025722),
 ('gdp-cache-setting:cod_enabled', 'a:1:{s:1:\"v\";b:1;}', 2106025722),
+('gdp-cache-setting:footer', 'a:1:{s:1:\"v\";a:6:{s:9:\"copyright\";s:31:\"© {year} Tudee Shopping Center\";s:13:\"app_store_url\";s:40:\"https://apps.apple.com/app/grocerly-demo\";s:14:\"play_store_url\";s:63:\"https://play.google.com/store/apps/details?id=com.grocerly.demo\";s:7:\"socials\";a:5:{s:8:\"facebook\";s:29:\"https://facebook.com/grocerly\";s:1:\"x\";s:22:\"https://x.com/grocerly\";s:9:\"instagram\";s:30:\"https://instagram.com/grocerly\";s:8:\"linkedin\";s:41:\"https://www.linkedin.com/company/grocerly\";s:7:\"youtube\";s:33:\"https://www.youtube.com/@grocerly\";}s:5:\"links\";a:0:{}s:4:\"note\";s:94:\"Tudee Shopping Center delivers fresh groceries and household essentials from a store near you.\";}}', 2106130046),
 ('gdp-cache-setting:payments', 'a:1:{s:7:\"missing\";b:1;}', 2106019222);
 
 -- --------------------------------------------------------
@@ -811,7 +791,7 @@ INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `n
 (174, 'App\\Models\\User', 15, 'customer', '39a190d1483e7d274529caccae78f59b4e598d5c6cde28c9bc4f63ad1858cc62', '[\"*\"]', '2026-09-21 23:54:05', NULL, '2026-09-21 23:47:01', '2026-09-21 23:54:05'),
 (175, 'App\\Models\\User', 16, 'customer', 'c5956b356cbc025851f97b588b4b4504023c525ba974dac10db8f9c71d091256', '[\"*\"]', '2026-09-21 23:49:25', NULL, '2026-09-21 23:48:18', '2026-09-21 23:49:25'),
 (176, 'App\\Models\\User', 15, 'customer', '16c5a5ca3cb91a1aa26e5a65c0ae2d5a423ccb855d2efe47b3a00656f6898243', '[\"*\"]', '2026-09-22 00:08:43', NULL, '2026-09-21 23:49:48', '2026-09-22 00:08:43'),
-(178, 'App\\Models\\User', 17, 'customer', 'f5bfeddf7a06a60bf7ff3e9ec30b94916c75b3a198c4ade61e33869b9b27fa3f', '[\"*\"]', '2026-09-29 01:39:45', NULL, '2026-09-28 23:11:41', '2026-09-29 01:39:45'),
+(178, 'App\\Models\\User', 17, 'customer', 'f5bfeddf7a06a60bf7ff3e9ec30b94916c75b3a198c4ade61e33869b9b27fa3f', '[\"*\"]', '2026-09-30 06:50:38', NULL, '2026-09-28 23:11:41', '2026-09-30 06:50:38'),
 (179, 'App\\Models\\User', 15, 'customer', '52d06a76a51beff09b1dd4c12dbb0df06d55e1253dd9e29476ab5511adff23b7', '[\"*\"]', '2026-09-29 01:38:43', NULL, '2026-09-29 01:38:42', '2026-09-29 01:38:43'),
 (180, 'App\\Models\\User', 15, 'customer', 'd80b8b3b46e2239137c68b3a223041de029cb14783fe168b4155806d5aac31b8', '[\"*\"]', '2026-09-29 01:39:05', NULL, '2026-09-29 01:39:04', '2026-09-29 01:39:05'),
 (181, 'App\\Models\\User', 15, 'customer', '5cb9f6ec072e7c8dcfdcae91ade51537f58de36a196063e75021a611a543c7a2', '[\"*\"]', '2026-09-29 01:47:14', NULL, '2026-09-29 01:47:13', '2026-09-29 01:47:14'),
@@ -849,60 +829,60 @@ CREATE TABLE `products` (
 --
 
 INSERT INTO `products` (`id`, `category_id`, `name`, `slug`, `description`, `sku`, `price_cents`, `compare_at_price_cents`, `inventory_quantity`, `image_url`, `is_active`, `is_demo`, `rating_avg`, `rating_count`, `created_at`, `updated_at`) VALUES
-(1, 1, 'Organic Bananas', 'organic-bananas', NULL, 'GDP-PROD-001', 299, NULL, 99, 'https://www.themealdb.com/images/ingredients/Banana-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(2, 1, 'Gala Apples', 'gala-apples', NULL, 'GDP-PROD-002', 449, 561, 94, 'https://www.themealdb.com/images/ingredients/Apples-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(3, 1, 'Baby Spinach', 'baby-spinach', NULL, 'GDP-PROD-007', 349, NULL, 99, 'https://www.themealdb.com/images/ingredients/Spinach-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(4, 1, 'Roma Tomatoes', 'roma-tomatoes', NULL, 'GDP-PROD-008', 279, NULL, 98, 'https://www.themealdb.com/images/ingredients/Tomato-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(5, 1, 'Hass Avocados', 'hass-avocados', NULL, 'GDP-PROD-009', 599, NULL, 99, 'https://www.themealdb.com/images/ingredients/Avocado-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(6, 2, 'Large Brown Eggs', 'large-brown-eggs', NULL, 'GDP-PROD-003', 599, NULL, 80, 'https://www.themealdb.com/images/ingredients/Egg-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(7, 2, 'Whole Milk', 'whole-milk', NULL, 'GDP-PROD-004', 429, NULL, 100, 'https://www.themealdb.com/images/ingredients/Milk-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(8, 2, 'Greek Yogurt', 'greek-yogurt', NULL, 'GDP-PROD-010', 519, 649, 90, 'https://www.themealdb.com/images/ingredients/Yogurt-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(9, 2, 'Sharp Cheddar', 'sharp-cheddar', NULL, 'GDP-PROD-011', 649, NULL, 89, 'https://www.themealdb.com/images/ingredients/Cheddar%20Cheese-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(10, 2, 'Unsalted Butter', 'unsalted-butter', NULL, 'GDP-PROD-012', 399, NULL, 98, 'https://www.themealdb.com/images/ingredients/Butter-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(11, 3, 'Long Grain Rice', 'long-grain-rice', NULL, 'GDP-PROD-005', 699, NULL, 99, 'https://www.themealdb.com/images/ingredients/Rice-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(12, 3, 'Pasta', 'pasta', NULL, 'GDP-PROD-006', 249, NULL, 99, 'https://www.themealdb.com/images/ingredients/Spaghetti-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(13, 3, 'Extra Virgin Olive Oil', 'extra-virgin-olive-oil', NULL, 'GDP-PROD-013', 899, NULL, 100, 'https://www.themealdb.com/images/ingredients/Olive%20Oil-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(14, 3, 'Rolled Oats', 'rolled-oats', NULL, 'GDP-PROD-014', 459, NULL, 99, 'https://www.themealdb.com/images/ingredients/Oats-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(15, 3, 'Peanut Butter', 'peanut-butter', NULL, 'GDP-PROD-015', 549, NULL, 99, 'https://www.themealdb.com/images/ingredients/Peanut%20Butter-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(16, 4, 'Salted Potato Chips', 'salted-potato-chips', NULL, 'GDP-PROD-016', 199, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(17, 4, 'Butter Popcorn', 'butter-popcorn', NULL, 'GDP-PROD-017', 249, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(18, 4, 'Roasted Trail Mix', 'roasted-trail-mix', NULL, 'GDP-PROD-018', 549, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(19, 5, 'Orange Juice', 'orange-juice', NULL, 'GDP-PROD-019', 399, NULL, 100, 'https://www.themealdb.com/images/ingredients/Orange-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(20, 5, 'Sparkling Water', 'sparkling-water', NULL, 'GDP-PROD-020', 149, NULL, 100, 'https://www.themealdb.com/images/ingredients/Water-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(21, 5, 'Cola 6-Pack', 'cola-6-pack', NULL, 'GDP-PROD-021', 499, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(22, 6, 'Sourdough Loaf', 'sourdough-loaf', NULL, 'GDP-PROD-022', 449, NULL, 100, 'https://www.themealdb.com/images/ingredients/Bread-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(23, 6, 'Burger Buns', 'burger-buns', NULL, 'GDP-PROD-023', 279, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(24, 6, 'Butter Croissants', 'butter-croissants', NULL, 'GDP-PROD-024', 399, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(25, 7, 'Corn Flakes', 'corn-flakes', NULL, 'GDP-PROD-025', 429, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(26, 7, 'Honey Granola', 'honey-granola', NULL, 'GDP-PROD-026', 549, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(27, 7, 'Pancake Mix', 'pancake-mix', NULL, 'GDP-PROD-027', 389, NULL, 100, 'https://www.themealdb.com/images/ingredients/Flour-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(28, 8, 'Dark Chocolate Bar', 'dark-chocolate-bar', NULL, 'GDP-PROD-028', 299, 374, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(29, 8, 'Choc Chip Cookies', 'choc-chip-cookies', NULL, 'GDP-PROD-029', 349, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(30, 8, 'Gummy Bears', 'gummy-bears', NULL, 'GDP-PROD-030', 199, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(31, 9, 'Chicken Breast', 'chicken-breast', NULL, 'GDP-PROD-031', 899, NULL, 100, 'https://www.themealdb.com/images/ingredients/Chicken-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(32, 9, 'Salmon Fillet', 'salmon-fillet', NULL, 'GDP-PROD-032', 1299, NULL, 100, 'https://www.themealdb.com/images/ingredients/Salmon-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(33, 9, 'Pork Sausages', 'pork-sausages', NULL, 'GDP-PROD-033', 649, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(34, 10, 'Frozen Peas', 'frozen-peas', NULL, 'GDP-PROD-034', 249, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(35, 10, 'Vanilla Ice Cream', 'vanilla-ice-cream', NULL, 'GDP-PROD-035', 549, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(36, 10, 'Crispy Fries', 'crispy-fries', NULL, 'GDP-PROD-036', 399, NULL, 99, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(37, 11, 'Ground Coffee', 'ground-coffee', NULL, 'GDP-PROD-037', 899, NULL, 100, 'https://www.themealdb.com/images/ingredients/Coffee-Medium.png', 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(38, 11, 'Green Tea Bags', 'green-tea-bags', NULL, 'GDP-PROD-038', 449, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(39, 11, 'Masala Chai', 'masala-chai', NULL, 'GDP-PROD-039', 399, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(40, 12, 'Tomato Ketchup', 'tomato-ketchup', NULL, 'GDP-PROD-040', 249, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(41, 12, 'Mayonnaise', 'mayonnaise', NULL, 'GDP-PROD-041', 329, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(42, 12, 'Strawberry Jam', 'strawberry-jam', NULL, 'GDP-PROD-042', 299, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(43, 13, 'Dish Soap', 'dish-soap', NULL, 'GDP-PROD-043', 279, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(44, 13, 'Laundry Detergent', 'laundry-detergent', NULL, 'GDP-PROD-044', 899, 1124, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(45, 13, 'Surface Cleaner', 'surface-cleaner', NULL, 'GDP-PROD-045', 349, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(46, 14, 'Shampoo', 'shampoo', NULL, 'GDP-PROD-046', 549, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(47, 14, 'Toothpaste', 'toothpaste', NULL, 'GDP-PROD-047', 199, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(48, 14, 'Hand Soap', 'hand-soap', NULL, 'GDP-PROD-048', 249, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(49, 15, 'Diapers Value Pack', 'diapers-value-pack', NULL, 'GDP-PROD-049', 1499, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(50, 15, 'Baby Wipes', 'baby-wipes', NULL, 'GDP-PROD-050', 299, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(51, 15, 'Baby Lotion', 'baby-lotion', NULL, 'GDP-PROD-051', 449, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(52, 16, 'Paper Towels', 'paper-towels', NULL, 'GDP-PROD-052', 399, NULL, 98, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(53, 16, 'Trash Bags', 'trash-bags', NULL, 'GDP-PROD-053', 349, NULL, 98, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(54, 16, 'Aluminium Foil', 'aluminium-foil', NULL, 'GDP-PROD-054', 299, NULL, 100, NULL, 0, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(1, 1, 'Organic Bananas', 'organic-bananas', NULL, 'GDP-PROD-001', 299, NULL, 99, 'https://www.themealdb.com/images/ingredients/Banana-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(2, 1, 'Gala Apples', 'gala-apples', NULL, 'GDP-PROD-002', 449, 561, 94, 'https://www.themealdb.com/images/ingredients/Apples-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(3, 1, 'Baby Spinach', 'baby-spinach', NULL, 'GDP-PROD-007', 349, NULL, 99, 'https://www.themealdb.com/images/ingredients/Spinach-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(4, 1, 'Roma Tomatoes', 'roma-tomatoes', NULL, 'GDP-PROD-008', 279, NULL, 98, 'https://www.themealdb.com/images/ingredients/Tomato-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(5, 1, 'Hass Avocados', 'hass-avocados', NULL, 'GDP-PROD-009', 599, NULL, 99, 'https://www.themealdb.com/images/ingredients/Avocado-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(6, 2, 'Large Brown Eggs', 'large-brown-eggs', NULL, 'GDP-PROD-003', 599, NULL, 80, 'https://www.themealdb.com/images/ingredients/Egg-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(7, 2, 'Whole Milk', 'whole-milk', NULL, 'GDP-PROD-004', 429, NULL, 100, 'https://www.themealdb.com/images/ingredients/Milk-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(8, 2, 'Greek Yogurt', 'greek-yogurt', NULL, 'GDP-PROD-010', 519, 649, 90, 'https://www.themealdb.com/images/ingredients/Yogurt-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(9, 2, 'Sharp Cheddar', 'sharp-cheddar', NULL, 'GDP-PROD-011', 649, NULL, 89, 'https://www.themealdb.com/images/ingredients/Cheddar%20Cheese-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(10, 2, 'Unsalted Butter', 'unsalted-butter', NULL, 'GDP-PROD-012', 399, NULL, 98, 'https://www.themealdb.com/images/ingredients/Butter-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(11, 3, 'Long Grain Rice', 'long-grain-rice', NULL, 'GDP-PROD-005', 699, NULL, 99, 'https://www.themealdb.com/images/ingredients/Rice-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(12, 3, 'Pasta', 'pasta', NULL, 'GDP-PROD-006', 249, NULL, 99, 'https://www.themealdb.com/images/ingredients/Spaghetti-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(13, 3, 'Extra Virgin Olive Oil', 'extra-virgin-olive-oil', NULL, 'GDP-PROD-013', 899, NULL, 100, 'https://www.themealdb.com/images/ingredients/Olive%20Oil-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(14, 3, 'Rolled Oats', 'rolled-oats', NULL, 'GDP-PROD-014', 459, NULL, 99, 'https://www.themealdb.com/images/ingredients/Oats-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(15, 3, 'Peanut Butter', 'peanut-butter', NULL, 'GDP-PROD-015', 549, NULL, 99, 'https://www.themealdb.com/images/ingredients/Peanut%20Butter-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(16, 4, 'Salted Potato Chips', 'salted-potato-chips', NULL, 'GDP-PROD-016', 199, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(17, 4, 'Butter Popcorn', 'butter-popcorn', NULL, 'GDP-PROD-017', 249, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(18, 4, 'Roasted Trail Mix', 'roasted-trail-mix', NULL, 'GDP-PROD-018', 549, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(19, 5, 'Orange Juice', 'orange-juice', NULL, 'GDP-PROD-019', 399, NULL, 100, 'https://www.themealdb.com/images/ingredients/Orange-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(20, 5, 'Sparkling Water', 'sparkling-water', NULL, 'GDP-PROD-020', 149, NULL, 100, 'https://www.themealdb.com/images/ingredients/Water-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(21, 5, 'Cola 6-Pack', 'cola-6-pack', NULL, 'GDP-PROD-021', 499, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(22, 6, 'Sourdough Loaf', 'sourdough-loaf', NULL, 'GDP-PROD-022', 449, NULL, 100, 'https://www.themealdb.com/images/ingredients/Bread-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(23, 6, 'Burger Buns', 'burger-buns', NULL, 'GDP-PROD-023', 279, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(24, 6, 'Butter Croissants', 'butter-croissants', NULL, 'GDP-PROD-024', 399, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(25, 7, 'Corn Flakes', 'corn-flakes', NULL, 'GDP-PROD-025', 429, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(26, 7, 'Honey Granola', 'honey-granola', NULL, 'GDP-PROD-026', 549, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(27, 7, 'Pancake Mix', 'pancake-mix', NULL, 'GDP-PROD-027', 389, NULL, 100, 'https://www.themealdb.com/images/ingredients/Flour-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(28, 8, 'Dark Chocolate Bar', 'dark-chocolate-bar', NULL, 'GDP-PROD-028', 299, 374, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(29, 8, 'Choc Chip Cookies', 'choc-chip-cookies', NULL, 'GDP-PROD-029', 349, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(30, 8, 'Gummy Bears', 'gummy-bears', NULL, 'GDP-PROD-030', 199, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(31, 9, 'Chicken Breast', 'chicken-breast', NULL, 'GDP-PROD-031', 899, NULL, 100, 'https://www.themealdb.com/images/ingredients/Chicken-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(32, 9, 'Salmon Fillet', 'salmon-fillet', NULL, 'GDP-PROD-032', 1299, NULL, 100, 'https://www.themealdb.com/images/ingredients/Salmon-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(33, 9, 'Pork Sausages', 'pork-sausages', NULL, 'GDP-PROD-033', 649, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(34, 10, 'Frozen Peas', 'frozen-peas', NULL, 'GDP-PROD-034', 249, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(35, 10, 'Vanilla Ice Cream', 'vanilla-ice-cream', NULL, 'GDP-PROD-035', 549, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(36, 10, 'Crispy Fries', 'crispy-fries', NULL, 'GDP-PROD-036', 399, NULL, 99, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:44:27'),
+(37, 11, 'Ground Coffee', 'ground-coffee', NULL, 'GDP-PROD-037', 899, NULL, 100, 'https://www.themealdb.com/images/ingredients/Coffee-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(38, 11, 'Green Tea Bags', 'green-tea-bags', NULL, 'GDP-PROD-038', 449, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(39, 11, 'Masala Chai', 'masala-chai', NULL, 'GDP-PROD-039', 399, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(40, 12, 'Tomato Ketchup', 'tomato-ketchup', NULL, 'GDP-PROD-040', 249, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(41, 12, 'Mayonnaise', 'mayonnaise', NULL, 'GDP-PROD-041', 329, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(42, 12, 'Strawberry Jam', 'strawberry-jam', NULL, 'GDP-PROD-042', 299, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(43, 13, 'Dish Soap', 'dish-soap', NULL, 'GDP-PROD-043', 279, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(44, 13, 'Laundry Detergent', 'laundry-detergent', NULL, 'GDP-PROD-044', 899, 1124, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(45, 13, 'Surface Cleaner', 'surface-cleaner', NULL, 'GDP-PROD-045', 349, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(46, 14, 'Shampoo', 'shampoo', NULL, 'GDP-PROD-046', 549, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(47, 14, 'Toothpaste', 'toothpaste', NULL, 'GDP-PROD-047', 199, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(48, 14, 'Hand Soap', 'hand-soap', NULL, 'GDP-PROD-048', 249, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(49, 15, 'Diapers Value Pack', 'diapers-value-pack', NULL, 'GDP-PROD-049', 1499, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(50, 15, 'Baby Wipes', 'baby-wipes', NULL, 'GDP-PROD-050', 299, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(51, 15, 'Baby Lotion', 'baby-lotion', NULL, 'GDP-PROD-051', 449, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
+(52, 16, 'Paper Towels', 'paper-towels', NULL, 'GDP-PROD-052', 399, NULL, 98, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:44:27'),
+(53, 16, 'Trash Bags', 'trash-bags', NULL, 'GDP-PROD-053', 349, NULL, 98, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:44:27'),
+(54, 16, 'Aluminium Foil', 'aluminium-foil', NULL, 'GDP-PROD-054', 299, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:44:27'),
 (55, 1, 'Organic Lemon', 'organic-lemon', 'Fresh lemons are vibrant, smooth, and citrus-scented oval fruits packed with a sharp, clean sourness and rich Vitamin C content.', 'LM343235', 100, 200, 99, '/api/media/file/products/gJE1AAvXFXjxY2CH8ViP0UIRt53SNXLZOD89SVxt.webp', 1, 0, NULL, 0, '2026-09-15 07:49:05', '2026-09-21 23:15:32');
 
 -- --------------------------------------------------------
@@ -1150,7 +1130,7 @@ INSERT INTO `settings` (`key`, `value`, `created_at`, `updated_at`) VALUES
 ('branding', '{\"v\": {\"store_name\": \"TUDEE SHOPPING CENTER\", \"tagline\": \"Fresh groceries, less fuss\", \"logo_url\": \"\\/api\\/media\\/file\\/products\\/6ECwKgzIG0wA7s2ieBehAp3jO5V9rrPJyJGLdYWo.png\", \"favicon_url\": \"\\/api\\/media\\/file\\/products\\/JKutAMU8COTNwZAHl1LEPmh1Rjf2SU39wQF5HYnR.jpg\", \"theme\": \"light\", \"layout_width\": \"boxed\", \"color_brand\": \"#1f7a3d\", \"color_accent\": \"#ffd23f\", \"color_heading\": \"#18211c\", \"contact_email\": \"test@example.com\"}}', '2026-09-09 01:31:48', '2026-09-28 23:09:03'),
 ('checkout_fees', '{\"v\":{\"delivery_mode\":\"fixed\",\"delivery_fee_cents\":299,\"delivery_near_fee_cents\":199,\"delivery_far_fee_cents\":599,\"free_delivery_threshold_cents\":3500,\"handling_fee_cents\":99,\"small_cart_fee_cents\":199,\"small_cart_min_cents\":1000,\"tax_rate_bps\":887}}', '2026-09-10 07:26:50', '2026-09-10 07:26:50'),
 ('cod_enabled', '{\"v\":true}', '2026-09-10 07:26:49', '2026-09-10 07:26:49'),
-('footer', '{\"v\":{\"copyright\":\"\\u00a9 {year} Tudee Shopping Center\",\"app_store_url\":\"\",\"play_store_url\":\"\",\"socials\":{\"facebook\":\"\",\"x\":\"\",\"instagram\":\"\",\"linkedin\":\"\",\"youtube\":\"\"},\"links\":[],\"note\":\"Tudee Shopping Center delivers fresh groceries and household essentials from a store near you.\"}}', '2026-09-09 01:12:49', '2026-09-30 05:01:33');
+('footer', '{\"v\":{\"copyright\":\"\\u00a9 {year} Tudee Shopping Center\",\"app_store_url\":\"https:\\/\\/apps.apple.com\\/app\\/grocerly-demo\",\"play_store_url\":\"https:\\/\\/play.google.com\\/store\\/apps\\/details?id=com.grocerly.demo\",\"socials\":{\"facebook\":\"https:\\/\\/facebook.com\\/grocerly\",\"x\":\"https:\\/\\/x.com\\/grocerly\",\"instagram\":\"https:\\/\\/instagram.com\\/grocerly\",\"linkedin\":\"https:\\/\\/www.linkedin.com\\/company\\/grocerly\",\"youtube\":\"https:\\/\\/www.youtube.com\\/@grocerly\"},\"links\":[],\"note\":\"Tudee Shopping Center delivers fresh groceries and household essentials from a store near you.\"}}', '2026-09-09 01:12:49', '2026-09-30 06:27:07');
 
 -- --------------------------------------------------------
 
@@ -1771,7 +1751,7 @@ ALTER TABLE `pages`
 -- AUTO_INCREMENT for table `personal_access_tokens`
 --
 ALTER TABLE `personal_access_tokens`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=189;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=192;
 
 --
 -- AUTO_INCREMENT for table `products`
