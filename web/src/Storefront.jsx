@@ -389,6 +389,8 @@ function AddCardForm({ onDone, onCancel }) {
 
 export default function Storefront() {
   const [categories, setCategories] = useState([])
+  // Footer lists every category (not just ones with products near the customer).
+  const [allCategories, setAllCategories] = useState([])
   const [products, setProducts] = useState([])
   const [query, setQuery] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
@@ -643,6 +645,13 @@ export default function Storefront() {
       .then((data) => setCategories(data.data ?? []))
       .catch(() => { setOffline(true); setCategories(categoriesFallback) })
   }, [catalogQuery])
+
+  useEffect(() => {
+    fetch(`${API_URL}/categories`, { headers: { Accept: 'application/json' } })
+      .then((response) => (response.ok ? responseJson(response) : { data: [] }))
+      .then((data) => setAllCategories(data.data ?? []))
+      .catch(() => {})
+  }, [])
 
   // The storefront filters the catalogue in memory (by category and search), so
   // it needs every product — not just the API's first page. Walk the pages.
@@ -1931,7 +1940,7 @@ export default function Storefront() {
       </div>}
       <div>
         <div className="site-footer-cathead"><h4>Categories</h4><button type="button" className="site-footer-seeall" onClick={() => { setActiveCategory(null); setQuery(''); closePage(); window.scrollTo({ top: 0 }) }}>see all</button></div>
-        <ul className="site-footer-cats">{categories.slice(0, 24).map((c) => <li key={c.id}><button type="button" onClick={() => { closePage(); setActiveCategory(c.name); setQuery(''); window.scrollTo({ top: 0 }) }}>{c.name}</button></li>)}</ul>
+        <ul className="site-footer-cats">{(allCategories.length ? allCategories : categories).slice(0, 24).map((c) => <li key={c.id}><button type="button" onClick={() => { closePage(); setActiveCategory(c.name); setQuery(''); window.scrollTo({ top: 0 }) }}>{c.name}</button></li>)}</ul>
       </div>
     </div>
     <div className="site-footer-bottom">
