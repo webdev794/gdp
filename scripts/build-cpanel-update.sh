@@ -31,6 +31,14 @@ rm -rf "$DEST/storage/app" 2>/dev/null || true
 echo "==> merging built React storefront"
 cp -r "$SRC/web/dist/." "$DEST/"
 
+# Android app for direct download on phones: /gdp/downloads/tudee-shopping-center.apk
+APK="$SRC/.tmp/deploy/tudee-app-release.apk"
+if [ -f "$APK" ]; then
+  echo "==> adding Android app download"
+  mkdir -p "$DEST/downloads"
+  cp "$APK" "$DEST/downloads/tudee-shopping-center.apk"
+fi
+
 echo "==> front controller (single-folder layout)"
 DEPLOY_TAG=$(date +%Y%m%d%H%M%S)
 cat > "$DEST/index.php" <<'PHP'
@@ -114,6 +122,13 @@ RedirectMatch 404 (?i)/gdp/storage/(framework|logs|app)/
 <FilesMatch "^(\.env.*|composer\.(json|lock)|artisan|package.*\.json|.*\.md)$">
     Require all denied
 </FilesMatch>
+# Android app download (/gdp/downloads/*.apk)
+AddType application/vnd.android.package-archive .apk
+<IfModule mod_headers.c>
+    <FilesMatch "\.apk$">
+        Header set Content-Disposition "attachment"
+    </FilesMatch>
+</IfModule>
 HTACCESS
 
 echo "==> writing runtime dirs (empty — server keeps its own)"
@@ -143,6 +158,10 @@ DEPLOY
   3. Make sure  public_html/gdp/.env  exists with your live values
      (DB, APP_URL=https://testcaresortwork.co.in/gdp , APP_KEY, mail, Stripe).
   4. Open  https://testcaresortwork.co.in/gdp/  and hard-refresh (Ctrl+Shift+R).
+
+ANDROID APP (if included): phones download it from
+  https://testcaresortwork.co.in/gdp/downloads/tudee-shopping-center.apk
+  (Android asks once to allow installing apps from the browser.)
 
 Optional cleanup: in  public_html/gdp/assets/  the old  *-<hash>.js / .css
 files no longer named in index.html are just unused bytes - delete anytime.
