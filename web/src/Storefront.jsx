@@ -1931,13 +1931,14 @@ export default function Storefront() {
   </div>
   <footer className="site-footer">
     <div className="site-footer-cols">
-      {(pages.some((p) => p.show_in_footer) || (footer?.links?.length ?? 0) > 0) && <div>
+      {/* Always keep this column so Categories doesn't jump left→right while pages load */}
+      <div>{(pages.some((p) => p.show_in_footer) || (footer?.links?.length ?? 0) > 0) && <>
         <h4>Useful Links</h4>
         <ul>
           {pages.filter((p) => p.show_in_footer).map((p) => <li key={p.slug}><button type="button" onClick={() => openPage(p.slug)}>{p.title}</button></li>)}
           {(footer?.links ?? []).map((link, index) => <li key={`fl-${index}`}><a href={link.url} target="_blank" rel="noopener noreferrer">{link.label}</a></li>)}
         </ul>
-      </div>}
+      </>}</div>
       <div>
         <div className="site-footer-cathead"><h4>Categories</h4><button type="button" className="site-footer-seeall" onClick={() => { setActiveCategory(null); setQuery(''); closePage(); window.scrollTo({ top: 0 }) }}>see all</button></div>
         <ul className="site-footer-cats">{(allCategories.length ? allCategories : categories).slice(0, 24).map((c) => <li key={c.id}><button type="button" onClick={() => { closePage(); setActiveCategory(c.name); setQuery(''); window.scrollTo({ top: 0 }) }}>{c.name}</button></li>)}</ul>
