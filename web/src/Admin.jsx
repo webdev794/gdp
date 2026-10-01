@@ -1479,21 +1479,6 @@ export default function Admin({ token, onClose }) {
   }
 
   // Bulk action on every product marked "Demo product": hide, show or delete.
-  async function deleteProductsWithoutImages() {
-    if (!window.confirm('Permanently delete every product that has no photo (only a placeholder icon)? Any that are on past orders will be hidden instead. This cannot be undone.')) return
-    setMessage('')
-    try {
-      const response = await fetch(`${API_URL}/admin/products/delete-without-images`, { method: 'POST', headers: jsonHeaders() })
-      const data = await readJson(response)
-      if (!response.ok) throw new Error(data.message ?? 'Could not delete products without images.')
-      const r = data.data ?? {}
-      setMessage(`Deleted ${r.deleted} product(s) without images${r.hidden ? `; ${r.hidden} on past orders were hidden instead` : ''}.`)
-      setProductForm(null)
-      loadProducts()
-      loadMetrics()
-    } catch (error) { fail(error) }
-  }
-
   async function pruneAddressesOutsideArea() {
     if (!window.confirm('Delete every customer\'s saved address that is outside all stores\' delivery areas or has no map pin? Past orders keep their own copy of the address. This cannot be undone.')) return
     setMessage('')
@@ -2152,11 +2137,12 @@ export default function Admin({ token, onClose }) {
           </div>
           <div className="admin-toolbar">
             <span className="muted">All demo products:</span>
-            <button className="act ghost" type="button" onClick={() => demoProducts('hide')}>Hide from store</button>
-            <button className="act ghost" type="button" onClick={() => demoProducts('show')}>Show in store</button>
+            <select value="" aria-label="Demo products" onChange={(event) => { if (event.target.value) demoProducts(event.target.value) }}>
+              <option value="">Hide / show…</option>
+              <option value="hide">Hide from store</option>
+              <option value="show">Show in store</option>
+            </select>
             <button className="act danger" type="button" onClick={() => demoProducts('delete')}>Delete all</button>
-            <span className="muted">Products with no photo:</span>
-            <button className="act danger" type="button" onClick={deleteProductsWithoutImages}>Delete products without images</button>
           </div>
 
           {productForm && (
