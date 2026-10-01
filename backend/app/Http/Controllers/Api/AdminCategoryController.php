@@ -7,6 +7,7 @@ use App\Models\Category;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -36,6 +37,26 @@ class AdminCategoryController extends Controller
         $category->update($this->validated($request, $category));
 
         return response()->json(['data' => $category->fresh()->loadCount('products')]);
+    }
+
+    /**
+     * Drag-and-drop reorder: the full list of category ids in their new order.
+     * Renumbers sort_order 1, 2, 3 … so every category keeps a unique position.
+     */
+    public function reorder(Request $request): JsonResponse
+    {
+        $ids = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'distinct', 'exists:categories,id'],
+        ])['ids'];
+
+        DB::transaction(function () use ($ids): void {
+            foreach (array_values($ids) as $index => $id) {
+                Category::whereKey($id)->update(['sort_order' => $index + 1]);
+            }
+        });
+
+        return $this->index();
     }
 
     public function destroy(Category $category): JsonResponse

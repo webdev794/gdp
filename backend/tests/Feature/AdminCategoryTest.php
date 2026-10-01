@@ -56,6 +56,22 @@ class AdminCategoryTest extends TestCase
         $this->assertDatabaseMissing('categories', ['id' => $category->id]);
     }
 
+    public function test_drag_and_drop_reorder_renumbers_every_category(): void
+    {
+        $a = Category::create(['name' => 'A', 'slug' => 'a', 'sort_order' => 1]);
+        $b = Category::create(['name' => 'B', 'slug' => 'b', 'sort_order' => 2]);
+        $c = Category::create(['name' => 'C', 'slug' => 'c', 'sort_order' => 3]);
+        Sanctum::actingAs($this->admin());
+
+        // C dragged to the top.
+        $this->postJson('/api/admin/categories/reorder', ['ids' => [$c->id, $a->id, $b->id]])
+            ->assertOk()
+            ->assertJsonPath('data.0.name', 'C')
+            ->assertJsonPath('data.2.name', 'B');
+
+        $this->assertSame([1, 2, 3], [$c->fresh()->sort_order, $a->fresh()->sort_order, $b->fresh()->sort_order]);
+    }
+
     public function test_non_admin_cannot_manage_categories(): void
     {
         Sanctum::actingAs(User::factory()->create());

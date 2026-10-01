@@ -357,6 +357,9 @@ export default function Admin({ token, onClose }) {
   const [categories, setCategories] = useState([])
   const [customers, setCustomers] = useState([])
   const [reviews, setReviews] = useState([])
+  // Category drag-and-drop: id being dragged, and whether the order changed.
+  const [dragCatId, setDragCatId] = useState(null)
+  const dragCatMoved = useRef(false)
   // Open orders (confirmed → out for delivery) for the top-bar counter.
   const [openOrders, setOpenOrders] = useState(null)
   // Cancelling asks for a reason the customer will see; shown only after "Cancel".
@@ -1528,6 +1531,17 @@ export default function Admin({ token, onClose }) {
     } catch (error) { fail(error) }
   }
 
+  async function saveCategoryOrder() {
+    setCategories((list) => {
+      const ids = list.map((c) => c.id)
+      fetch(`${API_URL}/admin/categories/reorder`, { method: 'POST', headers: jsonHeaders(), body: JSON.stringify({ ids }) })
+        .then(readJson)
+        .then((data) => { if (data?.data) { setCategories(data.data); setMessage('Category order saved.') } else { setMessage(data?.message ?? 'Could not save the new order.') } })
+        .catch(() => setMessage('Could not save the new order.'))
+      return list
+    })
+  }
+
   async function removeCategory(category) {
     if (!window.confirm(`Delete ${category.name}?`)) return
     setMessage('')
@@ -2351,10 +2365,29 @@ export default function Admin({ token, onClose }) {
 
           {listBusy.categories && categories.length === 0 ? <Loading>Loading categories…</Loading> : categories.length === 0 ? <p className="admin-empty">No categories.</p> : (
             <table className="admin-table">
-              <thead><tr><th>Name</th><th>Slug</th><th>Products</th><th>Sort</th><th>Active</th><th></th></tr></thead>
+              <thead><tr><th aria-label="Drag to reorder"></th><th>Name</th><th>Slug</th><th>Products</th><th>Sort</th><th>Active</th><th></th></tr></thead>
               <tbody>
                 {pageSlice(categories, categoriesPage).map((category) => (
-                  <tr key={category.id}>
+                  <tr key={category.id} draggable
+                    className={dragCatId === category.id ? 'admin-row-dragging' : undefined}
+                    onDragStart={(event) => { setDragCatId(category.id); dragCatMoved.current = false; event.dataTransfer.effectAllowed = 'move' }}
+                    onDragOver={(event) => {
+                      event.preventDefault()
+                      if (dragCatId == null || dragCatId === category.id) return
+                      // Live: move the dragged row to where it is hovering; others shift.
+                      setCategories((list) => {
+                        const from = list.findIndex((c) => c.id === dragCatId)
+                        const to = list.findIndex((c) => c.id === category.id)
+                        if (from < 0 || to < 0 || from === to) return list
+                        const next = [...list]
+                        next.splice(to, 0, next.splice(from, 1)[0])
+                        dragCatMoved.current = true
+                        return next.map((c, i) => ({ ...c, sort_order: i + 1 }))
+                      })
+                    }}
+                    onDrop={(event) => event.preventDefault()}
+                    onDragEnd={() => { setDragCatId(null); if (dragCatMoved.current) saveCategoryOrder() }}>
+                    <td className="admin-drag-handle" title="Drag to reorder">{'\u283f'}</td>
                     <td>{category.name}</td>
                     <td>{category.slug}</td>
                     <td>{category.products_count ?? 0}</td>
