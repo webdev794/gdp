@@ -4,6 +4,11 @@
 /// build with:  flutter build apk --dart-define=SITE_URL=https://client-domain.com
 /// (no trailing slash; include a sub-path such as /gdp if the site uses one).
 class AppConfig {
+  /// Store name used until Admin -> Store settings loads (the live name comes
+  /// from there). Change it here for a rebrand; native app names are listed in
+  /// flutter_app/README.md.
+  static const String storeName = 'TUDEE SHOPPING CENTER';
+
   static const String siteUrl = String.fromEnvironment(
     'SITE_URL',
     defaultValue: 'https://testcaresortwork.co.in/gdp',

@@ -14,8 +14,8 @@
 - **Delivery code pop-up for the buyer** on every page while signed in, plus a browser notification (if allowed). Code is still emailed too.
 - **Rider console:** "Resend a new code" (new code each time) and a hint that the code also pops up in the customer's app and website.
 - **Gift cards:** checkout and order confirmation show the amount used and the balance left; the store now returns the remaining balance with the new order.
-- **Footer:** 7 fake "grocerly" app-store/social links cleared (hidden until real ones are added).
-- **Demo products:** hidden locally with Admin's demo "hide" action (reversible).
+- **Footer:** demo app-store/social links kept for the client demo; footer lists all categories, centred note, no jump while loading.
+- **Products:** demo products shown for the client demo; admin tools added to delete products without images and remove addresses outside the delivery area.
 - **Deploy bundle:** now includes the Android app for direct download; new database tables are applied automatically on first load after upload.
 
 ## Setup / housekeeping

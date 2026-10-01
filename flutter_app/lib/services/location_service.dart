@@ -1,4 +1,5 @@
 import 'dart:math';
+import '../config.dart';
 import '../models/address_model.dart';
 import '../models/config_model.dart';
 
@@ -6,7 +7,7 @@ class LocationService {
   // Store locations come from GET /api/config (Admin -> Stores). Defaults: the main store.
   static double storeLat = 6.53189;
   static double storeLng = -10.349486;
-  static String storeName = 'Tudee Shopping Center';
+  static String storeName = AppConfig.storeName;
   static String storeAddress = 'Kakatown Highway, Margibi County, Kakata, Liberia';
   static double maxDeliveryRadiusKm = 25.0;
   static List<StoreModel> stores = [];

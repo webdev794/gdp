@@ -9,7 +9,7 @@ import '../models/config_model.dart';
 class BrandingService {
   static const String _prefix = 'branding_';
 
-  static String storeName = 'TUDEE SHOPPING CENTER';
+  static String storeName = AppConfig.storeName;
   static String tagline = 'Fresh groceries, less fuss';
   static String logoUrl = '';
   static String contactEmail = '';

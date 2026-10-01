@@ -16,7 +16,7 @@ Guidance for Claude Code when working in this repository.
 
 ## Project overview
 
-**Grocerly** ("GDP") — a Blinkit-style grocery delivery platform. Three apps in one repo:
+**Tudee Shopping Center** ("GDP", formerly Grocerly) — a Blinkit-style grocery delivery platform. The store name lives in Admin → Store settings (website, apps and emails read it from there). Three apps in one repo:
 
 | Path | Stack | Purpose |
 |------|-------|---------|

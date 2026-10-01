@@ -1,3 +1,4 @@
+import '../config.dart';
 class StoreModel {
   final int id;
   final String name;
@@ -16,7 +17,7 @@ class StoreModel {
   factory StoreModel.fromJson(Map<String, dynamic> json) {
     return StoreModel(
       id: (json['id'] as num?)?.toInt() ?? 1,
-      name: json['name'] ?? 'Tudee Shopping Center',
+      name: json['name'] ?? AppConfig.storeName,
       latitude: (json['latitude'] as num?)?.toDouble() ?? 0.0,
       longitude: (json['longitude'] as num?)?.toDouble() ?? 0.0,
       deliveryRadiusKm: (json['delivery_radius_km'] as num?)?.toDouble() ?? 25.0,
@@ -71,7 +72,7 @@ class AppConfigModel {
   final List<StoreModel> stores;
 
   AppConfigModel({
-    this.storeName = 'TUDEE SHOPPING CENTER',
+    this.storeName = AppConfig.storeName,
     this.tagline = 'Fresh groceries, less fuss',
     this.logoUrl = '',
     this.contactEmail = '',
@@ -90,7 +91,7 @@ class AppConfigModel {
 
   factory AppConfigModel.defaults() {
     return AppConfigModel(
-      storeName: 'TUDEE SHOPPING CENTER',
+      storeName: AppConfig.storeName,
       tagline: 'Fresh groceries, less fuss',
       currency: 'USD',
       otpEnabled: true,
@@ -108,7 +109,7 @@ class AppConfigModel {
     final rawBanners = json['banners'] as List? ?? [];
     final rawStores = json['stores'] as List? ?? [];
     return AppConfigModel(
-      storeName: branding['store_name'] ?? 'TUDEE SHOPPING CENTER',
+      storeName: branding['store_name'] ?? AppConfig.storeName,
       tagline: branding['tagline'] ?? 'Fresh groceries, less fuss',
       logoUrl: (branding['logo_url'] ?? '').toString(),
       contactEmail: (branding['contact_email'] ?? '').toString(),

@@ -31,3 +31,10 @@ Built on GitHub Actions (`.github/workflows/flutter_ios.yml` at the repo root). 
 ## Before publishing to the stores
 
 Change the app ID from `com.example.supermarket` (Android `android/app/build.gradle.kts`, iOS bundle ID), add a release signing key, and set up the Play Console / App Store Connect listings.
+
+## Rebranding (store name)
+
+- Website, apps and emails show the name from **Admin → Store settings** (the live source).
+- App fallback before settings load: `AppConfig.storeName` in `lib/config.dart`.
+- Native app names (fixed at build time): Android `android/app/src/main/AndroidManifest.xml` (`android:label`), iPhone `ios/Runner/Info.plist` (`CFBundleDisplayName`, `CFBundleName`, permission texts), web `web/index.html` + `web/manifest.json`.
+- Backend fallback when no store name is saved: `APP_NAME` in `.env`, `STORE_NAME` in `config/branding.php`.

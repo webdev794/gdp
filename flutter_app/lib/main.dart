@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'config.dart';
 import 'services/api_service.dart';
 import 'services/branding_service.dart';
 import 'services/review_service.dart';
@@ -20,7 +21,7 @@ class StoreApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Tudee Shopping Center',
+      title: AppConfig.storeName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       builder: (context, child) {

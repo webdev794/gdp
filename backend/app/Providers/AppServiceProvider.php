@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Setting;
+use App\Support\Branding;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
@@ -30,6 +31,28 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->ensureCaBundle();
         $this->applyStoredStripeCredentials();
+        $this->applyStoreName();
+    }
+
+    /**
+     * One place for the store name: Admin -> Store settings. Emails (sender name,
+     * heading, footer) read config('app.name') / mail.from.name, so overlay the
+     * saved store name onto both; APP_NAME in .env is only the fallback.
+     */
+    private function applyStoreName(): void
+    {
+        try {
+            if (! Schema::hasTable('settings')) {
+                return;
+            }
+            $name = trim((string) (Branding::current()['store_name'] ?? ''));
+        } catch (\Throwable) {
+            return;
+        }
+
+        if ($name !== '') {
+            config(['app.name' => $name, 'mail.from.name' => $name]);
+        }
     }
 
     /**
