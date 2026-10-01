@@ -2135,7 +2135,7 @@ export default function Admin({ token, onClose }) {
             </label>
             <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ ...EMPTY_PRODUCT, category_id: categories[0]?.id ?? '' }); scrollFormIntoView('admin-product-form') }}>New product</button>
           </div>
-          <div className="admin-toolbar admin-demo-box">
+          {!productForm && <div className="admin-toolbar admin-demo-box">
             <strong>Demo products:</strong>
             <select value="" aria-label="Demo products" onChange={(event) => { if (event.target.value) demoProducts(event.target.value) }}>
               <option value="">Hide / show…</option>
@@ -2143,7 +2143,7 @@ export default function Admin({ token, onClose }) {
               <option value="show">Show in store</option>
             </select>
             <button className="act danger" type="button" onClick={() => demoProducts('delete')}>Delete all demo products</button>
-          </div>
+          </div>}
 
           {productForm && (
             <form id="admin-product-form" className="admin-form" onSubmit={saveProduct}>
