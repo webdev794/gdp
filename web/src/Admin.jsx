@@ -429,9 +429,10 @@ export default function Admin({ token, onClose }) {
   const [feesForm, setFeesForm] = useState(null)
   const [brandingForm, setBrandingForm] = useState(null)
   const [storeName, setStoreName] = useState('') // from Store settings, for the header mark
+  const [storeLogo, setStoreLogo] = useState('')
   useEffect(() => {
     fetch(`${API_URL}/config`, { headers: { Accept: 'application/json' } }).then(readJson)
-      .then((data) => setStoreName(data.data?.branding?.store_name ?? '')).catch(() => {})
+      .then((data) => { setStoreName(data.data?.branding?.store_name ?? ''); setStoreLogo(data.data?.branding?.logo_url ?? '') }).catch(() => {})
   }, [])
   const [footerForm, setFooterForm] = useState(null)
   const [paymentsForm, setPaymentsForm] = useState(null)
@@ -978,7 +979,7 @@ export default function Admin({ token, onClose }) {
       color_accent: brandingForm.color_accent,
       color_heading: brandingForm.color_heading,
     })
-    if (saved) { setBrandingForm({ ...EMPTY_BRANDING, ...(saved.branding ?? {}) }); setStoreName(saved.branding?.store_name ?? ''); setMessage('Store settings saved — refresh the storefront to see them.') }
+    if (saved) { setBrandingForm({ ...EMPTY_BRANDING, ...(saved.branding ?? {}) }); setStoreName(saved.branding?.store_name ?? ''); setStoreLogo(saved.branding?.logo_url ?? ''); setMessage('Store settings saved — refresh the storefront to see them.') }
   }
 
   async function saveFooter(event) {
@@ -1652,7 +1653,7 @@ export default function Admin({ token, onClose }) {
     <div className={`admin-shell${navOpen ? '' : ' nav-collapsed'}`}>
       <header className="admin-bar">
         <button className="admin-menu-toggle" type="button" aria-label={navOpen ? 'Hide menu' : 'Show menu'} aria-expanded={navOpen} onClick={toggleNav}>☰</button>
-        <div className="admin-brand" title={storeName || undefined}><span>{(storeName || 'TUDEE SHOPPING CENTER').trim().charAt(0).toUpperCase()}</span> Admin console</div>
+        <div className="admin-brand" title={storeName || undefined}>{storeLogo ? <img className="admin-brand-logo" src={mediaUrl(storeLogo)} alt={storeName} /> : <span>{(storeName || 'TUDEE SHOPPING CENTER').trim().charAt(0).toUpperCase()}</span>} Admin console</div>
         <div className="admin-bar-right">
           {openOrders && (
             <button type="button" className={`admin-top-tab${openOrders.total > 0 ? ' open-orders' : ''}`} title={`New ${openOrders.by_status.confirmed} · Packing ${openOrders.by_status.packing} · Ready ${openOrders.by_status.ready_for_delivery} · Out for delivery ${openOrders.by_status.out_for_delivery}`} onClick={() => { setStatusFilter('all'); setOrdersPage(1); goTab('orders') }}>
