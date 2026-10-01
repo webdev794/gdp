@@ -453,4 +453,4 @@ button.admin-bell-more:hover{text-decoration:underline}
 .admin-drag-handle{cursor:grab;color:#9aa396;font-size:16px;user-select:none;width:24px}tr[draggable]:hover .admin-drag-handle{color:#20291f}.admin-row-dragging{opacity:.5;background:#f3f6ef}
 .role-tag{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:4px;font:12px 'Okra',sans-serif;font-weight:600;vertical-align:middle;line-height:18px}.role-rider{background:#e7eef6;color:#2f5a8a}.role-admin{background:#f6e3e0;color:#a23b28}
 .admin-brand-logo{height:28px;max-width:120px;object-fit:contain;border-radius:6px;background:#fff;padding:2px}
-.admin-footer{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;background:#000;color:#b9c2b2;font-size:12px}.admin-footer a{color:#8bd08f;text-decoration:none}.admin-footer a:hover{text-decoration:underline}
+.admin-footer{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;background:#000;color:#fff;font-size:12px}.admin-footer a{color:#fff;text-decoration:none}.admin-footer a:hover{text-decoration:underline}
