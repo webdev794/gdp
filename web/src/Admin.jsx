@@ -110,6 +110,11 @@ function Loading({ children }) {
 }
 // Left sidebar vs top-right. Support/Settings stay top-right (used less often,
 // and Support carries the live badge next to the notification bell).
+// Small boxes after a customer name for staff roles (rider, admin).
+function RoleTags({ user }) {
+  return <>{user.is_admin && <span className="role-tag role-admin">Admin</span>}{user.is_rider && <span className="role-tag role-rider">Rider</span>}</>
+}
+
 const PRIMARY_TABS = ['dashboard', 'orders', 'products', 'categories', 'reviews', 'customers', 'riders', 'stores', 'branding', 'secure']
 const TOP_TABS = ['support', 'settings']
 const TAB_LABELS = {
@@ -2452,7 +2457,7 @@ export default function Admin({ token, onClose }) {
               <tbody>
                 {customers.map((customer) => (
                   <tr key={customer.id}>
-                    <td>{customer.display_name ?? customer.name}</td>
+                    <td>{customer.display_name ?? customer.name}<RoleTags user={customer} /></td>
                     <td>{customer.email}</td>
                     <td>{customer.orders_count}</td>
                     <td>{money(customer.spent_cents)}</td>
@@ -3298,7 +3303,7 @@ export default function Admin({ token, onClose }) {
             <button className="admin-close" type="button" onClick={() => setCustomerDetail(null)}>Close</button>
             {customerDetail.loading ? <Loading>Loading…</Loading> : (
               <>
-                <h3>{customerDetail.display_name ?? customerDetail.name}</h3>
+                <h3>{customerDetail.display_name ?? customerDetail.name}<RoleTags user={customerDetail} /></h3>
                 <p className="muted">{customerDetail.email} · {customerDetail.phone || 'no phone'} · joined {new Date(customerDetail.joined_at).toLocaleDateString()}</p>
                 <label className="admin-check">
                   <input type="checkbox" checked={!!customerDetail.is_rider} onChange={(event) => toggleRider(customerDetail.id, event.target.checked)} />
