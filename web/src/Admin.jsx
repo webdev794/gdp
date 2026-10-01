@@ -2284,7 +2284,7 @@ export default function Admin({ token, onClose }) {
           {!productForm && <>
           {listBusy.products && products.length === 0 ? <Loading>Loading products…</Loading> : products.length === 0 ? <p className="admin-empty">No products.</p> : (
             <table className="admin-table">
-              <thead><tr><th>Name</th><th>SKU</th><th>Category</th><th>Price</th><th>Stock</th><th>Variants</th><th>Active</th><th>Demo</th><th></th></tr></thead>
+              <thead><tr><th>Name</th><th>SKU</th><th>Category</th><th>Price</th><th>Stock</th><th>Variants</th><th>Status</th><th></th></tr></thead>
               <tbody>
                 {products.map((product) => {
                   const packs = (product.variants ?? []).filter((v) => v.is_active).length
@@ -2296,8 +2296,7 @@ export default function Admin({ token, onClose }) {
                     <td>{packs ? `${money(Math.min(...product.variants.filter((v) => v.is_active).map((v) => v.price_cents)))}+` : <>{money(product.price_cents)}{product.compare_at_price_cents > product.price_cents && <s className="muted" style={{ marginLeft: 5 }}>{money(product.compare_at_price_cents)}</s>}</>}</td>
                     <td className={(product.effective_stock ?? product.inventory_quantity) <= 5 ? 'low' : ''}>{packs ? '—' : (product.effective_stock ?? product.inventory_quantity)}{productStore && !packs ? <span className="admin-note">at {stores.find((s) => String(s.id) === String(productStore))?.name ?? 'store'}</span> : null}</td>
                     <td>{packs || '—'}</td>
-                    <td>{product.is_active ? 'Yes' : 'No'}</td>
-                    <td>{product.is_demo ? 'Yes' : ''}</td>
+                    <td>{!product.is_active ? <span className="pill pill-draft">Draft</span> : product.is_demo ? <span className="pill pill-demo">Demo</span> : <span className="pill pill-live">Live</span>}</td>
                     <td className="admin-actions">
                       <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ id: product.id, category_id: product.category_id, name: product.name, sku: product.sku, price: (product.price_cents / 100).toFixed(2), compare_at: dollarsOrBlank(product.compare_at_price_cents), inventory_quantity: product.inventory_quantity, description: product.description ?? '', image_url: product.image_url ?? '', is_active: product.is_active, is_demo: !!product.is_demo, per_store_stock: (product.store_inventory ?? []).length > 0, store_stock: storeStockFrom(product), variants: variantRowsFrom(product), images: imageRowsFrom(product) }); scrollFormIntoView('admin-product-form') }}>Edit</button>
                       <button className="act danger" type="button" onClick={() => removeProduct(product)}>Delete</button>
