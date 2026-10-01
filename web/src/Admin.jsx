@@ -2147,7 +2147,21 @@ export default function Admin({ token, onClose }) {
 
           {productForm && (
             <form id="admin-product-form" className="admin-form" onSubmit={saveProduct}>
-              <h3>{productForm.id ? `Edit product #${productForm.id}` : 'New product'}</h3>
+              <div className="admin-form-head">
+                <h3>{productForm.id ? `Edit product #${productForm.id}` : 'New product'}</h3>
+                {/* WordPress-style status: Live / Demo (on sale, flagged demo) / Draft (hidden). */}
+                <label className="admin-status-pick">Status
+                  <select value={!productForm.is_active ? 'draft' : productForm.is_demo ? 'demo' : 'live'}
+                    onChange={(event) => {
+                      const v = event.target.value
+                      setProductForm({ ...productForm, ...(v === 'draft' ? { is_active: false } : { is_active: true, is_demo: v === 'demo' }) })
+                    }}>
+                    <option value="live">Live</option>
+                    <option value="demo">Demo</option>
+                    <option value="draft">Draft (hidden)</option>
+                  </select>
+                </label>
+              </div>
               <div className="admin-form-grid">
                 <label>Category
                   <select required value={productForm.category_id} onChange={(event) => setProductForm({ ...productForm, category_id: event.target.value })}>
@@ -2162,8 +2176,6 @@ export default function Admin({ token, onClose }) {
                 {productForm.per_store_stock
                   ? <label>Inventory<input type="text" value="Per store — see below" disabled title="This product tracks stock per store; the counts are in the Store stock section." /></label>
                   : <label>Inventory<input type="number" min="0" value={productForm.inventory_quantity} onChange={(event) => setProductForm({ ...productForm, inventory_quantity: event.target.value })} /></label>}
-                <label className="admin-check"><input type="checkbox" checked={productForm.is_active} onChange={(event) => setProductForm({ ...productForm, is_active: event.target.checked })} /> Active</label>
-                <label className="admin-check"><input type="checkbox" checked={!!productForm.is_demo} onChange={(event) => setProductForm({ ...productForm, is_demo: event.target.checked })} /> Demo product</label>
               </div>
               <label>Primary image <span className="muted">(shown on the product card)</span>
                 <div className="admin-image-field">
