@@ -258,7 +258,9 @@ class RiderAttendanceTest extends TestCase
     public function test_monthly_report_classifies_full_short_and_off_days(): void
     {
         $rider = $this->rider($this->store(), ['rider_daily_target_minutes' => 480]);
-        $mon = now()->startOfMonth();
+        // Last month, so all three days are in the past whatever today is (the
+        // report stops at today).
+        $mon = now()->subMonthNoOverflow()->startOfMonth();
 
         // Day 1: a full 9h shift.
         $rider->riderShifts()->create([
