@@ -195,7 +195,8 @@ class OrderModel {
       riderRating: (json['rider']?['rating'] as num?)?.toDouble() ?? 0,
       riderReviewRating: (json['rider_review']?['rating'] as num?)?.toDouble(),
       riderReviewComment: json['rider_review']?['comment'],
-      cancelReason: json['cancelled_by'] == 'admin' && (json['cancel_reason']?.toString() ?? '').isNotEmpty ? json['cancel_reason'].toString() : null,
+      // Store's reason only; "Customer requested" is kept for admin records, not shown.
+      cancelReason: json['cancelled_by'] == 'admin' && (json['cancel_reason']?.toString() ?? '').isNotEmpty && json['cancel_reason'] != 'Customer requested' ? json['cancel_reason'].toString() : null,
       giftCardRemaining: (json['gift_card_remaining_cents'] as num?) == null ? null : (json['gift_card_remaining_cents'] as num) / 100.0,
       itemRatings: {
         for (final r in (json['product_reviews'] as List? ?? []))
