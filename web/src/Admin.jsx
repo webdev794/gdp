@@ -1952,7 +1952,7 @@ export default function Admin({ token, onLogout }) {
                     <PieChart data={Object.entries(chart.by_status).map(([status, count]) => ({ label: STATUS_LABELS[status] ?? status, value: count }))} />
                   </div>
                   <div>
-                    <h4 className="admin-subhead">Orders by payment</h4>
+                    <h4 className="admin-subhead">Orders by payment (delivered)</h4>
                     <PieChart data={Object.entries(chart.by_payment_method).map(([method, count]) => ({ label: method === 'cod' ? 'Cash on delivery' : 'Card', value: count }))} />
                   </div>
                 </div>

@@ -313,7 +313,7 @@ class AdminController extends Controller
                 'to' => $to->toDateString(),
                 'series' => $series,
                 'by_status' => $orders->countBy('status'),
-                'by_payment_method' => $orders->countBy('payment_method'),
+                'by_payment_method' => $orders->where('status', 'completed')->countBy('payment_method'), // delivered orders only
                 'totals' => [
                     'orders' => array_sum(array_column($series, 'orders')),
                     'orders_cents' => array_sum(array_column($series, 'orders_cents')),
