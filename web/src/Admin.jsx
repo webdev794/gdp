@@ -2913,11 +2913,11 @@ export default function Admin({ token, onClose }) {
             </form>
           )}
 
-          {pageForm ? null : (pagesView === 'blogs' ? pages.filter((p) => p.footer_group === 'blog') : pages).length === 0 ? <p className="admin-empty">{pagesView === 'blogs' ? 'No blog posts yet.' : 'No pages yet.'}</p> : (
+          {pageForm ? null : pages.filter((p) => (p.footer_group === 'blog') === (pagesView === 'blogs')).length === 0 ? <p className="admin-empty">{pagesView === 'blogs' ? 'No blog posts yet.' : 'No pages yet.'}</p> : (
             <table className="admin-table">
               <thead><tr><th>Title</th><th>Slug</th><th>Footer group</th><th>In footer</th><th>Published</th><th></th></tr></thead>
               <tbody>
-                {(pagesView === 'blogs' ? pages.filter((p) => p.footer_group === 'blog') : pages).map((page) => (
+                {pages.filter((p) => (p.footer_group === 'blog') === (pagesView === 'blogs')).map((page) => (
                   <tr key={page.id}>
                     <td>{page.title}</td>
                     <td><code>{page.slug}</code></td>
