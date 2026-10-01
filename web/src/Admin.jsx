@@ -3182,6 +3182,11 @@ export default function Admin({ token, onClose }) {
         </main>
       </div>
 
+      <footer className="admin-footer">
+        <span>© {new Date().getFullYear()} {storeName || 'TUDEE SHOPPING CENTER'} · Admin console</span>
+        <a href={import.meta.env.BASE_URL || '/'} target="_blank" rel="noopener">View store ↗</a>
+      </footer>
+
       {thread && (
         <div className="admin-drawer" role="presentation" onClick={() => setThread(null)}>
           <aside onClick={(event) => event.stopPropagation()}>
