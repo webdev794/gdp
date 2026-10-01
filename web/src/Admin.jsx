@@ -1144,9 +1144,6 @@ export default function Admin({ token, onClose }) {
         {itemsReturned && (
           <span className="admin-note" style={{ color: '#2f6d34' }} title={`Confirmed ${new Date(order.items_returned_at).toLocaleString()}`}>✓ items returned</span>
         )}
-        {['confirmed', 'packing', 'ready_for_delivery', 'out_for_delivery'].includes(order.status) && (
-          <button type="button" disabled={busyId === order.id} className="act" title="Customer collected it at the store — closes the order without a courier" onClick={() => { if (window.confirm(`Mark order #${order.id} as picked up by the customer? This completes the order.`)) patchOrder(order, { picked_up: true }) }}>Customer picked up</button>
-        )}
         {steps.map(([status, label]) => (
           <button key={status} type="button" disabled={busyId === order.id} className={status === 'cancelled' ? 'act danger' : 'act'} onClick={() => patchOrder(order, { status })}>{label}</button>
         ))}
@@ -2047,9 +2044,18 @@ export default function Admin({ token, onClose }) {
                       ) : riders.length > 0 ? (
                         <>
                           <select value={order.delivery_partner_id ?? ''} disabled={busyId === order.id}
-                            onChange={(event) => patchOrder(order, { delivery_partner_id: event.target.value ? Number(event.target.value) : null })}>
+                            onChange={(event) => {
+                              const v = event.target.value
+                              // "Customer picked up" closes the order without a rider.
+                              if (v === 'pickup') {
+                                if (window.confirm(`Mark order #${order.id} as picked up by the customer? This completes the order.`)) patchOrder(order, { picked_up: true })
+                                return
+                              }
+                              patchOrder(order, { delivery_partner_id: v ? Number(v) : null })
+                            }}>
                             <option value="">— rider —</option>
                             {riders.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                            <option value="pickup">Customer picked up</option>
                           </select>
                           {order.courier_name && !order.delivery_partner_id && (
                             <span className="admin-note">manual: {order.courier_name}
