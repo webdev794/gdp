@@ -212,7 +212,7 @@ class AdminController extends Controller
     public function ordersTimeseries(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'bucket' => ['sometimes', 'in:day,week,month'],
+            'bucket' => ['sometimes', 'in:day,week,month,year'],
             'from' => ['sometimes', 'date'],
             'to' => ['sometimes', 'date', 'after_or_equal:from'],
             'tz' => ['sometimes', 'nullable', 'string'],
@@ -221,20 +221,21 @@ class AdminController extends Controller
         $tz = $this->resolveTz($validated['tz'] ?? null);
         $bucket = $validated['bucket'] ?? 'day';
         $to = isset($validated['to']) ? Carbon::parse($validated['to'], $tz)->endOfDay() : now($tz)->endOfDay();
-
-        $span = ['day' => 13, 'week' => 11, 'month' => 11][$bucket];
+        $span = ['day' => 13, 'week' => 11, 'month' => 11, 'year' => 11][$bucket]; // yearly = last 12 years
         $from = isset($validated['from']) ? Carbon::parse($validated['from'], $tz) : match ($bucket) {
             'day' => $to->copy()->subDays($span),
             'week' => $to->copy()->subWeeks($span),
             'month' => $to->copy()->subMonths($span),
+            'year' => $to->copy()->subYears($span),
         };
 
         // Never build more than this many buckets (guards a huge custom range).
-        $maxBuckets = ['day' => 186, 'week' => 130, 'month' => 60][$bucket];
+        $maxBuckets = ['day' => 186, 'week' => 130, 'month' => 60, 'year' => 50][$bucket];
         $earliest = match ($bucket) {
             'day' => $to->copy()->subDays($maxBuckets - 1),
             'week' => $to->copy()->subWeeks($maxBuckets - 1),
             'month' => $to->copy()->subMonths($maxBuckets - 1),
+            'year' => $to->copy()->subYears($maxBuckets - 1),
         };
         if ($from->lt($earliest)) {
             $from = $earliest;
@@ -244,14 +245,16 @@ class AdminController extends Controller
             'day' => $from->copy()->startOfDay(),
             'week' => $from->copy()->startOfWeek(Carbon::MONDAY),
             'month' => $from->copy()->startOfMonth(),
+            'year' => $from->copy()->startOfYear(),
         };
 
         $keyFor = fn (Carbon $d): string => match ($bucket) {
             'day' => $d->format('Y-m-d'),
             'week' => $d->copy()->startOfWeek(Carbon::MONDAY)->format('Y-m-d'),
             'month' => $d->format('Y-m-01'),
+            'year' => $d->format('Y-01-01'),
         };
-        $labelFor = fn (Carbon $d): string => $bucket === 'month' ? $d->format('M Y') : $d->format('M j');
+        $labelFor = fn (Carbon $d): string => match ($bucket) { 'month' => $d->format('M Y'), 'year' => $d->format('Y'), default => $d->format('M j') };
 
         $orders = Order::query()
             ->whereBetween('created_at', [$from->copy()->utc(), $to->copy()->utc()])
@@ -274,16 +277,18 @@ class AdminController extends Controller
         // line reflects money actually given back on each day/week/month.
         $refundEvents = OrderRefund::query()
             ->whereBetween('created_at', [$from->copy()->utc(), $to->copy()->utc()])
-            ->get(['created_at', 'amount_cents'])
+            ->get(['created_at', 'amount_cents', 'order_id'])
             ->concat(
                 GiftCard::query()
                     ->whereBetween('created_at', [$from->copy()->utc(), $to->copy()->utc()])
-                    ->get(['created_at', 'initial_cents as amount_cents'])
+                    ->get(['created_at', 'initial_cents as amount_cents', 'order_id'])
             );
+        $refundOrders = []; // bucket => [order id => true], to count refunded orders
         foreach ($refundEvents as $event) {
             $key = $keyFor($event->created_at->copy()->setTimezone($tz));
             $agg[$key] ??= ['orders' => 0, 'orders_cents' => 0, 'paid_orders' => 0, 'revenue_cents' => 0, 'refunded_cents' => 0];
             $agg[$key]['refunded_cents'] += (int) $event->amount_cents;
+            $refundOrders[$key][$event->order_id ?? 'x'.spl_object_id($event)] = true;
         }
 
         $series = [];
@@ -298,11 +303,13 @@ class AdminController extends Controller
                 'paid_orders' => $agg[$key]['paid_orders'] ?? 0,
                 'revenue_cents' => $agg[$key]['revenue_cents'] ?? 0,
                 'refunded_cents' => $agg[$key]['refunded_cents'] ?? 0,
+                'refunded_orders' => count($refundOrders[$key] ?? []),
             ];
             match ($bucket) {
                 'day' => $cursor->addDay(),
                 'week' => $cursor->addWeek(),
                 'month' => $cursor->addMonth(),
+                'year' => $cursor->addYear(),
             };
         }
 

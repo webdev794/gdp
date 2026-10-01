@@ -67,6 +67,26 @@ class AdminMetricsTimeseriesTest extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_yearly_buckets_cover_the_last_twelve_years_with_refunded_order_counts(): void
+    {
+        Carbon::setTestNow('2026-09-15 12:00:00');
+        $admin = User::factory()->create();
+        $admin->forceFill(['is_admin' => true])->save();
+        Sanctum::actingAs($admin);
+
+        $this->order(['created_at' => '2026-03-10 10:00:00']);
+        $this->order(['created_at' => '2019-05-10 10:00:00']);
+
+        $series = $this->getJson('/api/admin/metrics/timeseries?bucket=year')->assertOk()
+            ->assertJsonPath('data.totals.orders', 2)
+            ->json('data.series');
+        $this->assertCount(12, $series);
+        $this->assertSame('2015', $series[0]['label']);
+        $this->assertSame(0, end($series)['refunded_orders']);
+
+        Carbon::setTestNow();
+    }
+
     public function test_month_buckets_and_status_breakdown_respect_the_window(): void
     {
         Carbon::setTestNow('2026-09-15 12:00:00');

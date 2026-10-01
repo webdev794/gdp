@@ -141,7 +141,7 @@ export function LineChart({ lines }) {
           {built.map((line) => <path key={line.key} d={line.d} fill="none" stroke={line.color} strokeWidth="2" />)}
           {built.map((line) => line.coords.map(([x, y], i) => (
             <circle key={`${line.key}-${i}`} cx={x} cy={y} r="2" fill={line.color}>
-              <title>{`${line.label} · ${line.points[i].label}: ${line.format(line.points[i].value)}`}</title>
+              <title>{`${line.label} · ${line.points[i].label}: ${line.format(line.points[i].value)}${line.points[i].count != null ? ` (${line.points[i].count} order${line.points[i].count === 1 ? '' : 's'})` : ''}`}</title>
             </circle>
           )))}
         </svg>

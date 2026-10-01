@@ -24,9 +24,9 @@ const BELL_ITEM_CAP = 5
 // The three selectable lines on the Orders trend chart, in the fixed order
 // they're always drawn (independent of toggle click order).
 const CHART_LINES = [
-  { key: 'orders_cents', label: 'Orders', color: '#3f7d43', format: money, axis: 'money', axisTitle: '$' }, // total amount of all orders placed
-  { key: 'revenue_cents', label: 'Revenue', color: '#1f5fae', format: money, axis: 'money', axisTitle: '$' },
-  { key: 'refunded_cents', label: 'Refunds', color: '#a23b28', format: money, axis: 'money', axisTitle: '$' },
+  { key: 'orders_cents', label: 'Orders', color: '#3f7d43', format: money, axis: 'money', axisTitle: '$', countKey: 'orders' }, // total amount of all orders placed
+  { key: 'revenue_cents', label: 'Revenue', color: '#1f5fae', format: money, axis: 'money', axisTitle: '$', countKey: 'paid_orders' },
+  { key: 'refunded_cents', label: 'Refunds', color: '#a23b28', format: money, axis: 'money', axisTitle: '$', countKey: 'refunded_orders' },
 ]
 
 // A rider still holding cash collected on a day other than today (not returned
@@ -1921,7 +1921,7 @@ export default function Admin({ token, onLogout }) {
             <h3 className="admin-subhead">Orders trend</h3>
             <div className="chart-toolbar">
               <div className="seg" role="group" aria-label="Time basis">
-                {[['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly']].map(([value, label]) => (
+                {[['day', 'Daily'], ['week', 'Weekly'], ['month', 'Monthly'], ['year', 'Yearly']].map(([value, label]) => (
                   <button key={value} type="button" className={chartBucket === value ? 'active' : ''} onClick={() => { setChart(null); setChartBucket(value) }}>{label}</button>
                 ))}
               </div>
@@ -1945,7 +1945,7 @@ export default function Admin({ token, onLogout }) {
                 <LineChart
                   lines={CHART_LINES.filter((line) => chartMetrics.includes(line.key)).map((line) => ({
                     ...line,
-                    points: chart.series.map((row) => ({ label: row.label, value: row[line.key] ?? 0 })),
+                    points: chart.series.map((row) => ({ label: row.label, value: row[line.key] ?? 0, count: line.countKey ? row[line.countKey] ?? 0 : undefined })),
                   }))}
                 />
                 <div className="chart-pies">
