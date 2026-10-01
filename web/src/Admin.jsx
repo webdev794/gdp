@@ -2268,6 +2268,8 @@ export default function Admin({ token, onClose }) {
             </form>
           )}
 
+          {/* While editing or adding a product, show only the form (list returns on Save/Cancel or the Products menu). */}
+          {!productForm && <>
           {listBusy.products && products.length === 0 ? <Loading>Loading products…</Loading> : products.length === 0 ? <p className="admin-empty">No products.</p> : (
             <table className="admin-table">
               <thead><tr><th>Name</th><th>SKU</th><th>Category</th><th>Price</th><th>Stock</th><th>Variants</th><th>Active</th><th>Demo</th><th></th></tr></thead>
@@ -2294,6 +2296,7 @@ export default function Admin({ token, onClose }) {
             </table>
           )}
           <Pager page={productsMeta?.current_page ?? productsPage} pageCount={productsMeta?.last_page ?? 1} total={productsMeta?.total ?? products.length} onPage={setProductsPage} pageSize={pageSize} onPageSize={setPageSize} />
+          </>}
         </section>
       )}
 
