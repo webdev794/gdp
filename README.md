@@ -17,6 +17,8 @@ Videos:
 
 5) Demo3 (app, partial refund): https://www.loom.com/share/d28131761043420b8c10e36c9b85451e
 
+6) Demo4 (apps install online): https://www.loom.com/share/da5d39d2feb440cd992c1e5a589e2780 
+
 Mobile apps (Flutter, `flutter_app/`): Android APK — https://testcaresortwork.co.in/gdp/downloads/tudee-shopping-center.apk (after deploy); iPhone — GitHub → Actions → "Flutter iOS build". See **Flutter mobile app** below.
 
 ## See Output Quickly

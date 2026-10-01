@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Sep 30, 2026 at 02:20 PM
+-- Generation Time: Oct 01, 2026 at 01:28 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -116,18 +116,19 @@ CREATE TABLE `cache` (
 --
 
 INSERT INTO `cache` (`key`, `value`, `expiration`) VALUES
-('gdp-cache-5c785c036466adea360111aa28563bfd556b5fba', 'i:2;', 1790763976),
-('gdp-cache-5c785c036466adea360111aa28563bfd556b5fba:timer', 'i:1790763976;', 1790763976),
+('gdp-cache-5c785c036466adea360111aa28563bfd556b5fba', 'i:2;', 1790853760),
+('gdp-cache-5c785c036466adea360111aa28563bfd556b5fba:timer', 'i:1790853760;', 1790853760),
 ('gdp-cache-geo:reverse:3601e925f58a0c5cbe4b1bb1ef81765d', 'a:8:{s:5:\"label\";s:17:\"Sector 60, Mohali\";s:4:\"full\";s:98:\"Sector 60, Mohali, S.A.S. Nagar (Mohali) Tahsil, Sahibzada Ajit Singh Nagar, Punjab, 160059, India\";s:5:\"line1\";s:9:\"Sector 60\";s:4:\"city\";s:6:\"Mohali\";s:5:\"state\";s:6:\"Punjab\";s:11:\"postal_code\";s:6:\"160059\";s:3:\"lat\";d:30.7119189;s:3:\"lon\";d:76.717548;}', 1790837824),
 ('gdp-cache-geo:reverse:7acaf3aa6e1c3cff118ecb55e907421f', 'a:8:{s:5:\"label\";s:20:\"Thinda, Dasua Tahsil\";s:4:\"full\";s:55:\"Thinda, Dasua Tahsil, Hoshiarpur, Punjab, 144207, India\";s:5:\"line1\";s:32:\"Thinda, Dasua Tahsil, Hoshiarpur\";s:4:\"city\";s:6:\"Thinda\";s:5:\"state\";s:6:\"Punjab\";s:11:\"postal_code\";s:6:\"144207\";s:3:\"lat\";d:31.7332308;s:3:\"lon\";d:75.7093481;}', 1790839993),
 ('gdp-cache-geo:reverse:d56288f3aeafbd090a610ff7b25f2aac', 'a:8:{s:5:\"label\";s:15:\"101, RohtakVibe\";s:4:\"full\";s:115:\"101, RohtakVibe, Sector 60, Mohali, S.A.S. Nagar (Mohali) Tahsil, Sahibzada Ajit Singh Nagar, Punjab, 160059, India\";s:5:\"line1\";s:14:\"101 RohtakVibe\";s:4:\"city\";s:6:\"Mohali\";s:5:\"state\";s:6:\"Punjab\";s:11:\"postal_code\";s:6:\"160059\";s:3:\"lat\";d:30.7131931;s:3:\"lon\";d:76.7202451;}', 1790837823),
 ('gdp-cache-geo:reverse:ea006f64fe0a965bb6f549db58d96a33', 'a:8:{s:5:\"label\";s:23:\"Ramdaspur, Dasua Tahsil\";s:4:\"full\";s:58:\"Ramdaspur, Dasua Tahsil, Hoshiarpur, Punjab, 144207, India\";s:5:\"line1\";s:35:\"Ramdaspur, Dasua Tahsil, Hoshiarpur\";s:4:\"city\";s:9:\"Ramdaspur\";s:5:\"state\";s:6:\"Punjab\";s:11:\"postal_code\";s:6:\"144207\";s:3:\"lat\";d:31.7281148;s:3:\"lon\";d:75.7143831;}', 1790839991),
 ('gdp-cache-geo:reverse:ea018f6a1059f922b08b650c48bdf423', 'a:8:{s:5:\"label\";s:21:\"Galowal, Dasua Tahsil\";s:4:\"full\";s:56:\"Galowal, Dasua Tahsil, Hoshiarpur, Punjab, 144207, India\";s:5:\"line1\";s:33:\"Galowal, Dasua Tahsil, Hoshiarpur\";s:4:\"city\";s:7:\"Galowal\";s:5:\"state\";s:6:\"Punjab\";s:11:\"postal_code\";s:6:\"144207\";s:3:\"lat\";d:31.732432;s:3:\"lon\";d:75.750802;}', 1790837820),
-('gdp-cache-setting:branding', 'a:1:{s:1:\"v\";a:10:{s:10:\"store_name\";s:21:\"TUDEE SHOPPING CENTER\";s:7:\"tagline\";s:26:\"Fresh groceries, less fuss\";s:8:\"logo_url\";s:69:\"/api/media/file/products/6ECwKgzIG0wA7s2ieBehAp3jO5V9rrPJyJGLdYWo.png\";s:11:\"favicon_url\";s:69:\"/api/media/file/products/JKutAMU8COTNwZAHl1LEPmh1Rjf2SU39wQF5HYnR.jpg\";s:5:\"theme\";s:5:\"light\";s:12:\"layout_width\";s:5:\"boxed\";s:11:\"color_brand\";s:7:\"#1f7a3d\";s:12:\"color_accent\";s:7:\"#ffd23f\";s:13:\"color_heading\";s:7:\"#18211c\";s:13:\"contact_email\";s:16:\"test@example.com\";}}', 2106019222),
+('gdp-cache-setting:branding', 'a:1:{s:1:\"v\";a:12:{s:10:\"store_name\";s:21:\"TUDEE SHOPPING CENTER\";s:7:\"tagline\";s:26:\"Fresh groceries, less fuss\";s:8:\"logo_url\";s:69:\"/api/media/file/products/6ECwKgzIG0wA7s2ieBehAp3jO5V9rrPJyJGLdYWo.png\";s:11:\"favicon_url\";s:69:\"/api/media/file/products/JKutAMU8COTNwZAHl1LEPmh1Rjf2SU39wQF5HYnR.jpg\";s:5:\"theme\";s:5:\"light\";s:12:\"layout_width\";s:4:\"full\";s:11:\"color_brand\";s:7:\"#1f7a3d\";s:12:\"color_accent\";s:7:\"#ffd23f\";s:13:\"color_heading\";s:7:\"#18211c\";s:13:\"contact_email\";s:16:\"test@example.com\";s:13:\"contact_phone\";N;s:15:\"contact_address\";s:49:\"Kakatown Highway, Margibi County, Kakata, Liberia\";}}', 2106213665),
 ('gdp-cache-setting:checkout_fees', 'a:1:{s:1:\"v\";a:9:{s:13:\"delivery_mode\";s:5:\"fixed\";s:18:\"delivery_fee_cents\";i:299;s:23:\"delivery_near_fee_cents\";i:199;s:22:\"delivery_far_fee_cents\";i:599;s:29:\"free_delivery_threshold_cents\";i:3500;s:18:\"handling_fee_cents\";i:99;s:20:\"small_cart_fee_cents\";i:199;s:20:\"small_cart_min_cents\";i:1000;s:12:\"tax_rate_bps\";i:887;}}', 2106025722),
 ('gdp-cache-setting:cod_enabled', 'a:1:{s:1:\"v\";b:1;}', 2106025722),
 ('gdp-cache-setting:footer', 'a:1:{s:1:\"v\";a:6:{s:9:\"copyright\";s:31:\"© {year} Tudee Shopping Center\";s:13:\"app_store_url\";s:40:\"https://apps.apple.com/app/grocerly-demo\";s:14:\"play_store_url\";s:63:\"https://play.google.com/store/apps/details?id=com.grocerly.demo\";s:7:\"socials\";a:5:{s:8:\"facebook\";s:29:\"https://facebook.com/grocerly\";s:1:\"x\";s:22:\"https://x.com/grocerly\";s:9:\"instagram\";s:30:\"https://instagram.com/grocerly\";s:8:\"linkedin\";s:41:\"https://www.linkedin.com/company/grocerly\";s:7:\"youtube\";s:33:\"https://www.youtube.com/@grocerly\";}s:5:\"links\";a:0:{}s:4:\"note\";s:94:\"Tudee Shopping Center delivers fresh groceries and household essentials from a store near you.\";}}', 2106130046),
-('gdp-cache-setting:payments', 'a:1:{s:7:\"missing\";b:1;}', 2106019222);
+('gdp-cache-setting:payments', 'a:1:{s:7:\"missing\";b:1;}', 2106019222),
+('gdp-cache-setting:rider_auto_assign', 'a:1:{s:7:\"missing\";b:1;}', 2106213622);
 
 -- --------------------------------------------------------
 
@@ -460,7 +461,9 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 (66, '2026_09_15_180000_add_attachment_url_to_support_messages_table', 19),
 (67, '2026_09_15_190000_create_product_images_table', 19),
 (68, '2026_09_29_100000_add_is_demo_to_products_table', 20),
-(70, '2026_09_29_120000_create_product_reviews_table', 21);
+(70, '2026_09_29_120000_create_product_reviews_table', 21),
+(71, '2026_10_01_100000_add_approved_at_to_product_reviews_table', 22),
+(72, '2026_10_01_120000_copy_home_tile_images_to_categories', 22);
 
 -- --------------------------------------------------------
 
@@ -537,8 +540,8 @@ INSERT INTO `orders` (`id`, `user_id`, `store_id`, `status`, `cancelled_by`, `ca
 (28, 15, 1, 'completed', NULL, NULL, NULL, '2026-09-21 23:49:17', NULL, '2026-09-21 23:48:48', '2026-09-21 23:49:18', 0, 'neighbour', NULL, NULL, 'Sam Rider', 16, NULL, '2026-09-21 23:48:28', NULL, 0, 'paid', 'cod', NULL, NULL, 0, 519, 46, 299, 99, 199, 0, 1162, '{\"id\":19,\"user_id\":15,\"label\":\"Home\",\"name\":\"Test User\",\"line1\":\"Sector 68, Sector 69\",\"line2\":null,\"city\":\"Mohali\",\"state\":\"Punjab\",\"postal_code\":\"140062\",\"latitude\":30.6852518,\"longitude\":76.7184224,\"is_default\":false,\"created_at\":\"2026-09-22T04:48:37.000000Z\",\"updated_at\":\"2026-09-22T04:48:37.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-21 23:18:37', '2026-09-21 23:49:18'),
 (29, 17, 1, 'completed', NULL, NULL, NULL, '2026-09-21 23:49:10', NULL, '2026-09-21 23:48:51', '2026-09-21 23:49:10', 0, 'neighbour', NULL, NULL, 'Sam Rider', 16, NULL, '2026-09-21 23:48:25', NULL, 0, 'paid', 'cod', NULL, NULL, 0, 1047, 93, 299, 99, 0, 0, 1538, '{\"id\":20,\"user_id\":17,\"label\":\"Home\",\"name\":\"Testcaresort\",\"line1\":\"edge 27\",\"line2\":null,\"city\":\"Mohali\",\"state\":\"Punjab\",\"postal_code\":\"160055\",\"latitude\":30.7197622,\"longitude\":76.7056954,\"is_default\":false,\"created_at\":\"2026-09-22T05:15:04.000000Z\",\"updated_at\":\"2026-09-22T05:15:04.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-21 23:45:04', '2026-09-21 23:49:10'),
 (30, 17, 1, 'completed', NULL, NULL, NULL, '2026-09-21 23:49:03', NULL, NULL, '2026-09-21 23:49:04', 0, 'neighbour', NULL, NULL, 'Sam Rider', 16, NULL, '2026-09-21 23:48:23', NULL, 0, 'paid', 'card', 'pi_3UIM3G0B2YCt230S0lfZXLpa', NULL, 0, 1346, 119, 299, 99, 0, 0, 1863, '{\"id\":21,\"user_id\":17,\"label\":\"Home\",\"name\":\"Testcaresort\",\"line1\":\"edge 27\",\"line2\":null,\"city\":\"Mohali\",\"state\":\"Punjab\",\"postal_code\":\"160055\",\"latitude\":30.7197622,\"longitude\":76.7056954,\"is_default\":false,\"created_at\":\"2026-09-22T05:15:33.000000Z\",\"updated_at\":\"2026-09-22T05:15:33.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-21 23:45:34', '2026-09-21 23:49:04'),
-(31, 17, 1, 'confirmed', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 'paid', 'card', 'pi_3UKssD0B2YCt230S1A7rD4op', NULL, 0, 898, 80, 299, 99, 199, 0, 1575, '{\"id\":22,\"user_id\":17,\"label\":\"Home\",\"name\":\"Testcaresort\",\"line1\":\"Kakata-Harbel Road (Firestone Gate 26)\",\"line2\":null,\"city\":\"Kakata\",\"state\":\"Margibi County\",\"postal_code\":null,\"latitude\":6.5303248,\"longitude\":-10.350548,\"is_default\":false,\"created_at\":\"2026-09-29T04:42:36.000000Z\",\"updated_at\":\"2026-09-29T04:42:36.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-28 23:12:36', '2026-09-28 23:12:48'),
-(32, 17, 1, 'confirmed', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 'paid', 'card', 'pi_3UKssM0B2YCt230S0eUb5bcy', NULL, 0, 449, 40, 299, 99, 199, 0, 1086, '{\"id\":23,\"user_id\":17,\"label\":\"Home\",\"name\":\"Testcaresort\",\"line1\":\"Kakata-Harbel Road (Firestone Gate 26)\",\"line2\":null,\"city\":\"Kakata\",\"state\":\"Margibi County\",\"postal_code\":null,\"latitude\":6.5303248,\"longitude\":-10.350548,\"is_default\":false,\"created_at\":\"2026-09-29T04:42:45.000000Z\",\"updated_at\":\"2026-09-29T04:42:45.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-28 23:12:46', '2026-09-28 23:12:52'),
+(31, 17, 1, 'cancelled', 'admin', 'Item not available', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 'refunded', 'card', 'pi_3UKssD0B2YCt230S1A7rD4op', NULL, 1575, 898, 80, 299, 99, 199, 0, 1575, '{\"id\":22,\"user_id\":17,\"label\":\"Home\",\"name\":\"Testcaresort\",\"line1\":\"Kakata-Harbel Road (Firestone Gate 26)\",\"line2\":null,\"city\":\"Kakata\",\"state\":\"Margibi County\",\"postal_code\":null,\"latitude\":6.5303248,\"longitude\":-10.350548,\"is_default\":false,\"created_at\":\"2026-09-29T04:42:36.000000Z\",\"updated_at\":\"2026-09-29T04:42:36.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-28 23:12:36', '2026-10-01 05:52:54'),
+(32, 17, 1, 'cancelled', 'admin', 'Please try again later', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 'refunded', 'card', 'pi_3UKssM0B2YCt230S0eUb5bcy', NULL, 1086, 449, 40, 299, 99, 199, 0, 1086, '{\"id\":23,\"user_id\":17,\"label\":\"Home\",\"name\":\"Testcaresort\",\"line1\":\"Kakata-Harbel Road (Firestone Gate 26)\",\"line2\":null,\"city\":\"Kakata\",\"state\":\"Margibi County\",\"postal_code\":null,\"latitude\":6.5303248,\"longitude\":-10.350548,\"is_default\":false,\"created_at\":\"2026-09-29T04:42:45.000000Z\",\"updated_at\":\"2026-09-29T04:42:45.000000Z\",\"phone\":\"+15551234567\"}', NULL, '2026-09-28 23:12:46', '2026-10-01 05:52:50'),
 (33, 15, 1, 'cancelled', 'customer', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, 'cancelled', 'cod', NULL, NULL, 0, 449, 40, 299, 99, 199, 0, 1086, '{\"name\":\"App Test\",\"line1\":\"Kakatown Highway\",\"city\":\"Kakata\",\"latitude\":6.53189,\"longitude\":-10.349486,\"phone\":\"+231555000\"}', NULL, '2026-09-29 01:38:44', '2026-09-29 01:39:05');
 
 -- --------------------------------------------------------
@@ -797,7 +800,8 @@ INSERT INTO `personal_access_tokens` (`id`, `tokenable_type`, `tokenable_id`, `n
 (181, 'App\\Models\\User', 15, 'customer', '5cb9f6ec072e7c8dcfdcae91ade51537f58de36a196063e75021a611a543c7a2', '[\"*\"]', '2026-09-29 01:47:14', NULL, '2026-09-29 01:47:13', '2026-09-29 01:47:14'),
 (182, 'App\\Models\\User', 17, 'customer', '822c6f3bec0193035dee8c3e16538326039274b085f221ed66bc4532fbafecf5', '[\"*\"]', '2026-09-30 02:03:24', NULL, '2026-09-30 01:26:35', '2026-09-30 02:03:24'),
 (183, 'App\\Models\\User', 15, 'customer', '85923a6f2c8812a444e87085f00ba95ed08447b27ae8fcd28a5f113a957207a9', '[\"*\"]', '2026-09-30 04:55:35', NULL, '2026-09-30 04:55:17', '2026-09-30 04:55:35'),
-(184, 'App\\Models\\User', 15, 'customer', '104dd7eceef9314bb018c03c5f86a1df3a20dcc4e7bcb9f46f435ca3e9f2fefb', '[\"*\"]', '2026-09-30 04:56:30', NULL, '2026-09-30 04:56:10', '2026-09-30 04:56:30');
+(184, 'App\\Models\\User', 15, 'customer', '104dd7eceef9314bb018c03c5f86a1df3a20dcc4e7bcb9f46f435ca3e9f2fefb', '[\"*\"]', '2026-09-30 04:56:30', NULL, '2026-09-30 04:56:10', '2026-09-30 04:56:30'),
+(194, 'App\\Models\\User', 15, 'customer', '940fd600cfa00d839142c89567988adc1d634e46a3bf59c5e1e4edc3cebe2d04', '[\"*\"]', '2026-10-01 05:57:57', NULL, '2026-10-01 05:52:14', '2026-10-01 05:57:57');
 
 -- --------------------------------------------------------
 
@@ -829,21 +833,21 @@ CREATE TABLE `products` (
 --
 
 INSERT INTO `products` (`id`, `category_id`, `name`, `slug`, `description`, `sku`, `price_cents`, `compare_at_price_cents`, `inventory_quantity`, `image_url`, `is_active`, `is_demo`, `rating_avg`, `rating_count`, `created_at`, `updated_at`) VALUES
-(1, 1, 'Organic Bananas', 'organic-bananas', NULL, 'GDP-PROD-001', 299, NULL, 99, 'https://www.themealdb.com/images/ingredients/Banana-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
-(2, 1, 'Gala Apples', 'gala-apples', NULL, 'GDP-PROD-002', 449, 561, 94, 'https://www.themealdb.com/images/ingredients/Apples-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(1, 1, 'Organic Bananas', 'organic-bananas', NULL, 'GDP-PROD-001', 299, NULL, 99, 'https://www.themealdb.com/images/ingredients/Banana-Medium.png', 1, 1, 4.00, 1, '2026-09-09 01:12:49', '2026-10-01 05:53:50'),
+(2, 1, 'Gala Apples', 'gala-apples', NULL, 'GDP-PROD-002', 449, 561, 94, 'https://www.themealdb.com/images/ingredients/Apples-Medium.png', 1, 1, 4.00, 1, '2026-09-09 01:12:49', '2026-10-01 05:53:50'),
 (3, 1, 'Baby Spinach', 'baby-spinach', NULL, 'GDP-PROD-007', 349, NULL, 99, 'https://www.themealdb.com/images/ingredients/Spinach-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
 (4, 1, 'Roma Tomatoes', 'roma-tomatoes', NULL, 'GDP-PROD-008', 279, NULL, 98, 'https://www.themealdb.com/images/ingredients/Tomato-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
-(5, 1, 'Hass Avocados', 'hass-avocados', NULL, 'GDP-PROD-009', 599, NULL, 99, 'https://www.themealdb.com/images/ingredients/Avocado-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
-(6, 2, 'Large Brown Eggs', 'large-brown-eggs', NULL, 'GDP-PROD-003', 599, NULL, 80, 'https://www.themealdb.com/images/ingredients/Egg-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
-(7, 2, 'Whole Milk', 'whole-milk', NULL, 'GDP-PROD-004', 429, NULL, 100, 'https://www.themealdb.com/images/ingredients/Milk-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
-(8, 2, 'Greek Yogurt', 'greek-yogurt', NULL, 'GDP-PROD-010', 519, 649, 90, 'https://www.themealdb.com/images/ingredients/Yogurt-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
-(9, 2, 'Sharp Cheddar', 'sharp-cheddar', NULL, 'GDP-PROD-011', 649, NULL, 89, 'https://www.themealdb.com/images/ingredients/Cheddar%20Cheese-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(5, 1, 'Hass Avocados', 'hass-avocados', NULL, 'GDP-PROD-009', 599, NULL, 99, 'https://www.themealdb.com/images/ingredients/Avocado-Medium.png', 1, 1, 2.00, 1, '2026-09-09 01:12:49', '2026-10-01 05:56:16'),
+(6, 2, 'Large Brown Eggs', 'large-brown-eggs', NULL, 'GDP-PROD-003', 599, NULL, 80, 'https://www.themealdb.com/images/ingredients/Egg-Medium.png', 1, 1, 4.00, 1, '2026-09-09 01:12:49', '2026-10-01 05:53:50'),
+(7, 2, 'Whole Milk', 'whole-milk', NULL, 'GDP-PROD-004', 429, NULL, 100, 'https://www.themealdb.com/images/ingredients/Milk-Medium.png', 1, 1, 5.00, 1, '2026-09-09 01:12:49', '2026-10-01 05:53:50'),
+(8, 2, 'Greek Yogurt', 'greek-yogurt', NULL, 'GDP-PROD-010', 519, 649, 90, 'https://www.themealdb.com/images/ingredients/Yogurt-Medium.png', 1, 1, 5.00, 1, '2026-09-09 01:12:49', '2026-10-01 05:53:50'),
+(9, 2, 'Sharp Cheddar', 'sharp-cheddar', NULL, 'GDP-PROD-011', 649, NULL, 89, 'https://www.themealdb.com/images/ingredients/Cheddar%20Cheese-Medium.png', 1, 1, 5.00, 1, '2026-09-09 01:12:49', '2026-10-01 05:53:50'),
 (10, 2, 'Unsalted Butter', 'unsalted-butter', NULL, 'GDP-PROD-012', 399, NULL, 98, 'https://www.themealdb.com/images/ingredients/Butter-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
-(11, 3, 'Long Grain Rice', 'long-grain-rice', NULL, 'GDP-PROD-005', 699, NULL, 99, 'https://www.themealdb.com/images/ingredients/Rice-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(11, 3, 'Long Grain Rice', 'long-grain-rice', NULL, 'GDP-PROD-005', 699, NULL, 99, 'https://www.themealdb.com/images/ingredients/Rice-Medium.png', 1, 1, 5.00, 1, '2026-09-09 01:12:49', '2026-10-01 05:53:50'),
 (12, 3, 'Pasta', 'pasta', NULL, 'GDP-PROD-006', 249, NULL, 99, 'https://www.themealdb.com/images/ingredients/Spaghetti-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
 (13, 3, 'Extra Virgin Olive Oil', 'extra-virgin-olive-oil', NULL, 'GDP-PROD-013', 899, NULL, 100, 'https://www.themealdb.com/images/ingredients/Olive%20Oil-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
 (14, 3, 'Rolled Oats', 'rolled-oats', NULL, 'GDP-PROD-014', 459, NULL, 99, 'https://www.themealdb.com/images/ingredients/Oats-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
-(15, 3, 'Peanut Butter', 'peanut-butter', NULL, 'GDP-PROD-015', 549, NULL, 99, 'https://www.themealdb.com/images/ingredients/Peanut%20Butter-Medium.png', 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:40:01'),
+(15, 3, 'Peanut Butter', 'peanut-butter', NULL, 'GDP-PROD-015', 549, NULL, 99, 'https://www.themealdb.com/images/ingredients/Peanut%20Butter-Medium.png', 1, 1, 3.00, 1, '2026-09-09 01:12:49', '2026-10-01 05:53:50'),
 (16, 4, 'Salted Potato Chips', 'salted-potato-chips', NULL, 'GDP-PROD-016', 199, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
 (17, 4, 'Butter Popcorn', 'butter-popcorn', NULL, 'GDP-PROD-017', 249, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
 (18, 4, 'Roasted Trail Mix', 'roasted-trail-mix', NULL, 'GDP-PROD-018', 549, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
@@ -880,7 +884,7 @@ INSERT INTO `products` (`id`, `category_id`, `name`, `slug`, `description`, `sku
 (49, 15, 'Diapers Value Pack', 'diapers-value-pack', NULL, 'GDP-PROD-049', 1499, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
 (50, 15, 'Baby Wipes', 'baby-wipes', NULL, 'GDP-PROD-050', 299, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
 (51, 15, 'Baby Lotion', 'baby-lotion', NULL, 'GDP-PROD-051', 449, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 04:59:58'),
-(52, 16, 'Paper Towels', 'paper-towels', NULL, 'GDP-PROD-052', 399, NULL, 98, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:44:27'),
+(52, 16, 'Paper Towels', 'paper-towels', NULL, 'GDP-PROD-052', 399, NULL, 98, NULL, 1, 1, 5.00, 1, '2026-09-09 01:12:49', '2026-10-01 05:56:24'),
 (53, 16, 'Trash Bags', 'trash-bags', NULL, 'GDP-PROD-053', 349, NULL, 98, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:44:27'),
 (54, 16, 'Aluminium Foil', 'aluminium-foil', NULL, 'GDP-PROD-054', 299, NULL, 100, NULL, 1, 1, NULL, 0, '2026-09-09 01:12:49', '2026-09-30 06:44:27'),
 (55, 1, 'Organic Lemon', 'organic-lemon', 'Fresh lemons are vibrant, smooth, and citrus-scented oval fruits packed with a sharp, clean sourness and rich Vitamin C content.', 'LM343235', 100, 200, 99, '/api/media/file/products/gJE1AAvXFXjxY2CH8ViP0UIRt53SNXLZOD89SVxt.webp', 1, 0, NULL, 0, '2026-09-15 07:49:05', '2026-09-21 23:15:32');
@@ -921,9 +925,26 @@ CREATE TABLE `product_reviews` (
   `rating` tinyint(3) UNSIGNED NOT NULL,
   `comment` text DEFAULT NULL,
   `is_hidden` tinyint(1) NOT NULL DEFAULT 0,
+  `approved_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `product_reviews`
+--
+
+INSERT INTO `product_reviews` (`id`, `order_id`, `product_id`, `user_id`, `rating`, `comment`, `is_hidden`, `approved_at`, `created_at`, `updated_at`) VALUES
+(1, 6, 7, 17, 5, 'Fresh and creamy, arrived cold. Will buy again.', 0, '2026-10-01 05:53:50', '2026-10-01 05:53:50', '2026-10-01 05:53:50'),
+(2, 9, 1, 17, 4, 'Good ripe bananas, a couple were a bit soft.', 0, '2026-10-01 05:53:50', '2026-10-01 05:53:50', '2026-10-01 05:53:50'),
+(3, 11, 8, 15, 5, 'Thick yogurt, great with honey.', 0, '2026-10-01 05:53:50', '2026-10-01 05:53:50', '2026-10-01 05:53:50'),
+(4, 11, 6, 15, 4, 'Eggs well packed, none broken.', 0, '2026-10-01 05:53:50', '2026-10-01 05:53:50', '2026-10-01 05:53:50'),
+(5, 14, 11, 17, 5, 'Rice cooks fluffy every time.', 0, '2026-10-01 05:53:50', '2026-10-01 05:53:50', '2026-10-01 05:53:50'),
+(6, 14, 15, 17, 3, 'Tasty but the jar was smaller than I expected.', 0, '2026-10-01 05:53:50', '2026-10-01 05:53:50', '2026-10-01 05:53:50'),
+(7, 22, 9, 17, 5, 'Sharp and full of flavour.', 0, '2026-10-01 05:53:50', '2026-10-01 05:53:50', '2026-10-01 05:53:50'),
+(8, 27, 2, 15, 4, 'Crunchy apples, nice and sweet.', 0, '2026-10-01 05:53:50', '2026-10-01 05:53:50', '2026-10-01 05:53:50'),
+(9, 27, 5, 15, 2, 'Two avocados were overripe.', 0, '2026-10-01 05:56:16', '2026-10-01 05:53:50', '2026-10-01 05:56:16'),
+(10, 29, 52, 17, 5, 'Strong paper towels, good value.', 0, '2026-10-01 05:56:32', '2026-10-01 05:53:50', '2026-10-01 05:56:32');
 
 -- --------------------------------------------------------
 
@@ -1127,7 +1148,7 @@ CREATE TABLE `settings` (
 --
 
 INSERT INTO `settings` (`key`, `value`, `created_at`, `updated_at`) VALUES
-('branding', '{\"v\": {\"store_name\": \"TUDEE SHOPPING CENTER\", \"tagline\": \"Fresh groceries, less fuss\", \"logo_url\": \"\\/api\\/media\\/file\\/products\\/6ECwKgzIG0wA7s2ieBehAp3jO5V9rrPJyJGLdYWo.png\", \"favicon_url\": \"\\/api\\/media\\/file\\/products\\/JKutAMU8COTNwZAHl1LEPmh1Rjf2SU39wQF5HYnR.jpg\", \"theme\": \"light\", \"layout_width\": \"boxed\", \"color_brand\": \"#1f7a3d\", \"color_accent\": \"#ffd23f\", \"color_heading\": \"#18211c\", \"contact_email\": \"test@example.com\"}}', '2026-09-09 01:31:48', '2026-09-28 23:09:03'),
+('branding', '{\"v\":{\"store_name\":\"TUDEE SHOPPING CENTER\",\"tagline\":\"Fresh groceries, less fuss\",\"logo_url\":\"\\/api\\/media\\/file\\/products\\/6ECwKgzIG0wA7s2ieBehAp3jO5V9rrPJyJGLdYWo.png\",\"favicon_url\":\"\\/api\\/media\\/file\\/products\\/JKutAMU8COTNwZAHl1LEPmh1Rjf2SU39wQF5HYnR.jpg\",\"theme\":\"light\",\"layout_width\":\"full\",\"color_brand\":\"#1f7a3d\",\"color_accent\":\"#ffd23f\",\"color_heading\":\"#18211c\",\"contact_email\":\"test@example.com\",\"contact_phone\":null,\"contact_address\":\"Kakatown Highway, Margibi County, Kakata, Liberia\"}}', '2026-09-09 01:31:48', '2026-10-01 05:51:05'),
 ('checkout_fees', '{\"v\":{\"delivery_mode\":\"fixed\",\"delivery_fee_cents\":299,\"delivery_near_fee_cents\":199,\"delivery_far_fee_cents\":599,\"free_delivery_threshold_cents\":3500,\"handling_fee_cents\":99,\"small_cart_fee_cents\":199,\"small_cart_min_cents\":1000,\"tax_rate_bps\":887}}', '2026-09-10 07:26:50', '2026-09-10 07:26:50'),
 ('cod_enabled', '{\"v\":true}', '2026-09-10 07:26:49', '2026-09-10 07:26:49'),
 ('footer', '{\"v\":{\"copyright\":\"\\u00a9 {year} Tudee Shopping Center\",\"app_store_url\":\"https:\\/\\/apps.apple.com\\/app\\/grocerly-demo\",\"play_store_url\":\"https:\\/\\/play.google.com\\/store\\/apps\\/details?id=com.grocerly.demo\",\"socials\":{\"facebook\":\"https:\\/\\/facebook.com\\/grocerly\",\"x\":\"https:\\/\\/x.com\\/grocerly\",\"instagram\":\"https:\\/\\/instagram.com\\/grocerly\",\"linkedin\":\"https:\\/\\/www.linkedin.com\\/company\\/grocerly\",\"youtube\":\"https:\\/\\/www.youtube.com\\/@grocerly\"},\"links\":[],\"note\":\"Tudee Shopping Center delivers fresh groceries and household essentials from a store near you.\"}}', '2026-09-09 01:12:49', '2026-09-30 06:27:07');
@@ -1721,7 +1742,7 @@ ALTER TABLE `jobs`
 -- AUTO_INCREMENT for table `migrations`
 --
 ALTER TABLE `migrations`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=71;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=73;
 
 --
 -- AUTO_INCREMENT for table `orders`
@@ -1751,7 +1772,7 @@ ALTER TABLE `pages`
 -- AUTO_INCREMENT for table `personal_access_tokens`
 --
 ALTER TABLE `personal_access_tokens`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=192;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=196;
 
 --
 -- AUTO_INCREMENT for table `products`
@@ -1769,7 +1790,7 @@ ALTER TABLE `product_images`
 -- AUTO_INCREMENT for table `product_reviews`
 --
 ALTER TABLE `product_reviews`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `product_variants`
