@@ -445,3 +445,4 @@ button.admin-bell-more:hover{text-decoration:underline}
 .admin-chat-rating-c{flex-basis:100%;color:var(--ink);font-size:13px;line-height:1.4}
 .admin-top-tab.open-orders .tab-badge{background:#e07a00}
 .admin-cancel-reason{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}.admin-cancel-reason select,.admin-cancel-reason input{font:inherit;font-size:12px;padding:5px 8px;border:1px solid #d9ddd4;border-radius:8px;max-width:220px}
+.admin-demo-box{display:inline-flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 14px;border:1px solid #d9ddd4;border-radius:12px;background:#fff}
