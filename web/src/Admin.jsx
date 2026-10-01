@@ -235,10 +235,14 @@ const MD_GUIDE = [
 const dollars = (cents) => ((cents ?? 0) / 100).toFixed(2)
 const toCents = (value) => Math.max(0, Math.round(Number(value || 0) * 100))
 
+// One mute switch for every admin sound (the speaker button in the top bar).
+const adminSoundMuted = () => { try { return localStorage.getItem('gdp_support_muted') === '1' } catch { return false } }
+
 // Alert for a new customer support message. Web Audio => no asset/CSP.
 // A two-run DESCENDING tone — clearly audible, but distinct from the ASCENDING
 // new-order alert so the admin can tell them apart by ear.
 function playChime() {
+  if (adminSoundMuted()) return
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext
     if (!Ctx) return
@@ -266,6 +270,7 @@ function playChime() {
 
 // A more insistent alert for a NEW ORDER to pack — two rising three-note runs.
 function playOrderAlert() {
+  if (adminSoundMuted()) return
   try {
     const Ctx = window.AudioContext || window.webkitAudioContext
     if (!Ctx) return
@@ -1750,7 +1755,7 @@ export default function Admin({ token, onLogout }) {
             )}
           </div>
           <div className="admin-bell-wrap">
-            <button className="admin-close soundtoggle" type="button" title="New orders &amp; chat messages" aria-expanded={speakerOpen} onClick={() => setSpeakerOpen((v) => !v)}>
+            <button className="admin-close soundtoggle" type="button" title={soundMuted ? 'All admin sounds are off' : 'All admin sounds are on'} aria-expanded={speakerOpen} onClick={() => setSpeakerOpen((v) => !v)}>
               {soundMuted ? '🔇' : '🔊'}
               {(visibleAwaitingPacking.length + pendingThreads.length) > 0 && (
                 <span className="admin-bell-badge">{(visibleAwaitingPacking.length + pendingThreads.length) > 99 ? '99+' : visibleAwaitingPacking.length + pendingThreads.length}</span>
@@ -1760,7 +1765,7 @@ export default function Admin({ token, onLogout }) {
               <div className="admin-bell-pop" role="menu">
                 <h4>New orders &amp; chats</h4>
                 <button type="button" className="admin-bell-mute" onClick={() => setSoundMuted((m) => { const next = !m; try { localStorage.setItem('gdp_support_muted', next ? '1' : '0') } catch { /* ignore */ } return next })}>
-                  {soundMuted ? '🔇 Sound is muted — tap to unmute' : '🔊 Sound is on — tap to mute'}
+                  {soundMuted ? '🔇 All admin sounds are off — tap to turn on' : '🔊 All admin sounds are on — tap to turn off'}
                 </button>
                 {visibleAwaitingPacking.length === 0 && pendingThreads.length === 0 ? <p className="muted">Nothing new.</p> : (
                   <>
