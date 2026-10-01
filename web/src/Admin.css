@@ -459,4 +459,4 @@ button.admin-bell-more:hover{text-decoration:underline}
 .chart-line-y.left{text-align:right}.chart-line-y.right{text-align:left}
 .chart-line .chart-grid{stroke:#e9ece5;stroke-width:.6}
 .chart-line-y b{position:absolute;top:-18px;font-weight:600;color:var(--ink,#20291f)}.chart-line-y.left b{right:0}.chart-line-y.right b{left:0}.chart-line-plot{margin-top:20px}
-.hm-cancel-key{display:inline-block;width:10px;height:10px;border-radius:2px;background:#f4b4aa;vertical-align:middle}
+.hm-cancel-key{display:inline-block;width:10px;height:10px;border-radius:2px;background:linear-gradient(to top,rgba(214,69,50,.6) 40%,rgba(63,125,67,.6) 40%);vertical-align:middle}

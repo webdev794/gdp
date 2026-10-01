@@ -164,6 +164,13 @@ export function Heatmap({ rows, matrix, peak, cols, format = (v) => v, cellTitle
   if (!grid.length || !width) return <p className="chart-empty">No activity yet.</p>
 
   const shade = (v) => (v <= 0 ? '#f1f3ef' : `rgba(63,125,67,${(0.15 + (v / max) * 0.85).toFixed(3)})`)
+  // Part of the cell (bottom-up) is red for the share that was cancelled, rest green; both by intensity.
+  const fill = (v, bad) => {
+    if (v <= 0 || bad <= 0) return shade(v)
+    const alpha = (0.15 + (v / max) * 0.85).toFixed(3)
+    const pct = Math.round((Math.min(bad, v) / v) * 100)
+    return `linear-gradient(to top, rgba(214,69,50,${alpha}) ${pct}%, rgba(63,125,67,${alpha}) ${pct}%)`
+  }
 
   return (
     <div className="chart-heatmap" style={{ '--hm-cols': width }}>
@@ -175,7 +182,7 @@ export function Heatmap({ rows, matrix, peak, cols, format = (v) => v, cellTitle
               <i
                 key={c}
                 className="hm-cell"
-                style={{ background: alert?.[r]?.[c] > 0 ? '#f4b4aa' : shade(value) }}
+                style={{ background: fill(value, alert?.[r]?.[c] ?? 0) }}
                 title={cellTitle ? cellTitle(r, c, value) : `${rows?.[r] ?? ''} ${c}: ${format(value)}`}
               />
             ))}
