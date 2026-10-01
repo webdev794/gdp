@@ -353,6 +353,8 @@ export default function Admin({ token, onClose }) {
   const [categories, setCategories] = useState([])
   const [customers, setCustomers] = useState([])
   const [reviews, setReviews] = useState([])
+  // Open orders (confirmed → out for delivery) for the top-bar counter.
+  const [openOrders, setOpenOrders] = useState(null)
   const [reviewsMeta, setReviewsMeta] = useState(null)
   const [reviewsPage, setReviewsPage] = useState(1)
   const [reviewsFilter, setReviewsFilter] = useState('')
@@ -593,6 +595,16 @@ export default function Admin({ token, onClose }) {
   useEffect(() => { if (tab === 'categories') loadCategories() }, [tab, loadCategories])
   useEffect(() => { if (tab === 'customers') loadCustomers() }, [tab, loadCustomers])
   useEffect(() => { if (tab === 'reviews') loadReviews() }, [tab, loadReviews])
+
+  const loadOpenOrders = useCallback(() => {
+    fetch(`${API_URL}/admin/orders/open-counts`, { headers: authHeaders() }).then(readJson)
+      .then((data) => { if (data?.data) setOpenOrders(data.data) }).catch(() => {})
+  }, [authHeaders])
+  useEffect(() => {
+    loadOpenOrders()
+    const id = setInterval(loadOpenOrders, 30000)
+    return () => clearInterval(id)
+  }, [loadOpenOrders])
   useEffect(() => { if (tab === 'riders') { loadRiders(); loadStores() } }, [tab, loadRiders, loadStores])
   useEffect(() => { if (tab === 'stores') loadStores() }, [tab, loadStores])
   useEffect(() => { if (tab === 'homepage') { loadBanners(); loadHomeTiles(); loadCategories() } }, [tab, loadBanners, loadHomeTiles, loadCategories])
@@ -1070,6 +1082,7 @@ export default function Admin({ token, onClose }) {
       if (!response.ok) throw new Error(data.message ?? 'That change was not allowed.')
       setOrders((current) => current.map((row) => row.id === order.id ? { ...row, ...data.data } : row))
       loadMetrics()
+      loadOpenOrders()
     } catch (error) { fail(error) } finally { setBusyId(null) }
   }
 
@@ -1130,6 +1143,9 @@ export default function Admin({ token, onClose }) {
         )}
         {itemsReturned && (
           <span className="admin-note" style={{ color: '#2f6d34' }} title={`Confirmed ${new Date(order.items_returned_at).toLocaleString()}`}>✓ items returned</span>
+        )}
+        {['confirmed', 'packing', 'ready_for_delivery', 'out_for_delivery'].includes(order.status) && (
+          <button type="button" disabled={busyId === order.id} className="act" title="Customer collected it at the store — closes the order without a courier" onClick={() => { if (window.confirm(`Mark order #${order.id} as picked up by the customer? This completes the order.`)) patchOrder(order, { picked_up: true }) }}>Customer picked up</button>
         )}
         {steps.map(([status, label]) => (
           <button key={status} type="button" disabled={busyId === order.id} className={status === 'cancelled' ? 'act danger' : 'act'} onClick={() => patchOrder(order, { status })}>{label}</button>
@@ -1642,6 +1658,11 @@ export default function Admin({ token, onClose }) {
         <button className="admin-menu-toggle" type="button" aria-label={navOpen ? 'Hide menu' : 'Show menu'} aria-expanded={navOpen} onClick={toggleNav}>☰</button>
         <div className="admin-brand"><span>g</span> Admin console</div>
         <div className="admin-bar-right">
+          {openOrders && (
+            <button type="button" className={`admin-top-tab${openOrders.total > 0 ? ' open-orders' : ''}`} title={`New ${openOrders.by_status.confirmed} · Packing ${openOrders.by_status.packing} · Ready ${openOrders.by_status.ready_for_delivery} · Out for delivery ${openOrders.by_status.out_for_delivery}`} onClick={() => { setStatusFilter('all'); setOrdersPage(1); goTab('orders') }}>
+              Open orders<span className="tab-badge">{openOrders.total}</span>
+            </button>
+          )}
           {TOP_TABS.map((name) => (
             <button key={name} type="button" className={`admin-top-tab${tab === name ? ' active' : ''}`} onClick={() => goTab(name)}>
               {TAB_LABELS[name]}{name === 'support' && supportBadge > 0 && <span className="tab-badge">{supportBadge}</span>}

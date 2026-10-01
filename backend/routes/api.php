@@ -122,6 +122,7 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::delete('/riders/{user}', [AdminRiderController::class, 'destroy']);
     Route::post('/riders/{user}/cash-settle', [AdminRiderController::class, 'settleCash']);
     Route::get('/orders', [AdminOrderController::class, 'index']);
+    Route::get('/orders/open-counts', [AdminOrderController::class, 'openCounts']);
     Route::get('/orders/{order}', [AdminOrderController::class, 'show']);
     Route::patch('/orders/{order}', [AdminOrderController::class, 'update']);
     Route::post('/orders/{order}/refund', [PaymentController::class, 'refund']);

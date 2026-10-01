@@ -70,6 +70,16 @@ class AdminOrderController extends Controller
         return response()->json(['data' => $order]);
     }
 
+    /** Open orders still to be handled, for the admin top-bar counter. */
+    public function openCounts(): JsonResponse
+    {
+        $open = ['confirmed', 'packing', 'ready_for_delivery', 'out_for_delivery'];
+        $counts = Order::whereIn('status', $open)->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
+        $byStatus = collect($open)->mapWithKeys(fn ($s) => [$s => (int) ($counts[$s] ?? 0)]);
+
+        return response()->json(['data' => ['total' => $byStatus->sum(), 'by_status' => $byStatus]]);
+    }
+
     public function update(Request $request, Order $order): JsonResponse
     {
         $validated = $request->validate([
@@ -79,7 +89,26 @@ class AdminOrderController extends Controller
             'cash_collected' => ['sometimes', 'boolean'],
             'refunded' => ['sometimes', 'boolean'],
             'items_returned' => ['sometimes', 'boolean'],
+            'picked_up' => ['sometimes', 'accepted'],
         ]);
+
+        // Customer collected the order at the store: close it in one step, with
+        // no rider involved (any pending rider offer is dropped).
+        if ($validated['picked_up'] ?? false) {
+            if (! in_array($order->status, ['confirmed', 'packing', 'ready_for_delivery', 'out_for_delivery'], true)) {
+                return response()->json(['message' => "An order that is {$order->status} cannot be marked as picked up."], 422);
+            }
+            $order->update([
+                'status' => 'completed',
+                'delivered_at' => now(),
+                'courier_name' => 'Customer pickup',
+                'delivery_partner_id' => null,
+                'rider_offer_expires_at' => null,
+                'rider_accepted_at' => null,
+            ]);
+
+            return $this->updatedResponse($order);
+        }
 
         if (! array_key_exists('status', $validated)
             && ! array_key_exists('courier_name', $validated)
@@ -215,6 +244,12 @@ class AdminOrderController extends Controller
 
         // Marking delivered, or collecting cash on a delivered order, sends the
         // customer their summary email with the PDF bill.
+        return $this->updatedResponse($order);
+    }
+
+    /** Receipt email if just delivered, then the order as the admin list shows it. */
+    private function updatedResponse(Order $order): JsonResponse
+    {
         $order->refresh()->sendDeliveredReceiptIfReady();
 
         $fresh = $order->fresh()->load([
