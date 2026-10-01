@@ -388,19 +388,28 @@ class AdminController extends Controller
      */
     public function ordersInsights(Request $request): JsonResponse
     {
-        $validated = $request->validate(['tz' => ['sometimes', 'nullable', 'string']]);
+        $validated = $request->validate([
+            'tz' => ['sometimes', 'nullable', 'string'],
+            'month' => ['sometimes', 'nullable', 'date_format:Y-m'], // one month: a row per day instead of per weekday
+        ]);
         $tz = $this->resolveTz($validated['tz'] ?? null);
-        $since = now($tz)->subDays(90)->startOfDay();
-        $matrix = array_fill(0, 7, array_fill(0, 24, 0));
+        $month = ! empty($validated['month']) ? Carbon::createFromFormat('Y-m-d', $validated['month'].'-01', $tz)->startOfDay() : null;
+        $since = $month ?? now($tz)->subDays(90)->startOfDay();
+        $until = $month?->copy()->endOfMonth();
+        $rows = $month
+            ? array_map(fn (int $d): string => $month->copy()->day($d)->format('D j'), range(1, $month->daysInMonth))
+            : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        $matrix = array_fill(0, count($rows), array_fill(0, 24, 0));
         $cancelled = $matrix; // same grid, cancelled orders only
         $peak = 0;
 
         Order::query()
             ->where('created_at', '>=', $since->copy()->utc())
+            ->when($until, fn ($q) => $q->where('created_at', '<=', $until->copy()->utc()))
             ->get(['created_at', 'status'])
-            ->each(function (Order $order) use (&$matrix, &$cancelled, &$peak, $tz): void {
+            ->each(function (Order $order) use (&$matrix, &$cancelled, &$peak, $tz, $month): void {
                 $local = $order->created_at->copy()->setTimezone($tz);
-                $row = (int) $local->dayOfWeekIso - 1; // Mon=0 .. Sun=6
+                $row = $month ? (int) $local->day - 1 : (int) $local->dayOfWeekIso - 1; // day of month, or Mon=0 .. Sun=6
                 $col = (int) $local->format('G');       // 0..23
                 $matrix[$row][$col]++;
                 if ($order->status === 'cancelled') {
@@ -411,11 +420,12 @@ class AdminController extends Controller
 
         return response()->json(['data' => [
             'activity' => [
-                'rows' => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                'rows' => $rows,
                 'matrix' => $matrix,
                 'cancelled' => $cancelled,
                 'peak' => $peak,
                 'since' => $since->toDateString(),
+                'month' => $month?->format('Y-m'),
             ],
         ]]);
     }

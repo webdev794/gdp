@@ -361,6 +361,9 @@ export default function Admin({ token, onLogout }) {
   const [compareDaysDraft, setCompareDaysDraft] = useState('7')
   const [compareMetric, setCompareMetric] = useState('orders') // 'orders' | 'revenue_cents'
   const [insights, setInsights] = useState(null)
+  // 'When orders come in' grid: a month (YYYY-MM, row per day) or '' = last 90 days by weekday.
+  const [heatWeek, setHeatWeek] = useState(0) // 0 = whole month, 1–4 = days 1–7, 8–14, 15–21, 22–end
+  const [heatMonth, setHeatMonth] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` })
   const [orders, setOrders] = useState([])
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
@@ -511,9 +514,9 @@ export default function Admin({ token, onLogout }) {
   }, [authHeaders, comparePreset, compareDays])
 
   const loadInsights = useCallback(() => {
-    fetchJson(`${API_URL}/admin/metrics/insights?tz=${encodeURIComponent(ADMIN_TZ)}`, { headers: authHeaders() })
+    fetchJson(`${API_URL}/admin/metrics/insights?tz=${encodeURIComponent(ADMIN_TZ)}${heatMonth ? `&month=${heatMonth}` : ''}`, { headers: authHeaders() })
       .then((data) => setInsights(data.data)).catch(() => setMessage('Could not load dashboard insights.'))
-  }, [authHeaders])
+  }, [authHeaders, heatMonth])
 
   const loadOrders = useCallback(() => {
     const qs = new URLSearchParams({ page: ordersPage, per_page: pageSize })
@@ -1962,17 +1965,45 @@ export default function Admin({ token, onLogout }) {
 
           <section className="admin-panel">
             <h3 className="admin-subhead">When orders come in</h3>
+            <div className="admin-toolbar heat-pick">
+              <select aria-label="Month" value={heatMonth ? Number(heatMonth.slice(5)) : ''} onChange={(event) => { const m = event.target.value; setHeatMonth(m ? `${heatMonth ? heatMonth.slice(0, 4) : new Date().getFullYear()}-${String(m).padStart(2, '0')}` : '') }}>
+                <option value="">Last 90 days (by weekday)</option>
+                {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((name, i) => <option key={name} value={i + 1}>{name}</option>)}
+              </select>
+              {heatMonth && (
+                <select aria-label="Week" value={heatWeek} onChange={(event) => setHeatWeek(Number(event.target.value))}>
+                  <option value={0}>Whole month</option>
+                  <option value={1}>First week (1–7)</option>
+                  <option value={2}>Second week (8–14)</option>
+                  <option value={3}>Third week (15–21)</option>
+                  <option value={4}>Fourth week (22–end)</option>
+                </select>
+              )}
+              {heatMonth && (
+                <select aria-label="Year" value={heatMonth.slice(0, 4)} onChange={(event) => setHeatMonth(`${event.target.value}-${heatMonth.slice(5)}`)}>
+                  {Array.from({ length: Math.max(1, new Date().getFullYear() - 2026 + 1) }, (_, i) => 2026 + i).map((y) => <option key={y} value={y}>{y}</option>)}
+                </select>
+              )}
+            </div>
             {!insights ? <Loading>Loading…</Loading> : (
               <>
+                {(() => {
+                  const act = insights.activity ?? {}
+                  const [lo, hi] = act.month && heatWeek ? [(heatWeek - 1) * 7, heatWeek === 4 ? undefined : heatWeek * 7] : [0, undefined]
+                  const rows = (act.rows ?? []).slice(lo, hi)
+                  const cancelled = (act.cancelled ?? []).slice(lo, hi)
+                  return (
                 <Heatmap
-                  rows={insights.activity?.rows ?? []}
-                  matrix={insights.activity?.matrix ?? []}
-                  peak={insights.activity?.peak ?? 0}
-                  alert={insights.activity?.cancelled}
+                  rows={rows}
+                  matrix={(act.matrix ?? []).slice(lo, hi)}
+                  peak={heatWeek && act.month ? 0 : (act.peak ?? 0)}
+                  alert={cancelled}
                   cols={['00:00', '23:00']}
-                  cellTitle={(r, c, v) => { const x = insights.activity?.cancelled?.[r]?.[c] ?? 0; return `${(insights.activity?.rows ?? [])[r]} ${String(c).padStart(2, '0')}:00 — ${v} order${v === 1 ? '' : 's'}${x ? ` (${x} cancelled)` : ''}` }}
+                  cellTitle={(r, c, v) => { const x = cancelled[r]?.[c] ?? 0; return `${rows[r]} ${String(c).padStart(2, '0')}:00 — ${v} order${v === 1 ? '' : 's'}${x ? ` (${x} cancelled)` : ''}` }}
                 />
-                <p className="muted chart-range">Orders by weekday and hour &middot; <span className="hm-cancel-key" /> red part = share of orders cancelled &middot; since {insights.activity?.since ?? ''}</p>
+                  )
+                })()}
+                <p className="muted chart-range">{insights.activity?.month ? 'Orders by day and hour' : 'Orders by weekday and hour'} &middot; <span className="hm-cancel-key" /> red part = share of orders cancelled &middot; {insights.activity?.month ? new Date(`${insights.activity.month}-01T00:00`).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : `since ${insights.activity?.since ?? ''}`}</p>
               </>
             )}
           </section>
