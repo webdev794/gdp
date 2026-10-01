@@ -3183,7 +3183,7 @@ export default function Admin({ token, onClose }) {
       </div>
 
       <footer className="admin-footer">
-        <span>© {new Date().getFullYear()} {storeName || 'TUDEE SHOPPING CENTER'} · Admin console</span>
+        <span>© {new Date().getFullYear()} {storeName || 'TUDEE SHOPPING CENTER'}</span>
         <a href={import.meta.env.BASE_URL || '/'} target="_blank" rel="noopener">View store ↗</a>
       </footer>
 
