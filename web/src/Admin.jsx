@@ -354,7 +354,7 @@ export default function Admin({ token, onLogout }) {
   const [metrics, setMetrics] = useState(null)
   const [chart, setChart] = useState(null)
   const [chartBucket, setChartBucket] = useState('day')
-  const [chartMetrics, setChartMetrics] = useState(['orders']) // any non-empty subset of CHART_LINES keys
+  const [chartMetrics, setChartMetrics] = useState(['orders', 'revenue_cents', 'refunded_cents']) // any non-empty subset of CHART_LINES keys
   const [compare, setCompare] = useState(null)
   const [comparePreset, setComparePreset] = useState('day')
   const [compareDays, setCompareDays] = useState(7)
