@@ -362,7 +362,6 @@ export default function Admin({ token, onLogout }) {
   const [compareMetric, setCompareMetric] = useState('orders') // 'orders' | 'revenue_cents'
   const [insights, setInsights] = useState(null)
   // 'When orders come in' grid: a month (YYYY-MM, row per day) or '' = last 90 days by weekday.
-  const [heatWeek, setHeatWeek] = useState(0) // 0 = whole month, 1–4 = days 1–7, 8–14, 15–21, 22–end
   const [heatMonth, setHeatMonth] = useState(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` })
   const [orders, setOrders] = useState([])
   const [products, setProducts] = useState([])
@@ -1971,15 +1970,6 @@ export default function Admin({ token, onLogout }) {
                 {['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((name, i) => <option key={name} value={i + 1}>{name}</option>)}
               </select>
               {heatMonth && (
-                <select aria-label="Week" value={heatWeek} onChange={(event) => setHeatWeek(Number(event.target.value))}>
-                  <option value={0}>Whole month</option>
-                  <option value={1}>First week (1–7)</option>
-                  <option value={2}>Second week (8–14)</option>
-                  <option value={3}>Third week (15–21)</option>
-                  <option value={4}>Fourth week (22–end)</option>
-                </select>
-              )}
-              {heatMonth && (
                 <select aria-label="Year" value={heatMonth.slice(0, 4)} onChange={(event) => setHeatMonth(`${event.target.value}-${heatMonth.slice(5)}`)}>
                   {Array.from({ length: Math.max(1, new Date().getFullYear() - 2026 + 1) }, (_, i) => 2026 + i).map((y) => <option key={y} value={y}>{y}</option>)}
                 </select>
@@ -1989,14 +1979,13 @@ export default function Admin({ token, onLogout }) {
               <>
                 {(() => {
                   const act = insights.activity ?? {}
-                  const [lo, hi] = act.month && heatWeek ? [(heatWeek - 1) * 7, heatWeek === 4 ? undefined : heatWeek * 7] : [0, undefined]
-                  const rows = (act.rows ?? []).slice(lo, hi)
-                  const cancelled = (act.cancelled ?? []).slice(lo, hi)
+                  const rows = act.rows ?? []
+                  const cancelled = act.cancelled ?? []
                   return (
                 <Heatmap
                   rows={rows}
-                  matrix={(act.matrix ?? []).slice(lo, hi)}
-                  peak={heatWeek && act.month ? 0 : (act.peak ?? 0)}
+                  matrix={act.matrix ?? []}
+                  peak={act.peak ?? 0}
                   alert={cancelled}
                   cols={['00:00', '23:00']}
                   cellTitle={(r, c, v) => { const x = cancelled[r]?.[c] ?? 0; return `${rows[r]} ${String(c).padStart(2, '0')}:00 — ${v} order${v === 1 ? '' : 's'}${x ? ` (${x} cancelled)` : ''}` }}
