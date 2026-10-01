@@ -83,7 +83,8 @@ class AdminMetricsTimeseriesTest extends TestCase
         $response->assertJsonPath('data.totals.orders', 2)
             ->assertJsonPath('data.by_status.completed', 1)
             ->assertJsonPath('data.by_status.cancelled', 1)
-            ->assertJsonPath('data.by_payment_method.cod', 1)
+            // Payment pie counts delivered orders only — the cancelled COD order is left out.
+            ->assertJsonPath('data.by_payment_method.cod', null)
             ->assertJsonPath('data.by_payment_method.card', 1);
 
         $series = $response->json('data.series');
