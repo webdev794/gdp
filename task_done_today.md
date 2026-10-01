@@ -20,7 +20,7 @@
 
 ## Setup / housekeeping
 
-- Project switched to PHP at `D:\xampp\php84` (docs updated). `D:\xampp8-2-12` not deleted — it still holds a `trainerwallet` database.
+- Project switched to PHP at `D:\xampp\php84` (php.ini now loads its own extensions); old `D:\xampp8-2-12` deleted. MySQL start-up crash fixed (damaged `mysql.proxies_priv` restored from XAMPP's backup).
 - iOS build workflow moved to the repo root (`.github/workflows/flutter_ios.yml`) so GitHub runs it.
 - All project `.md` files updated; branch `TSC_v14` pushed to GitHub.
 
