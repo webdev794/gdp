@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import MapPicker from './MapPicker'
 import { Delta, Heatmap, LineChart, PieChart } from './Charts'
 import { renderMarkdown } from './markdown'
@@ -1835,10 +1835,19 @@ export default function Admin({ token, onClose }) {
       <div className="admin-body">
         <nav className="admin-sidebar" aria-label="Admin sections">
           {PRIMARY_TABS.map((name) => (
-            <button key={name} type="button" className={tab === name ? 'active' : ''} onClick={() => goTab(name)}>
-              <span className="nav-ico" aria-hidden>{TAB_ICONS[name]}</span>
-              <span className="nav-label">{TAB_LABELS[name]}</span>
-            </button>
+            <Fragment key={name}>
+              <button type="button" className={tab === name ? 'active' : ''} onClick={() => goTab(name)}>
+                <span className="nav-ico" aria-hidden>{TAB_ICONS[name]}</span>
+                <span className="nav-label">{TAB_LABELS[name]}</span>
+              </button>
+              {/* WordPress-style submenu while in Products */}
+              {name === 'products' && tab === 'products' && (
+                <div className="admin-nav-sub">
+                  <button type="button" className={!productForm ? 'active' : ''} onClick={() => goTab('products')}>All products</button>
+                  <button type="button" className={productForm && !productForm.id ? 'active' : ''} onClick={() => { goTab('products'); if (!stores.length) loadStores(); setProductForm({ ...EMPTY_PRODUCT, category_id: categories[0]?.id ?? '' }) }}>Add new product</button>
+                </div>
+              )}
+            </Fragment>
           ))}
 
           {(() => { const inGroup = tab === 'pages' || tab === 'homepage' || tab === 'footer' || tab === 'formatting'; const open = pagesExpanded || inGroup; return <>
@@ -2133,7 +2142,7 @@ export default function Admin({ token, onClose }) {
                 <option value="real">Real only</option>
               </select>
             </label>
-            <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ ...EMPTY_PRODUCT, category_id: categories[0]?.id ?? '' }); scrollFormIntoView('admin-product-form') }}>New product</button>
+            <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ ...EMPTY_PRODUCT, category_id: categories[0]?.id ?? '' }); scrollFormIntoView('admin-product-form') }}>Add new product</button>
           </div>}
           {!productForm && <div className="admin-toolbar admin-demo-box">
             <strong>Demo products:</strong>
@@ -2148,7 +2157,7 @@ export default function Admin({ token, onClose }) {
           {productForm && (
             <form id="admin-product-form" className="admin-form" onSubmit={saveProduct}>
               <div className="admin-form-head">
-                <h3>{productForm.id ? `Edit product #${productForm.id}` : 'New product'}</h3>
+                <h3>{productForm.id ? `Edit product #${productForm.id}` : 'Add new product'}</h3>
                 {/* WordPress-style status: Live / Demo (on sale, flagged demo) / Draft (hidden). */}
                 <label className="admin-status-pick">Status
                   <select value={!productForm.is_active ? 'draft' : productForm.is_demo ? 'demo' : 'live'}
