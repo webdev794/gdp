@@ -1968,10 +1968,11 @@ export default function Admin({ token, onLogout }) {
                   rows={insights.activity?.rows ?? []}
                   matrix={insights.activity?.matrix ?? []}
                   peak={insights.activity?.peak ?? 0}
+                  alert={insights.activity?.cancelled}
                   cols={['00:00', '23:00']}
-                  cellTitle={(r, c, v) => `${(insights.activity?.rows ?? [])[r]} ${String(c).padStart(2, '0')}:00 — ${v} order${v === 1 ? '' : 's'}`}
+                  cellTitle={(r, c, v) => { const x = insights.activity?.cancelled?.[r]?.[c] ?? 0; return `${(insights.activity?.rows ?? [])[r]} ${String(c).padStart(2, '0')}:00 — ${v} order${v === 1 ? '' : 's'}${x ? ` (${x} cancelled)` : ''}` }}
                 />
-                <p className="muted chart-range">Orders by weekday and hour &middot; since {insights.activity?.since ?? ''}</p>
+                <p className="muted chart-range">Orders by weekday and hour &middot; <span className="hm-cancel-key" /> light red = had a cancelled order &middot; since {insights.activity?.since ?? ''}</p>
               </>
             )}
           </section>

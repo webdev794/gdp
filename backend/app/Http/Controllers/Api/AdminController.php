@@ -392,16 +392,20 @@ class AdminController extends Controller
         $tz = $this->resolveTz($validated['tz'] ?? null);
         $since = now($tz)->subDays(90)->startOfDay();
         $matrix = array_fill(0, 7, array_fill(0, 24, 0));
+        $cancelled = $matrix; // same grid, cancelled orders only
         $peak = 0;
 
         Order::query()
             ->where('created_at', '>=', $since->copy()->utc())
-            ->get(['created_at'])
-            ->each(function (Order $order) use (&$matrix, &$peak, $tz): void {
+            ->get(['created_at', 'status'])
+            ->each(function (Order $order) use (&$matrix, &$cancelled, &$peak, $tz): void {
                 $local = $order->created_at->copy()->setTimezone($tz);
                 $row = (int) $local->dayOfWeekIso - 1; // Mon=0 .. Sun=6
                 $col = (int) $local->format('G');       // 0..23
                 $matrix[$row][$col]++;
+                if ($order->status === 'cancelled') {
+                    $cancelled[$row][$col]++;
+                }
                 $peak = max($peak, $matrix[$row][$col]);
             });
 
@@ -409,6 +413,7 @@ class AdminController extends Controller
             'activity' => [
                 'rows' => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
                 'matrix' => $matrix,
+                'cancelled' => $cancelled,
                 'peak' => $peak,
                 'since' => $since->toDateString(),
             ],

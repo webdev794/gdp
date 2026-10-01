@@ -155,7 +155,8 @@ export function LineChart({ lines }) {
 }
 // Grid of cells shaded by value. rows: string[]; matrix: number[rows][cols];
 // peak: optional pre-computed max; cols: optional [firstLabel, lastLabel] axis.
-export function Heatmap({ rows, matrix, peak, cols, format = (v) => v, cellTitle }) {
+// alert: optional matrix (e.g. cancelled orders) — any cell with a count there is light red.
+export function Heatmap({ rows, matrix, peak, cols, format = (v) => v, cellTitle, alert }) {
   const grid = matrix ?? []
   const width = grid[0]?.length ?? 0
   const max = Math.max(1, peak || 0, ...grid.flat())
@@ -174,7 +175,7 @@ export function Heatmap({ rows, matrix, peak, cols, format = (v) => v, cellTitle
               <i
                 key={c}
                 className="hm-cell"
-                style={{ background: shade(value) }}
+                style={{ background: alert?.[r]?.[c] > 0 ? '#f4b4aa' : shade(value) }}
                 title={cellTitle ? cellTitle(r, c, value) : `${rows?.[r] ?? ''} ${c}: ${format(value)}`}
               />
             ))}
