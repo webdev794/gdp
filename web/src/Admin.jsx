@@ -1894,7 +1894,7 @@ export default function Admin({ token, onClose }) {
               ))}
               <button type="button" className="nav-sub-add" onClick={() => { goTab('pages'); setPagesView('all'); newPage() }}>+ New page</button>
               {(() => { const blogPages = pages.filter((p) => p.footer_group === 'blog'); const blogOpen = blogsExpanded || (tab === 'pages' && (pagesView === 'blogs' || pageForm?.footer_group === 'blog')); return <>
-                <button type="button" className="nav-subgroup-toggle" aria-expanded={blogOpen} onClick={() => setBlogsExpanded((v) => !v)}>Blogs<span className="nav-caret" aria-hidden>{blogOpen ? '▾' : '▸'}</span></button>
+                <button type="button" className="nav-subgroup-toggle" aria-expanded={blogOpen} onClick={() => { setBlogsExpanded(true); goTab('pages'); setPagesView('blogs'); setPageForm(null) }}>Blogs<span className="nav-caret" aria-hidden>{blogOpen ? '▾' : '▸'}</span></button>
                 {blogOpen && (
                   <div className="admin-nav-sub">
                     <button type="button" className={tab === 'pages' && !pageForm && pagesView === 'blogs' ? 'active' : ''} onClick={() => { goTab('pages'); setPagesView('blogs'); setPageForm(null) }}>All blogs ({blogPages.length})</button>
