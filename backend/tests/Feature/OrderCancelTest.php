@@ -89,7 +89,7 @@ class OrderCancelTest extends TestCase
         ]);
         Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
 
-        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'cancelled'])
+        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'cancelled', 'cancel_reason' => 'Item not available'])
             ->assertOk()
             ->assertJsonPath('data.status', 'cancelled')
             ->assertJsonPath('data.payment_status', 'cancelled');

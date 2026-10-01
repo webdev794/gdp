@@ -105,6 +105,8 @@ class OrderModel {
   final Map<String, int> itemRatings;
   /// Gift card balance left for a later order (only in the checkout reply).
   final double? giftCardRemaining;
+  /// Why the store cancelled the order (shown to the customer); null otherwise.
+  final String? cancelReason;
 
   OrderModel({
     required this.id,
@@ -129,6 +131,7 @@ class OrderModel {
     this.riderReviewComment,
     this.itemRatings = const {},
     this.giftCardRemaining,
+    this.cancelReason,
   });
 
   OrderModel copyWith({
@@ -164,6 +167,7 @@ class OrderModel {
       riderReviewComment: riderReviewComment ?? this.riderReviewComment,
       itemRatings: itemRatings ?? this.itemRatings,
       giftCardRemaining: giftCardRemaining,
+      cancelReason: cancelReason,
     );
   }
 
@@ -191,6 +195,7 @@ class OrderModel {
       riderRating: (json['rider']?['rating'] as num?)?.toDouble() ?? 0,
       riderReviewRating: (json['rider_review']?['rating'] as num?)?.toDouble(),
       riderReviewComment: json['rider_review']?['comment'],
+      cancelReason: json['cancelled_by'] == 'admin' && (json['cancel_reason']?.toString() ?? '').isNotEmpty ? json['cancel_reason'].toString() : null,
       giftCardRemaining: (json['gift_card_remaining_cents'] as num?) == null ? null : (json['gift_card_remaining_cents'] as num) / 100.0,
       itemRatings: {
         for (final r in (json['product_reviews'] as List? ?? []))

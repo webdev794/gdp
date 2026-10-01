@@ -45,6 +45,22 @@ class AdminOrderPickupTest extends TestCase
         $this->assertSame('cancelled', $order->fresh()->status);
     }
 
+    public function test_admin_cancel_needs_a_reason_shown_to_the_customer(): void
+    {
+        $order = $this->order('confirmed');
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+
+        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'cancelled'])->assertUnprocessable();
+        $this->assertSame('confirmed', $order->fresh()->status);
+
+        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'cancelled', 'cancel_reason' => 'Store closed / holiday'])->assertOk();
+        $this->assertSame('Store closed / holiday', $order->fresh()->cancel_reason);
+        $this->assertSame('admin', $order->fresh()->cancelled_by);
+
+        Sanctum::actingAs($order->user);
+        $this->getJson('/api/orders')->assertJsonPath('data.0.cancel_reason', 'Store closed / holiday');
+    }
+
     public function test_open_order_counts_for_the_top_bar(): void
     {
         $this->order('confirmed');

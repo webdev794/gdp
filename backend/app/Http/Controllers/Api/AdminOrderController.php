@@ -90,6 +90,8 @@ class AdminOrderController extends Controller
             'refunded' => ['sometimes', 'boolean'],
             'items_returned' => ['sometimes', 'boolean'],
             'picked_up' => ['sometimes', 'accepted'],
+            // Shown to the customer, so an admin cancel must say why.
+            'cancel_reason' => ['required_if:status,cancelled', 'nullable', 'string', 'max:200'],
         ]);
 
         // Customer collected the order at the store: close it in one step, with
@@ -197,6 +199,7 @@ class AdminOrderController extends Controller
 
         if (($changes['status'] ?? null) === 'cancelled') {
             $changes['cancelled_by'] = 'admin';
+            $changes['cancel_reason'] = trim((string) $validated['cancel_reason']);
         }
 
         // A gift card covered the whole order — restoring its balance below

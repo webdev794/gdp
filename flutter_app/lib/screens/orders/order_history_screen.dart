@@ -122,7 +122,7 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
       case 'cancelled':
         badgeBg = Colors.red.shade50;
         badgeText = AppTheme.errorRed;
-        statusLabel = 'CANCELLED';
+        statusLabel = order.cancelReason != null ? 'CANCELLED (${order.cancelReason})' : 'CANCELLED';
         break;
       case 'packing':
         badgeBg = Colors.orange.shade50;

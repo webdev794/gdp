@@ -230,7 +230,10 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
             _buildStepRow(
               icon: Icons.cancel,
               title: 'Order Cancelled',
-              subtitle: 'Any payment taken is refunded to your original method.',
+              subtitle: [
+                if (_currentOrder.cancelReason != null) 'Reason: ${_currentOrder.cancelReason}.',
+                'Any payment taken is refunded to your original method.',
+              ].join(' '),
               isDone: false,
               isCurrent: true,
             )

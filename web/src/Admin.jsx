@@ -57,6 +57,9 @@ const STATUS_LABELS = {
   cancelled: 'Cancelled',
 }
 
+// Reasons an admin can give when cancelling — shown to the customer.
+const CANCEL_REASONS = ['Item not available', 'Store closed / holiday', 'Outside delivery area', 'Please try again later', 'Payment issue', 'Customer requested']
+
 const NEXT_ACTIONS = {
   pending_payment: [['cancelled', 'Cancel']],
   confirmed: [['packing', 'Start packing'], ['cancelled', 'Cancel']],
@@ -355,6 +358,10 @@ export default function Admin({ token, onClose }) {
   const [reviews, setReviews] = useState([])
   // Open orders (confirmed → out for delivery) for the top-bar counter.
   const [openOrders, setOpenOrders] = useState(null)
+  // Cancelling asks for a reason the customer will see; shown only after "Cancel".
+  const [cancelFor, setCancelFor] = useState(null)
+  const [cancelReason, setCancelReason] = useState('')
+  const [cancelOther, setCancelOther] = useState('')
   const [reviewsMeta, setReviewsMeta] = useState(null)
   const [reviewsPage, setReviewsPage] = useState(1)
   const [reviewsFilter, setReviewsFilter] = useState('')
@@ -1144,8 +1151,22 @@ export default function Admin({ token, onClose }) {
         {itemsReturned && (
           <span className="admin-note" style={{ color: '#2f6d34' }} title={`Confirmed ${new Date(order.items_returned_at).toLocaleString()}`}>✓ items returned</span>
         )}
+        {cancelFor === order.id && (
+          <span className="admin-cancel-reason">
+            <select value={cancelReason} onChange={(event) => setCancelReason(event.target.value)} aria-label="Reason for cancelling">
+              <option value="">Reason (shown to customer)…</option>
+              {CANCEL_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+              <option value="other">Other…</option>
+            </select>
+            {cancelReason === 'other' && <input value={cancelOther} maxLength={200} placeholder="Type the reason" onChange={(event) => setCancelOther(event.target.value)} />}
+            <button type="button" className="act danger" disabled={busyId === order.id || !(cancelReason === 'other' ? cancelOther.trim() : cancelReason)}
+              onClick={() => { patchOrder(order, { status: 'cancelled', cancel_reason: cancelReason === 'other' ? cancelOther.trim() : cancelReason }); setCancelFor(null) }}>Confirm cancel</button>
+            <button type="button" className="act ghost" onClick={() => setCancelFor(null)}>Back</button>
+          </span>
+        )}
         {steps.map(([status, label]) => (
-          <button key={status} type="button" disabled={busyId === order.id} className={status === 'cancelled' ? 'act danger' : 'act'} onClick={() => patchOrder(order, { status })}>{label}</button>
+          <button key={status} type="button" disabled={busyId === order.id} className={status === 'cancelled' ? 'act danger' : 'act'}
+            onClick={() => (status === 'cancelled' ? (setCancelFor(order.id), setCancelReason(''), setCancelOther('')) : patchOrder(order, { status }))}>{label}</button>
         ))}
       </>
     )

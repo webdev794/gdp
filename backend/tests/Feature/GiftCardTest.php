@@ -385,7 +385,7 @@ class GiftCardTest extends TestCase
         $this->assertLessThan(5000, $card->balance_cents);
 
         Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
-        $this->patchJson("/api/admin/orders/{$orderId}", ['status' => 'cancelled'])
+        $this->patchJson("/api/admin/orders/{$orderId}", ['status' => 'cancelled', 'cancel_reason' => 'Item not available'])
             ->assertOk()
             ->assertJsonPath('data.payment_status', 'refunded'); // gift card fully covered it
 
