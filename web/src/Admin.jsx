@@ -415,6 +415,7 @@ export default function Admin({ token, onClose }) {
   const [pagePreview, setPagePreview] = useState(false)
   const [pagesExpanded, setPagesExpanded] = useState(false)
   const [blogsExpanded, setBlogsExpanded] = useState(false)
+  const [collapsedMenu, setCollapsedMenu] = useState(null) // sidebar menu whose submenu was closed by a second click
   const [pagesView, setPagesView] = useState('all') // 'all' pages or only 'blogs'
   const [courierDraft, setCourierDraft] = useState({})
   const [riders, setRiders] = useState([])
@@ -1825,19 +1826,24 @@ export default function Admin({ token, onClose }) {
         <nav className="admin-sidebar" aria-label="Admin sections">
           {PRIMARY_TABS.map((name) => (
             <Fragment key={name}>
-              <button type="button" className={tab === name || (name === 'branding' && tab === 'footer') ? 'active' : ''} onClick={() => goTab(name)}>
+              <button type="button" className={tab === name || (name === 'branding' && tab === 'footer') ? 'active' : ''} onClick={() => {
+                // Second click on a menu whose submenu is open closes the submenu.
+                const subOpen = (name === 'products' && tab === 'products') || (name === 'branding' && (tab === 'branding' || tab === 'footer'))
+                if (subOpen && collapsedMenu !== name) { setCollapsedMenu(name); return }
+                setCollapsedMenu(null); goTab(name)
+              }}>
                 <span className="nav-ico" aria-hidden>{TAB_ICONS[name]}</span>
                 <span className="nav-label">{TAB_LABELS[name]}</span>
               </button>
               {/* WordPress-style submenu while in Products */}
-              {name === 'products' && tab === 'products' && (
+              {name === 'products' && tab === 'products' && collapsedMenu !== 'products' && (
                 <div className="admin-nav-sub">
                   <button type="button" className={!productForm ? 'active' : ''} onClick={() => goTab('products')}>All products</button>
                   <button type="button" className={productForm && !productForm.id ? 'active' : ''} onClick={() => { goTab('products'); if (!stores.length) loadStores(); setProductForm({ ...EMPTY_PRODUCT, category_id: categories[0]?.id ?? '' }) }}>Add new product</button>
                 </div>
               )}
               {/* Store settings submenu: Footer */}
-              {name === 'branding' && (tab === 'branding' || tab === 'footer') && (
+              {name === 'branding' && (tab === 'branding' || tab === 'footer') && collapsedMenu !== 'branding' && (
                 <div className="admin-nav-sub">
                   <button type="button" className={tab === 'branding' ? 'active' : ''} onClick={() => goTab('branding')}>Store settings</button>
                   <button type="button" className={tab === 'footer' ? 'active' : ''} onClick={() => goTab('footer')}>Footer</button>
@@ -1846,8 +1852,8 @@ export default function Admin({ token, onClose }) {
             </Fragment>
           ))}
 
-          {(() => { const inBlogs = tab === 'pages' && (pagesView === 'blogs' || pageForm?.footer_group === 'blog'); const inGroup = (tab === 'pages' && !inBlogs) || tab === 'homepage' || tab === 'formatting'; const open = pagesExpanded || inGroup; const blogPages = pages.filter((p) => p.footer_group === 'blog'); const blogOpen = blogsExpanded || inBlogs; return <>
-          <button type="button" className={`nav-group-toggle${inGroup ? ' active' : ''}`} aria-expanded={open} onClick={() => { setPagesExpanded(true); goTab('pages'); setPagesView('all'); setPageForm(null) }}>
+          {(() => { const inBlogs = tab === 'pages' && (pagesView === 'blogs' || pageForm?.footer_group === 'blog'); const inGroup = (tab === 'pages' && !inBlogs) || tab === 'homepage' || tab === 'formatting'; const open = (pagesExpanded || inGroup) && collapsedMenu !== 'pages'; const blogPages = pages.filter((p) => p.footer_group === 'blog'); const blogOpen = (blogsExpanded || inBlogs) && collapsedMenu !== 'blogs'; return <>
+          <button type="button" className={`nav-group-toggle${inGroup ? ' active' : ''}`} aria-expanded={open} onClick={() => { if (open) { setPagesExpanded(false); setCollapsedMenu('pages'); return } setCollapsedMenu(null); setPagesExpanded(true); goTab('pages'); setPagesView('all'); setPageForm(null) }}>
             <span className="nav-ico" aria-hidden>{'\u{1F4C4}'}</span>
             <span className="nav-label">Pages</span>
             <span className="nav-caret" aria-hidden>{open ? '▾' : '▸'}</span>
@@ -1860,7 +1866,7 @@ export default function Admin({ token, onClose }) {
             </div>
           )}
           {/* Blogs: its own menu below Pages */}
-          <button type="button" className={`nav-group-toggle${inBlogs ? ' active' : ''}`} aria-expanded={blogOpen} onClick={() => { setBlogsExpanded(true); goTab('pages'); setPagesView('blogs'); setPageForm(null) }}>
+          <button type="button" className={`nav-group-toggle${inBlogs ? ' active' : ''}`} aria-expanded={blogOpen} onClick={() => { if (blogOpen) { setBlogsExpanded(false); setCollapsedMenu('blogs'); return } setCollapsedMenu(null); setBlogsExpanded(true); goTab('pages'); setPagesView('blogs'); setPageForm(null) }}>
             <span className="nav-ico" aria-hidden>{'\u{1F4DD}'}</span>
             <span className="nav-label">Blogs</span>
             <span className="nav-caret" aria-hidden>{blogOpen ? '▾' : '▸'}</span>
