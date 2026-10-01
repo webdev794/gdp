@@ -18,5 +18,4 @@ Only what is still open. Finished work is listed in `work_done.md` (features) an
 
 ## Housekeeping
 
-- [ ] **Old XAMPP folder `D:\xampp8-2-12`.** The project now uses `D:\xampp`. The old folder still holds a `trainerwallet` database (not in `D:\xampp`) and older copies of `gdp` / `edp`. Move `trainerwallet` first if still needed, then delete the folder to free space on D:.
 - [ ] **Revoke the old GitHub token** (`ghp_KaVO…`, account `caresortsolutions515-afk`) that was in the Flutter app's original project settings.
