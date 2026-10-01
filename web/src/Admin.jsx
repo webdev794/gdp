@@ -1878,7 +1878,7 @@ export default function Admin({ token, onClose }) {
             </Fragment>
           ))}
 
-          {(() => { const inGroup = tab === 'pages' || tab === 'homepage' || tab === 'footer' || tab === 'formatting'; const open = pagesExpanded || inGroup; return <>
+          {(() => { const inBlogs = tab === 'pages' && (pagesView === 'blogs' || pageForm?.footer_group === 'blog'); const inGroup = (tab === 'pages' && !inBlogs) || tab === 'homepage' || tab === 'footer' || tab === 'formatting'; const open = pagesExpanded || inGroup; const blogPages = pages.filter((p) => p.footer_group === 'blog'); const blogOpen = blogsExpanded || inBlogs; return <>
           <button type="button" className={`nav-group-toggle${inGroup ? ' active' : ''}`} aria-expanded={open} onClick={() => setPagesExpanded((v) => !v)}>
             <span className="nav-ico" aria-hidden>{'\u{1F4C4}'}</span>
             <span className="nav-label">Pages</span>
@@ -1889,20 +1889,23 @@ export default function Admin({ token, onClose }) {
               <button type="button" className={tab === 'homepage' ? 'active' : ''} onClick={() => goTab('homepage')}>Homepage</button>
               <button type="button" className={tab === 'footer' ? 'active' : ''} onClick={() => goTab('footer')}>Footer</button>
               <button type="button" className={tab === 'pages' && !pageForm && pagesView === 'all' ? 'active' : ''} onClick={() => { goTab('pages'); setPagesView('all'); setPageForm(null) }}>All pages</button>
-              {pages.filter((p) => p.footer_group !== 'blog').map((p) => (
-                <button key={p.id} type="button" className={tab === 'pages' && pageForm?.id === p.id ? 'active' : ''} onClick={() => { goTab('pages'); editPage(p) }}>{p.title}</button>
+              {pages.filter((p) => p.footer_group !== 'blog' && p.slug !== 'blog').map((p) => (
+                <button key={p.id} type="button" className={tab === 'pages' && pageForm?.id === p.id ? 'active' : ''} onClick={() => { goTab('pages'); setPagesView('all'); editPage(p) }}>{p.title}</button>
               ))}
               <button type="button" className="nav-sub-add" onClick={() => { goTab('pages'); setPagesView('all'); newPage() }}>+ New page</button>
-              {(() => { const blogPages = pages.filter((p) => p.footer_group === 'blog'); const blogOpen = blogsExpanded || (tab === 'pages' && (pagesView === 'blogs' || pageForm?.footer_group === 'blog')); return <>
-                <button type="button" className="nav-subgroup-toggle" aria-expanded={blogOpen} onClick={() => { setBlogsExpanded(true); goTab('pages'); setPagesView('blogs'); setPageForm(null) }}>Blogs<span className="nav-caret" aria-hidden>{blogOpen ? '▾' : '▸'}</span></button>
-                {blogOpen && (
-                  <div className="admin-nav-sub">
-                    <button type="button" className={tab === 'pages' && !pageForm && pagesView === 'blogs' ? 'active' : ''} onClick={() => { goTab('pages'); setPagesView('blogs'); setPageForm(null) }}>All blogs ({blogPages.length})</button>
-                    <button type="button" className={tab === 'pages' && pageForm && !pageForm.id && pageForm.footer_group === 'blog' ? 'active' : ''} onClick={() => { goTab('pages'); setPagesView('blogs'); newPage({ footer_group: 'blog', show_in_footer: false }) }}>Add new blog</button>
-                  </div>
-                )}
-              </> })()}
               <button type="button" className={tab === 'formatting' ? 'active' : ''} onClick={() => goTab('formatting')}>Formatting guide</button>
+            </div>
+          )}
+          {/* Blogs: its own menu below Pages */}
+          <button type="button" className={`nav-group-toggle${inBlogs ? ' active' : ''}`} aria-expanded={blogOpen} onClick={() => { setBlogsExpanded(true); goTab('pages'); setPagesView('blogs'); setPageForm(null) }}>
+            <span className="nav-ico" aria-hidden>{'\u{1F4DD}'}</span>
+            <span className="nav-label">Blogs</span>
+            <span className="nav-caret" aria-hidden>{blogOpen ? '▾' : '▸'}</span>
+          </button>
+          {blogOpen && (
+            <div className="admin-nav-sub">
+              <button type="button" className={tab === 'pages' && !pageForm && pagesView === 'blogs' ? 'active' : ''} onClick={() => { goTab('pages'); setPagesView('blogs'); setPageForm(null) }}>All blogs ({blogPages.length})</button>
+              <button type="button" className={tab === 'pages' && pageForm && !pageForm.id && pageForm.footer_group === 'blog' ? 'active' : ''} onClick={() => { goTab('pages'); setPagesView('blogs'); newPage({ footer_group: 'blog', show_in_footer: false }) }}>Add new blog</button>
             </div>
           )}
           </> })()}
@@ -2913,7 +2916,7 @@ export default function Admin({ token, onClose }) {
             </form>
           )}
 
-          {(pagesView === 'blogs' ? pages.filter((p) => p.footer_group === 'blog') : pages).length === 0 ? <p className="admin-empty">{pagesView === 'blogs' ? 'No blog posts yet.' : 'No pages yet.'}</p> : (
+          {pagesView === 'blogs' && pageForm ? null : (pagesView === 'blogs' ? pages.filter((p) => p.footer_group === 'blog') : pages).length === 0 ? <p className="admin-empty">{pagesView === 'blogs' ? 'No blog posts yet.' : 'No pages yet.'}</p> : (
             <table className="admin-table">
               <thead><tr><th>Title</th><th>Slug</th><th>Footer group</th><th>In footer</th><th>Published</th><th></th></tr></thead>
               <tbody>
