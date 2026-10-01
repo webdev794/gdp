@@ -1658,7 +1658,7 @@ export default function Admin({ token, onLogout }) {
     <div className={`admin-shell${navOpen ? '' : ' nav-collapsed'}`}>
       <header className="admin-bar">
         <button className="admin-menu-toggle" type="button" aria-label={navOpen ? 'Hide menu' : 'Show menu'} aria-expanded={navOpen} onClick={toggleNav}>☰</button>
-        <div className="admin-brand" title={storeName || undefined}>{storeLogo ? <img className="admin-brand-logo" src={mediaUrl(storeLogo)} alt={storeName} /> : <span>{(storeName || 'TUDEE SHOPPING CENTER').trim().charAt(0).toUpperCase()}</span>} Admin console</div>
+        <div className="admin-brand" role="button" tabIndex={0} title="Dashboard" onClick={() => goTab('dashboard')} onKeyDown={(event) => { if (event.key === 'Enter') goTab('dashboard') }}>{storeLogo ? <img className="admin-brand-logo" src={mediaUrl(storeLogo)} alt={storeName} /> : <span>{(storeName || 'TUDEE SHOPPING CENTER').trim().charAt(0).toUpperCase()}</span>} Admin console</div>
         <div className="admin-bar-right">
           {openOrders && (
             <button type="button" className={`admin-top-tab${openOrders.total > 0 ? ' open-orders' : ''}`} title={`New ${openOrders.by_status.confirmed} · Packing ${openOrders.by_status.packing} · Ready ${openOrders.by_status.ready_for_delivery} · Out for delivery ${openOrders.by_status.out_for_delivery}`} onClick={() => { setStatusFilter('all'); setOrdersPage(1); goTab('orders') }}>

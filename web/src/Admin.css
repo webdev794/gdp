@@ -5,7 +5,7 @@
 .admin-bar{flex:0 0 auto;z-index:5;display:flex;align-items:center;gap:14px;padding:12px 20px;background:#141a12;color:#f3f5ef}
 .admin-menu-toggle{flex:0 0 auto;width:34px;height:34px;border:1px solid #3a4433;border-radius:12px;background:transparent;color:#f3f5ef;font-size:15px;line-height:1;cursor:pointer;transition:background .12s ease,border-color .12s ease}
 .admin-menu-toggle:hover{background:#2e7d32;border-color:#2e7d32}
-.admin-brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.02em;margin-right:auto}
+.admin-brand{display:flex;align-items:center;gap:9px;cursor:pointer;font-weight:700;letter-spacing:-.02em;margin-right:auto}
 .admin-brand span{display:grid;place-items:center;width:24px;height:24px;border-radius:7px;background:#8bd08f;color:#141a12}
 .admin-bar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .admin-top-tab{display:inline-flex;align-items:center;justify-content:center;line-height:1;padding:9px 15px;border:1px solid #3a4433;border-radius:12px;background:transparent;color:#cdd6c8;font:11px 'Okra',sans-serif;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;transition:background .12s ease,color .12s ease}
