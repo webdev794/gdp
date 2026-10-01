@@ -72,6 +72,23 @@ class AdminCategoryTest extends TestCase
         $this->assertSame([1, 2, 3], [$c->fresh()->sort_order, $a->fresh()->sort_order, $b->fresh()->sort_order]);
     }
 
+    public function test_typed_sort_number_inserts_and_renumbers_without_duplicates(): void
+    {
+        $a = Category::create(['name' => 'A', 'slug' => 'a', 'sort_order' => 1]);
+        $b = Category::create(['name' => 'B', 'slug' => 'b', 'sort_order' => 2]);
+        $c = Category::create(['name' => 'C', 'slug' => 'c', 'sort_order' => 3]);
+        $d = Category::create(['name' => 'D', 'slug' => 'd', 'sort_order' => 4]);
+        Sanctum::actingAs($this->admin());
+
+        // D typed as 2 → A1 D2 B3 C4.
+        $this->patchJson("/api/admin/categories/{$d->id}", ['sort_order' => 2])->assertOk();
+        $this->assertSame([1, 2, 3, 4], [$a->fresh()->sort_order, $d->fresh()->sort_order, $b->fresh()->sort_order, $c->fresh()->sort_order]);
+
+        // Deleting closes the gap → A1 D2 C3.
+        $this->deleteJson("/api/admin/categories/{$b->id}")->assertNoContent();
+        $this->assertSame([1, 2, 3], [$a->fresh()->sort_order, $d->fresh()->sort_order, $c->fresh()->sort_order]);
+    }
+
     public function test_non_admin_cannot_manage_categories(): void
     {
         Sanctum::actingAs(User::factory()->create());

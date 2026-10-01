@@ -28,15 +28,44 @@ class AdminCategoryController extends Controller
     {
         $data = $this->validated($request);
         $data['slug'] ??= $this->uniqueSlug($data['name']);
+        $position = $data['sort_order'] ?? null;
+        $category = Category::create($data);
+        $this->placeAt($category, $position); // no number = goes to the end
 
-        return response()->json(['data' => Category::create($data)], 201);
+        return response()->json(['data' => $category->fresh()], 201);
     }
 
     public function update(Request $request, Category $category): JsonResponse
     {
-        $category->update($this->validated($request, $category));
+        $data = $this->validated($request, $category);
+        $category->update($data);
+        if (array_key_exists('sort_order', $data)) {
+            $this->placeAt($category, (int) $data['sort_order']);
+        }
 
         return response()->json(['data' => $category->fresh()->loadCount('products')]);
+    }
+
+    /**
+     * Put a category at a 1-based position (null = last) and renumber all
+     * categories 1, 2, 3 … — a typed Sort number never creates duplicates or gaps.
+     */
+    private function placeAt(Category $category, ?int $position): void
+    {
+        $ids = Category::query()->whereKeyNot($category->id)->orderBy('sort_order')->orderBy('name')->pluck('id')->all();
+        $index = $position === null ? count($ids) : max(0, min(count($ids), $position - 1));
+        array_splice($ids, $index, 0, [$category->id]);
+        $this->renumber($ids);
+    }
+
+    /** @param  array<int, int>  $ids */
+    private function renumber(array $ids): void
+    {
+        DB::transaction(function () use ($ids): void {
+            foreach (array_values($ids) as $index => $id) {
+                Category::whereKey($id)->update(['sort_order' => $index + 1]);
+            }
+        });
     }
 
     /**
@@ -50,11 +79,7 @@ class AdminCategoryController extends Controller
             'ids.*' => ['integer', 'distinct', 'exists:categories,id'],
         ])['ids'];
 
-        DB::transaction(function () use ($ids): void {
-            foreach (array_values($ids) as $index => $id) {
-                Category::whereKey($id)->update(['sort_order' => $index + 1]);
-            }
-        });
+        $this->renumber($ids);
 
         return $this->index();
     }
@@ -69,6 +94,7 @@ class AdminCategoryController extends Controller
 
         try {
             $category->delete();
+            $this->renumber(Category::orderBy('sort_order')->orderBy('name')->pluck('id')->all());
         } catch (QueryException) {
             return response()->json(['message' => 'This category is still in use.'], 409);
         }
