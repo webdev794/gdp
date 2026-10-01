@@ -59,7 +59,7 @@ const STATUS_LABELS = {
 
 // Reasons an admin can give when cancelling — shown to the customer.
 const CANCEL_REASONS = ['Item not available', 'Store closed / holiday', 'Outside delivery area', 'Please try again later', 'Payment issue', 'Customer requested']
-// 'Customer requested' is for the store's records only — customers don't see it.
+// 'Customer requested' shows to customers as "Contact support if this wasn't expected".
 
 const NEXT_ACTIONS = {
   pending_payment: [['cancelled', 'Cancel']],
