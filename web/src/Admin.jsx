@@ -24,7 +24,7 @@ const BELL_ITEM_CAP = 5
 // The three selectable lines on the Orders trend chart, in the fixed order
 // they're always drawn (independent of toggle click order).
 const CHART_LINES = [
-  { key: 'orders', label: 'Orders', color: '#3f7d43', format: (v) => v },
+  { key: 'orders_cents', label: 'Orders', color: '#3f7d43', format: money, axis: 'money', axisTitle: '$' }, // total amount of all orders placed
   { key: 'revenue_cents', label: 'Revenue', color: '#1f5fae', format: money, axis: 'money', axisTitle: '$' },
   { key: 'refunded_cents', label: 'Refunds', color: '#a23b28', format: money, axis: 'money', axisTitle: '$' },
 ]
@@ -354,7 +354,7 @@ export default function Admin({ token, onLogout }) {
   const [metrics, setMetrics] = useState(null)
   const [chart, setChart] = useState(null)
   const [chartBucket, setChartBucket] = useState('day')
-  const [chartMetrics, setChartMetrics] = useState(['orders', 'revenue_cents', 'refunded_cents']) // any non-empty subset of CHART_LINES keys
+  const [chartMetrics, setChartMetrics] = useState(['orders_cents', 'revenue_cents', 'refunded_cents']) // any non-empty subset of CHART_LINES keys
   const [compare, setCompare] = useState(null)
   const [comparePreset, setComparePreset] = useState('day')
   const [compareDays, setCompareDays] = useState(7)

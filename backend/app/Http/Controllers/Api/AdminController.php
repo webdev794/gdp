@@ -260,8 +260,9 @@ class AdminController extends Controller
         $agg = [];
         foreach ($orders as $order) {
             $key = $keyFor($order->created_at->copy()->setTimezone($tz));
-            $agg[$key] ??= ['orders' => 0, 'paid_orders' => 0, 'revenue_cents' => 0, 'refunded_cents' => 0];
+            $agg[$key] ??= ['orders' => 0, 'orders_cents' => 0, 'paid_orders' => 0, 'revenue_cents' => 0, 'refunded_cents' => 0];
             $agg[$key]['orders']++;
+            $agg[$key]['orders_cents'] += (int) $order->total_cents; // value of every order placed, paid or not
             if ($order->payment_status === 'paid') {
                 $agg[$key]['paid_orders']++;
                 $agg[$key]['revenue_cents'] += (int) $order->total_cents;
@@ -281,7 +282,7 @@ class AdminController extends Controller
             );
         foreach ($refundEvents as $event) {
             $key = $keyFor($event->created_at->copy()->setTimezone($tz));
-            $agg[$key] ??= ['orders' => 0, 'paid_orders' => 0, 'revenue_cents' => 0, 'refunded_cents' => 0];
+            $agg[$key] ??= ['orders' => 0, 'orders_cents' => 0, 'paid_orders' => 0, 'revenue_cents' => 0, 'refunded_cents' => 0];
             $agg[$key]['refunded_cents'] += (int) $event->amount_cents;
         }
 
@@ -293,6 +294,7 @@ class AdminController extends Controller
                 'period' => $key,
                 'label' => $labelFor($cursor),
                 'orders' => $agg[$key]['orders'] ?? 0,
+                'orders_cents' => $agg[$key]['orders_cents'] ?? 0,
                 'paid_orders' => $agg[$key]['paid_orders'] ?? 0,
                 'revenue_cents' => $agg[$key]['revenue_cents'] ?? 0,
                 'refunded_cents' => $agg[$key]['refunded_cents'] ?? 0,
@@ -314,6 +316,7 @@ class AdminController extends Controller
                 'by_payment_method' => $orders->countBy('payment_method'),
                 'totals' => [
                     'orders' => array_sum(array_column($series, 'orders')),
+                    'orders_cents' => array_sum(array_column($series, 'orders_cents')),
                     'paid_orders' => array_sum(array_column($series, 'paid_orders')),
                     'revenue_cents' => array_sum(array_column($series, 'revenue_cents')),
                     'refunded_cents' => array_sum(array_column($series, 'refunded_cents')),
