@@ -2099,7 +2099,7 @@ export default function Admin({ token, onClose }) {
 
       {tab === 'products' && (
         <section className="admin-panel">
-          <div className="admin-toolbar">
+          {!productForm && <div className="admin-toolbar">
             <input className="admin-search" value={productSearch} placeholder="Search name or SKU" onChange={(event) => { setProductSearch(event.target.value); setProductsPage(1); setProductForm(null) }} />
             <label>Sort
               <select value={productSort} onChange={(event) => { setProductSort(event.target.value); setProductsPage(1); setProductForm(null) }}>
@@ -2134,7 +2134,7 @@ export default function Admin({ token, onClose }) {
               </select>
             </label>
             <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ ...EMPTY_PRODUCT, category_id: categories[0]?.id ?? '' }); scrollFormIntoView('admin-product-form') }}>New product</button>
-          </div>
+          </div>}
           {!productForm && <div className="admin-toolbar admin-demo-box">
             <strong>Demo products:</strong>
             <select value="" aria-label="Demo products" onChange={(event) => { if (event.target.value) demoProducts(event.target.value) }}>
