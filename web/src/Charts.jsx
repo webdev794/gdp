@@ -97,10 +97,11 @@ export function LineChart({ lines }) {
   active.forEach((line) => {
     const id = line.axis ?? line.key
     let axis = axes.find((a) => a.id === id)
-    if (!axis) { axis = { id, format: line.format ?? ((v) => v), peak: 0 }; axes.push(axis) }
+    if (!axis) { axis = { id, title: line.axisTitle ?? line.label, exact: !line.axis, format: line.format ?? ((v) => v), peak: 0 }; axes.push(axis) }
     axis.peak = Math.max(axis.peak, ...line.points.map((p) => p.value))
   })
-  axes.forEach((axis) => { axis.max = niceMax(axis.peak) })
+  // A shared axis rounds up; a single count line (Orders) tops out at its exact highest value.
+  axes.forEach((axis) => { axis.max = axis.exact ? Math.max(1, axis.peak) : niceMax(axis.peak) })
   axes.sort((a, b) => Number(!active.some((l) => l.axis === a.id)) - Number(!active.some((l) => l.axis === b.id))) // shared (e.g. dollar) axis on the left
   const yOf = (value, axis) => padY + (H - padY * 2) * (1 - value / axis.max)
 
@@ -117,7 +118,8 @@ export function LineChart({ lines }) {
   const ticks = Array.from({ length: TICKS + 1 }, (_, i) => (TICKS - i) / TICKS) // 1 … 0
   const axisLabels = (axis, side) => (
     <div className={`chart-line-y ${side}`}>
-      {ticks.map((t) => <span key={t}>{axis.format(Math.round(axis.max * t))}</span>)}
+      <b>{axis.title}</b>
+      {ticks.map((t) => <span key={t}>{axis.exact && !Number.isInteger(axis.max * t) ? '' : axis.format(Math.round(axis.max * t))}</span>)}
     </div>
   )
   const showEvery = rows.length > 12 ? Math.ceil(rows.length / 8) : 1

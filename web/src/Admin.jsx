@@ -25,8 +25,8 @@ const BELL_ITEM_CAP = 5
 // they're always drawn (independent of toggle click order).
 const CHART_LINES = [
   { key: 'orders', label: 'Orders', color: '#3f7d43', format: (v) => v },
-  { key: 'revenue_cents', label: 'Revenue', color: '#1f5fae', format: money, axis: 'money' },
-  { key: 'refunded_cents', label: 'Refunds', color: '#a23b28', format: money, axis: 'money' },
+  { key: 'revenue_cents', label: 'Revenue', color: '#1f5fae', format: money, axis: 'money', axisTitle: '$' },
+  { key: 'refunded_cents', label: 'Refunds', color: '#a23b28', format: money, axis: 'money', axisTitle: '$' },
 ]
 
 // A rider still holding cash collected on a day other than today (not returned

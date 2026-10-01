@@ -455,6 +455,7 @@ button.admin-bell-more:hover{text-decoration:underline}
 .admin-brand-logo{height:28px;max-width:120px;object-fit:contain;border-radius:6px;background:#fff;padding:2px}
 .admin-footer{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 24px;min-height:64px;background:#000;color:#fff;font-size:14px}.admin-footer a{color:#fff;text-decoration:none}.admin-footer a:hover{text-decoration:underline}
 .chart-line-plot{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:stretch}
-.chart-line-y{display:flex;flex-direction:column;justify-content:space-between;padding:2px 0;font:12px 'Okra',sans-serif;color:var(--muted,#7c857a);white-space:nowrap}
+.chart-line-y{position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:2px 0;font:12px 'Okra',sans-serif;color:var(--muted,#7c857a);white-space:nowrap}
 .chart-line-y.left{text-align:right}.chart-line-y.right{text-align:left}
 .chart-line .chart-grid{stroke:#e9ece5;stroke-width:.6}
+.chart-line-y b{position:absolute;top:-18px;font-weight:600;color:var(--ink,#20291f)}.chart-line-y.left b{right:0}.chart-line-y.right b{left:0}.chart-line-plot{margin-top:20px}
