@@ -20,7 +20,7 @@ class ProductReviewController extends Controller
     public function index(Product $product): JsonResponse
     {
         $reviews = $product->reviews()
-            ->where('is_hidden', false)
+            ->visible()
             ->with('customer:id,name')
             ->latest()
             ->limit(50)

@@ -193,6 +193,8 @@ class AdminController extends Controller
 
         return response()->json(['data' => [
             'awaiting_packing' => $awaitingPacking,
+            // Customer reviews waiting for approval before they are shown.
+            'pending_reviews' => \App\Models\ProductReview::whereNull('approved_at')->where('is_hidden', false)->count(),
             'refused_cod' => $refusedCod,
             'cash_overdue' => $cashOverdue,
             'negative_feedback' => $negativeFeedback,

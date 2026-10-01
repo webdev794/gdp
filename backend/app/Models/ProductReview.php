@@ -7,11 +7,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProductReview extends Model
 {
-    protected $fillable = ['order_id', 'product_id', 'user_id', 'rating', 'comment', 'is_hidden'];
+    protected $fillable = ['order_id', 'product_id', 'user_id', 'rating', 'comment', 'is_hidden', 'approved_at'];
 
     protected function casts(): array
     {
-        return ['rating' => 'integer', 'is_hidden' => 'boolean'];
+        return ['rating' => 'integer', 'is_hidden' => 'boolean', 'approved_at' => 'datetime'];
+    }
+
+    /** Shown on the store: approved by admin and not hidden. */
+    public function scopeVisible($query)
+    {
+        return $query->where('is_hidden', false)->whereNotNull('approved_at');
     }
 
     public function product(): BelongsTo

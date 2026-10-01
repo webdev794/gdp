@@ -372,7 +372,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     if (rated != null && mounted) {
       setState(() => _currentOrder = _currentOrder.copyWith(itemRatings: {..._currentOrder.itemRatings, item.productId: rated}));
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Thanks! Your review is posted.'), backgroundColor: AppTheme.emeraldPrimary),
+        const SnackBar(content: Text('Thanks! Your review will show once the store approves it.'), backgroundColor: AppTheme.emeraldPrimary),
       );
     }
   }

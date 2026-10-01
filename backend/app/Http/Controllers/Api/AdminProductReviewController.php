@@ -17,25 +17,36 @@ class AdminProductReviewController extends Controller
         if ($request->filled('rating')) {
             $query->where('rating', (int) $request->input('rating'));
         }
-        if ($request->input('status') === 'hidden') {
-            $query->where('is_hidden', true);
-        } elseif ($request->input('status') === 'visible') {
-            $query->where('is_hidden', false);
-        }
+        match ($request->input('status')) {
+            'pending' => $query->whereNull('approved_at')->where('is_hidden', false),
+            'visible' => $query->visible(),
+            'hidden' => $query->where('is_hidden', true),
+            default => null,
+        };
 
         $reviews = $query->paginate(50);
 
         return response()->json([
             'data' => $reviews->items(),
-            'meta' => ['total' => $reviews->total(), 'current_page' => $reviews->currentPage(), 'last_page' => $reviews->lastPage()],
+            'meta' => ['pending' => ProductReview::whereNull('approved_at')->where('is_hidden', false)->count(), 'total' => $reviews->total(), 'current_page' => $reviews->currentPage(), 'last_page' => $reviews->lastPage()],
         ]);
     }
 
     public function update(Request $request, ProductReview $review): JsonResponse
     {
-        $validated = $request->validate(['is_hidden' => ['required', 'boolean']]);
+        $validated = $request->validate([
+            'is_hidden' => ['sometimes', 'boolean'],
+            'approved' => ['sometimes', 'accepted'],
+        ]);
 
-        $review->update($validated);
+        if ($validated['approved'] ?? false) {
+            // Approve = publish on the website and in the apps.
+            $review->update(['approved_at' => now(), 'is_hidden' => false]);
+        } elseif (array_key_exists('is_hidden', $validated)) {
+            $review->update(['is_hidden' => $validated['is_hidden']]);
+        } else {
+            return response()->json(['message' => 'Nothing to change.'], 422);
+        }
         $review->product?->refreshRating();
 
         return response()->json(['data' => $review->load(['product:id,name,slug', 'customer:id,name,email'])]);

@@ -290,8 +290,9 @@ function OrderItemReviews({ order, onSaved }) {
     if (!res.ok) { setMessage(Object.values(data.errors ?? {})[0]?.[0] ?? data.message ?? 'Could not save your review.'); return }
     onSaved(data.data)
     setOpen(null); setRating(0); setComment('')
+    setMessage('Thanks! Your review will show once the store approves it.')
   }
-  return <div className="order-item-reviews"><p className="order-item-reviews-h">Rate your items</p>{items.map((it) => {
+  return <div className="order-item-reviews"><p className="order-item-reviews-h">Rate your items</p>{message && open === null && <p className="pm-review-msg">{message}</p>}{items.map((it) => {
     const done = reviewed[it.product_id]
     return <div key={it.product_id} className="oir-row"><span>{it.product_name}</span>{done
       ? <span className="pm-stars" aria-label={`You rated ${done.rating} out of 5`}>{'\u2605'.repeat(done.rating)}{'\u2606'.repeat(5 - done.rating)}</span>

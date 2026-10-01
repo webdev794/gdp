@@ -61,7 +61,7 @@ class Product extends Model
     /** Recompute the visible-review average and count shown on product cards. */
     public function refreshRating(): void
     {
-        $visible = $this->reviews()->where('is_hidden', false);
+        $visible = $this->reviews()->visible();
         $count = (clone $visible)->count();
         $this->forceFill([
             'rating_count' => $count,

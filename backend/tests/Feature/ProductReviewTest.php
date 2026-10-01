@@ -57,6 +57,18 @@ class ProductReviewTest extends TestCase
         $this->postJson("/api/orders/{$first->id}/reviews", ['product_id' => $product->id, 'rating' => 1])->assertUnprocessable();
         $this->postJson("/api/orders/{$second->id}/reviews", ['product_id' => $product->id, 'rating' => 2])->assertCreated();
 
+        // New reviews wait for admin approval before they are shown.
+        $this->assertSame(0, $product->fresh()->rating_count);
+        $this->getJson('/api/products/gala-apples/reviews')->assertJsonPath('summary.count', 0);
+
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+        $this->getJson('/api/admin/notifications')->assertJsonPath('data.pending_reviews', 2);
+        $this->getJson('/api/admin/reviews?status=pending')->assertJsonPath('meta.total', 2);
+        foreach (ProductReview::pluck('id') as $id) {
+            $this->patchJson("/api/admin/reviews/{$id}", ['approved' => true])->assertOk();
+        }
+        Sanctum::actingAs($customer);
+
         $this->assertSame(3.0, $product->fresh()->rating_avg);
         $this->assertSame(2, $product->fresh()->rating_count);
 
@@ -88,8 +100,8 @@ class ProductReviewTest extends TestCase
         $product = $this->product();
         $a = User::factory()->create();
         $b = User::factory()->create();
-        $ra = ProductReview::create(['order_id' => $this->deliver($a, $product)->id, 'product_id' => $product->id, 'user_id' => $a->id, 'rating' => 1]);
-        ProductReview::create(['order_id' => $this->deliver($b, $product)->id, 'product_id' => $product->id, 'user_id' => $b->id, 'rating' => 5]);
+        $ra = ProductReview::create(['order_id' => $this->deliver($a, $product)->id, 'product_id' => $product->id, 'user_id' => $a->id, 'rating' => 1, 'approved_at' => now()]);
+        ProductReview::create(['order_id' => $this->deliver($b, $product)->id, 'product_id' => $product->id, 'user_id' => $b->id, 'rating' => 5, 'approved_at' => now()]);
         $product->refreshRating();
 
         Sanctum::actingAs(User::factory()->create(['is_admin' => true]));

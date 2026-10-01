@@ -365,7 +365,7 @@ export default function Admin({ token, onClose }) {
   const [cancelOther, setCancelOther] = useState('')
   const [reviewsMeta, setReviewsMeta] = useState(null)
   const [reviewsPage, setReviewsPage] = useState(1)
-  const [reviewsFilter, setReviewsFilter] = useState('')
+  const [reviewsFilter, setReviewsFilter] = useState('pending')
   const [customerDetail, setCustomerDetail] = useState(null)
   const [orderDetail, setOrderDetail] = useState(null)
   const [statusFilter, setStatusFilter] = useState('all')
@@ -537,9 +537,9 @@ export default function Admin({ token, onClose }) {
   const moderateReview = async (review, hide) => {
     const response = hide === null
       ? await fetch(`${API_URL}/admin/reviews/${review.id}`, { method: 'DELETE', headers: authHeaders() })
-      : await fetch(`${API_URL}/admin/reviews/${review.id}`, { method: 'PATCH', headers: jsonHeaders(), body: JSON.stringify({ is_hidden: hide }) })
+      : await fetch(`${API_URL}/admin/reviews/${review.id}`, { method: 'PATCH', headers: jsonHeaders(), body: JSON.stringify(hide === 'approve' ? { approved: true } : { is_hidden: hide }) })
     if (!response.ok) { setMessage('Could not update the review.'); return }
-    setMessage(hide === null ? 'Review deleted.' : hide ? 'Review hidden from the website and app.' : 'Review shown again.')
+    setMessage(hide === null ? 'Review deleted.' : hide === 'approve' ? 'Review approved — now shown on the website and app.' : hide ? 'Review hidden from the website and app.' : 'Review shown again.')
     loadReviews()
   }
 
@@ -1628,7 +1628,9 @@ export default function Admin({ token, onClose }) {
   const negativeFeedbackHidden = (notifications.negative_feedback ?? []).length - visibleNegativeFeedback.length
   const financialActivityHidden = (notifications.financial_activity ?? []).length - visibleFinancialActivity.length
 
+  const pendingReviews = notifications.pending_reviews ?? 0
   const notificationCount = visibleRefusedCod.length
+    + pendingReviews
     + visibleCashOverdue.length
     + visibleNegativeFeedback.length
     + visibleFinancialActivity.length
@@ -1684,6 +1686,12 @@ export default function Admin({ token, onClose }) {
                 <h4>Needs attention</h4>
                 {notificationCount === 0 ? <p className="muted">Nothing outstanding.</p> : (
                   <>
+                    {pendingReviews > 0 && (
+                      <section>
+                        <h5>Reviews waiting for approval</h5>
+                        <button type="button" className="admin-bell-item" onClick={() => { setBellOpen(false); setReviewsFilter('pending'); setReviewsPage(1); goTab('reviews') }}>{pendingReviews} new review{pendingReviews === 1 ? '' : 's'} to approve</button>
+                      </section>
+                    )}
                     {visibleRefusedCod.length > 0 && (
                       <section>
                         <h5>Customer refused C.O.D.</h5>
@@ -2369,15 +2377,16 @@ export default function Admin({ token, onClose }) {
         <section className="admin-panel">
           <div className="admin-toolbar">
             <select value={reviewsFilter} onChange={(event) => { setReviewsFilter(event.target.value); setReviewsPage(1) }} aria-label="Show">
+              <option value="pending">Waiting for approval</option>
               <option value="">All reviews</option>
               <option value="visible">Visible</option>
               <option value="hidden">Hidden</option>
             </select>
-            <span className="muted">Customers rate products after delivery, on the website or in the app. Hidden reviews don't show anywhere or count towards the rating.</span>
+            <span className="muted">New reviews wait here until you approve them. Approved reviews show on the website and in the app; hidden ones don't show or count towards the rating.</span>
           </div>
           {listBusy.reviews && reviews.length === 0 ? <Loading>Loading reviews…</Loading> : reviews.length === 0 ? <p className="admin-empty">No reviews yet.</p> : (
             <table className="admin-table">
-              <thead><tr><th>Product</th><th>Rating</th><th>Comment</th><th>Customer</th><th>Date</th><th></th></tr></thead>
+              <thead><tr><th>Product</th><th>Rating</th><th>Comment</th><th>Customer</th><th>Date</th><th>Status</th><th></th></tr></thead>
               <tbody>
                 {reviews.map((review) => (
                   <tr key={review.id} style={review.is_hidden ? { opacity: 0.55 } : undefined}>
@@ -2386,8 +2395,11 @@ export default function Admin({ token, onClose }) {
                     <td>{review.comment || <span className="muted">—</span>}</td>
                     <td>{review.customer?.name}<span className="admin-note">{review.customer?.email}</span></td>
                     <td>{new Date(review.updated_at).toLocaleDateString()}</td>
+                    <td>{review.is_hidden ? <span className="pill pill-draft">Hidden</span> : review.approved_at ? <span className="pill pill-live">Approved</span> : <span className="pill pill-demo">Pending</span>}</td>
                     <td className="admin-actions">
-                      <button className="act" type="button" onClick={() => moderateReview(review, !review.is_hidden)}>{review.is_hidden ? 'Show' : 'Hide'}</button>
+                      {!review.approved_at && !review.is_hidden
+                        ? <button className="act" type="button" onClick={() => moderateReview(review, 'approve')}>Approve</button>
+                        : <button className="act" type="button" onClick={() => moderateReview(review, !review.is_hidden)}>{review.is_hidden ? 'Show' : 'Hide'}</button>}
                       <button className="act danger" type="button" onClick={() => { if (window.confirm('Delete this review?')) moderateReview(review, null) }}>Delete</button>
                     </td>
                   </tr>
