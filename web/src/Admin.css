@@ -448,3 +448,4 @@ button.admin-bell-more:hover{text-decoration:underline}
 .admin-demo-box{display:inline-flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 14px;border:1px solid #d9ddd4;border-radius:12px;background:#fff}
 .admin-form-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.admin-form-head h3{margin:0}.admin-status-pick{display:inline-flex;align-items:center;gap:8px;font-weight:600}.admin-status-pick select{font:inherit;font-weight:500;padding:6px 10px;border:1px solid #d9ddd4;border-radius:8px}
 .pill-live{background:#e3f1e6;color:#1f6b35}.pill-demo{background:#fff1d6;color:#7a5200}.pill-draft{background:#ececec;color:#555}
+.admin-filter-bar{padding:10px 14px;border:1px solid #d9ddd4;border-radius:12px;background:#fff}

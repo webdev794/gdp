@@ -2108,7 +2108,7 @@ export default function Admin({ token, onClose }) {
 
       {tab === 'products' && (
         <section className="admin-panel">
-          {!productForm && <div className="admin-toolbar">
+          {!productForm && <div className="admin-toolbar admin-filter-bar">
             <input className="admin-search" value={productSearch} placeholder="Search name or SKU" onChange={(event) => { setProductSearch(event.target.value); setProductsPage(1); setProductForm(null) }} />
             <label>Sort
               <select value={productSort} onChange={(event) => { setProductSort(event.target.value); setProductsPage(1); setProductForm(null) }}>
@@ -2119,7 +2119,7 @@ export default function Admin({ token, onClose }) {
                 <option value="stock_high">Stock: high to low</option>
               </select>
             </label>
-            {categories.length > 0 && (
+            {(
               <label>Category
                 <select value={productCategory} onChange={(event) => { setProductCategory(event.target.value); setProductsPage(1); setProductForm(null) }}>
                   <option value="">All categories</option>
@@ -2127,7 +2127,7 @@ export default function Admin({ token, onClose }) {
                 </select>
               </label>
             )}
-            {stores.length > 0 && (
+            {(
               <label>Store
                 <select value={productStore} onChange={(event) => { setProductStore(event.target.value); setProductsPage(1); setProductForm(null) }}>
                   <option value="">All stores</option>
