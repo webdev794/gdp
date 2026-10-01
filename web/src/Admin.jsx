@@ -374,6 +374,7 @@ export default function Admin({ token, onClose }) {
   const [productStore, setProductStore] = useState('')
   const [productCategory, setProductCategory] = useState('')
   const [productDemo, setProductDemo] = useState('')
+  const [productStatus, setProductStatus] = useState('') // '' = all, live, demo, draft
   // Rows per page — shared across every list, remembered per browser.
   const [pageSize, setPageSizeRaw] = useState(() => {
     const n = Number(localStorage.getItem('gdp_admin_page_size'))
@@ -512,9 +513,10 @@ export default function Admin({ token, onClose }) {
     if (productStore) qs.set('store_id', productStore)
     if (productCategory) qs.set('category_id', productCategory)
     if (productDemo) qs.set('demo', productDemo)
+    if (productStatus) qs.set('status', productStatus)
     track('products', fetch(`${API_URL}/admin/products?${qs}`, { headers: authHeaders() }).then(readJson)
       .then((data) => { setProducts(data.data ?? []); setProductsMeta(data.meta ?? null) }).catch(() => setMessage('Could not load products.')))
-  }, [authHeaders, productSearch, productSort, productStore, productCategory, productDemo, productsPage, pageSize, track])
+  }, [authHeaders, productSearch, productSort, productStore, productCategory, productDemo, productStatus, productsPage, pageSize, track])
 
   const loadCategories = useCallback(() => {
     track('categories', fetch(`${API_URL}/admin/categories`, { headers: authHeaders() }).then(readJson)
@@ -2291,6 +2293,12 @@ export default function Admin({ token, onClose }) {
 
           {/* While editing or adding a product, show only the form (list returns on Save/Cancel or the Products menu). */}
           {!productForm && <>
+          {/* WordPress-style status links with counts */}
+          {productsMeta?.status_counts && (
+            <p className="admin-status-links">{[['', 'All', 'all'], ['live', 'Live', 'live'], ['demo', 'Demo', 'demo'], ['draft', 'Draft', 'draft']].map(([value, label, key], i) => (
+              <Fragment key={key}>{i > 0 && <span className="muted"> | </span>}<button type="button" className={productStatus === value ? 'active' : ''} onClick={() => { setProductStatus(value); setProductsPage(1) }}>{label} <span className="muted">({productsMeta.status_counts[key]})</span></button></Fragment>
+            ))}</p>
+          )}
           {listBusy.products && products.length === 0 ? <Loading>Loading products…</Loading> : products.length === 0 ? <p className="admin-empty">No products.</p> : (
             <table className="admin-table">
               <thead><tr><th>Name</th><th>SKU</th><th>Category</th><th>Price</th><th>Stock</th><th>Variants</th><th>Status</th><th></th></tr></thead>

@@ -23,6 +23,8 @@ class AdminProductController extends Controller
             'sort' => ['sometimes', Rule::in(['newest', 'oldest', 'name', 'stock_low', 'stock_high'])],
             'per_page' => ['sometimes', 'integer', 'min:1', 'max:1000'],
             'demo' => ['sometimes', Rule::in(['demo', 'real'])],
+            // WordPress-style status tabs: live (on sale, real), demo, draft (hidden).
+            'status' => ['sometimes', Rule::in(['live', 'demo', 'draft'])],
         ]);
 
         $storeId = $validated['store_id'] ?? null;
@@ -47,6 +49,11 @@ class AdminProductController extends Controller
             ))
             ->when($validated['category_id'] ?? null, fn ($query, $id) => $query->where('products.category_id', $id))
             ->when($validated['demo'] ?? null, fn ($query, $demo) => $query->where('products.is_demo', $demo === 'demo'))
+            ->when($validated['status'] ?? null, fn ($query, $status) => match ($status) {
+                'draft' => $query->where('products.is_active', false),
+                'demo' => $query->where('products.is_active', true)->where('products.is_demo', true),
+                default => $query->where('products.is_active', true)->where('products.is_demo', false),
+            })
             ->when($sort === 'newest', fn ($query) => $query->orderByDesc('products.created_at')->orderByDesc('products.id'))
             ->when($sort === 'oldest', fn ($query) => $query->orderBy('products.created_at')->orderBy('products.id'))
             ->when($sort === 'name', fn ($query) => $query->orderBy('products.name'))
@@ -61,6 +68,12 @@ class AdminProductController extends Controller
                 'last_page' => $products->lastPage(),
                 'per_page' => $products->perPage(),
                 'total' => $products->total(),
+                'status_counts' => [
+                    'all' => Product::count(),
+                    'live' => Product::where('is_active', true)->where('is_demo', false)->count(),
+                    'demo' => Product::where('is_active', true)->where('is_demo', true)->count(),
+                    'draft' => Product::where('is_active', false)->count(),
+                ],
             ],
         ]);
     }
