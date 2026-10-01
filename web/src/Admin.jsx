@@ -373,7 +373,6 @@ export default function Admin({ token, onClose }) {
   const [productSort, setProductSort] = useState('newest')
   const [productStore, setProductStore] = useState('')
   const [productCategory, setProductCategory] = useState('')
-  const [productDemo, setProductDemo] = useState('')
   const [productStatus, setProductStatus] = useState('') // '' = all, live, demo, draft
   // Rows per page — shared across every list, remembered per browser.
   const [pageSize, setPageSizeRaw] = useState(() => {
@@ -512,11 +511,10 @@ export default function Admin({ token, onClose }) {
     if (productSearch.trim()) qs.set('search', productSearch.trim())
     if (productStore) qs.set('store_id', productStore)
     if (productCategory) qs.set('category_id', productCategory)
-    if (productDemo) qs.set('demo', productDemo)
     if (productStatus) qs.set('status', productStatus)
     track('products', fetch(`${API_URL}/admin/products?${qs}`, { headers: authHeaders() }).then(readJson)
       .then((data) => { setProducts(data.data ?? []); setProductsMeta(data.meta ?? null) }).catch(() => setMessage('Could not load products.')))
-  }, [authHeaders, productSearch, productSort, productStore, productCategory, productDemo, productStatus, productsPage, pageSize, track])
+  }, [authHeaders, productSearch, productSort, productStore, productCategory, productStatus, productsPage, pageSize, track])
 
   const loadCategories = useCallback(() => {
     track('categories', fetch(`${API_URL}/admin/categories`, { headers: authHeaders() }).then(readJson)
@@ -2137,13 +2135,6 @@ export default function Admin({ token, onClose }) {
                 </select>
               </label>
             )}
-            <label>Demo
-              <select value={productDemo} onChange={(event) => { setProductDemo(event.target.value); setProductsPage(1); setProductForm(null) }}>
-                <option value="">All products</option>
-                <option value="demo">Demo only</option>
-                <option value="real">Real only</option>
-              </select>
-            </label>
             <button className="act" type="button" onClick={() => { if (!stores.length) loadStores(); setProductForm({ ...EMPTY_PRODUCT, category_id: categories[0]?.id ?? '' }); scrollFormIntoView('admin-product-form') }}>Add new product</button>
           </div>}
           {!productForm && <div className="admin-toolbar admin-demo-box">
