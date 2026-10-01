@@ -123,7 +123,7 @@ class OrderDeliveredReceiptTest extends TestCase
         $order = $this->order($customer);
 
         Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
-        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'completed'])->assertOk();
+        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'completed', 'courier_name' => 'Test Courier'])->assertOk();
 
         Notification::assertSentTo($customer, OrderDelivered::class);
     }

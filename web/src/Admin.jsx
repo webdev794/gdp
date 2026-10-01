@@ -1166,7 +1166,10 @@ export default function Admin({ token, onClose }) {
           </span>
         )}
         {steps.map(([status, label]) => (
-          <button key={status} type="button" disabled={busyId === order.id} className={status === 'cancelled' ? 'act danger' : 'act'}
+          <button key={status} type="button"
+            disabled={busyId === order.id || (status === 'completed' && !order.delivery_partner_id && !order.courier_name)}
+            title={status === 'completed' && !order.delivery_partner_id && !order.courier_name ? 'Choose a rider (or "Customer picked up") in the Courier column first' : undefined}
+            className={status === 'cancelled' ? 'act danger' : 'act'}
             onClick={() => (status === 'cancelled' ? (setCancelFor(order.id), setCancelReason(''), setCancelOther('')) : patchOrder(order, { status }))}>{label}</button>
         ))}
       </>

@@ -121,6 +121,14 @@ class AdminOrderController extends Controller
             return response()->json(['message' => 'Provide a status change, a courier assignment, or a payment update.'], 422);
         }
 
+        // Completing needs a record of who handed it over: a rider / courier, or
+        // the "Customer picked up" option (which completes on its own).
+        if (($validated['status'] ?? null) === 'completed'
+            && ! ($validated['delivery_partner_id'] ?? $order->delivery_partner_id)
+            && trim((string) ($validated['courier_name'] ?? $order->courier_name)) === '') {
+            return response()->json(['message' => 'Choose a rider (or "Customer picked up") before marking the order delivered.'], 422);
+        }
+
         if (isset($validated['status']) && ! $order->canTransitionTo($validated['status'])) {
             return response()->json([
                 'message' => "An order that is {$order->status} cannot move to {$validated['status']}.",

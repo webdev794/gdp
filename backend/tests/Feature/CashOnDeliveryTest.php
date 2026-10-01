@@ -60,7 +60,7 @@ class CashOnDeliveryTest extends TestCase
         Sanctum::actingAs($this->admin());
 
         foreach (['packing', 'ready_for_delivery', 'out_for_delivery', 'completed'] as $status) {
-            $this->patchJson("/api/admin/orders/{$order->id}", ['status' => $status])
+            $this->patchJson("/api/admin/orders/{$order->id}", ['status' => $status] + ($status === 'completed' ? ['courier_name' => 'Test Courier'] : []))
                 ->assertOk()
                 ->assertJsonPath('data.status', $status);
         }

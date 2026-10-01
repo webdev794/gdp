@@ -61,6 +61,18 @@ class AdminOrderPickupTest extends TestCase
         $this->getJson('/api/orders')->assertJsonPath('data.0.cancel_reason', 'Store closed / holiday');
     }
 
+    public function test_completing_needs_a_rider_courier_or_pickup_but_cancelling_does_not(): void
+    {
+        $order = $this->order('out_for_delivery');
+        Sanctum::actingAs(User::factory()->create(['is_admin' => true]));
+
+        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'completed'])->assertUnprocessable();
+        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'completed', 'courier_name' => 'Joe'])->assertOk();
+
+        $other = $this->order('packing');
+        $this->patchJson("/api/admin/orders/{$other->id}", ['status' => 'cancelled', 'cancel_reason' => 'Item not available'])->assertOk();
+    }
+
     public function test_open_order_counts_for_the_top_bar(): void
     {
         $this->order('confirmed');
