@@ -103,10 +103,19 @@ export default function AdminEntry() {
     }
   }
 
+  // Sign out: revoke the token on the server, forget it here, back to the admin sign-in.
+  async function logout() {
+    await fetch(`${API_URL}/auth/logout`, { method: 'POST', headers: { Accept: 'application/json', Authorization: `Bearer ${token}` } }).catch(() => {})
+    localStorage.removeItem('gdp_token')
+    localStorage.removeItem('gdp_user')
+    setToken('')
+    setAuthed(false)
+  }
+
   if (checking) return <div className="admin-gate"><p>Loading&hellip;</p></div>
   if (authed) return (
     <Suspense fallback={<div className="admin-gate"><p>Loading console&hellip;</p></div>}>
-      <Admin token={token} onClose={() => { window.location.href = STORE_URL }} />
+      <Admin token={token} onClose={() => { window.location.href = STORE_URL }} onLogout={logout} />
     </Suspense>
   )
 
