@@ -341,7 +341,7 @@ async function fetchJson(url, options) {
   return data
 }
 
-export default function Admin({ token, onClose, onLogout }) {
+export default function Admin({ token, onLogout }) {
   const [tab, setTab] = useState('dashboard')
   const [navOpen, setNavOpen] = useState(() => {
     try { return localStorage.getItem('gdp_admin_nav') !== '0' } catch { return true }
@@ -1795,7 +1795,6 @@ export default function Admin({ token, onClose, onLogout }) {
               </div>
             )}
           </div>
-          <button className="admin-close" type="button" onClick={onClose}>Back to store</button>
           {onLogout && <button className="admin-close" type="button" onClick={onLogout}>Log out</button>}
         </div>
       </header>
@@ -3185,6 +3184,7 @@ export default function Admin({ token, onClose, onLogout }) {
 
       <footer className="admin-footer">
         <span>© {new Date().getFullYear()} {storeName || 'TUDEE SHOPPING CENTER'}</span>
+        <a href={import.meta.env.BASE_URL || '/'} target="_blank" rel="noopener">View store ↗</a>
       </footer>
 
       {thread && (

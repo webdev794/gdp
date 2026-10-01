@@ -115,7 +115,7 @@ export default function AdminEntry() {
   if (checking) return <div className="admin-gate"><p>Loading&hellip;</p></div>
   if (authed) return (
     <Suspense fallback={<div className="admin-gate"><p>Loading console&hellip;</p></div>}>
-      <Admin token={token} onClose={() => { window.location.href = STORE_URL }} onLogout={logout} />
+      <Admin token={token} onLogout={logout} />
     </Suspense>
   )
 
