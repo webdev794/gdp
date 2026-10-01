@@ -71,6 +71,17 @@ export function Delta({ current, previous }) {
 // line is scaled to its own max (independent axes) so very different
 // magnitudes — an order count next to a dollar amount — both stay readable.
 // lines: [{ key, label, color, format?: fn(value)->string, points: [{ label, value }] }]
+// Round an axis top up to a readable number (1, 2, 2.5, 5 × 10^n).
+function niceMax(value) {
+  if (value <= 0) return 1
+  const exp = 10 ** Math.floor(Math.log10(value))
+  return [1, 2, 2.5, 5, 10].map((m) => m * exp).find((v) => v >= value)
+}
+
+// Lines that share an `axis` (e.g. Revenue + Refunds in dollars) use one scale,
+// so a smaller value really sits lower. The first axis is labelled on the left,
+// a second one (e.g. order counts) on the right. Each axis tops out at the
+// period's highest value, rounded up.
 export function LineChart({ lines }) {
   const active = (lines ?? []).filter((line) => (line.points ?? []).length >= 2)
   if (!active.length) return <p className="chart-empty">Not enough data yet.</p>
@@ -78,18 +89,37 @@ export function LineChart({ lines }) {
   const W = 300
   const H = 120
   const padY = 8
+  const TICKS = 4
   const rows = active[0].points
   const stepX = W / (rows.length - 1)
 
+  const axes = []
+  active.forEach((line) => {
+    const id = line.axis ?? line.key
+    let axis = axes.find((a) => a.id === id)
+    if (!axis) { axis = { id, format: line.format ?? ((v) => v), peak: 0 }; axes.push(axis) }
+    axis.peak = Math.max(axis.peak, ...line.points.map((p) => p.value))
+  })
+  axes.forEach((axis) => { axis.max = niceMax(axis.peak) })
+  axes.sort((a, b) => Number(!active.some((l) => l.axis === a.id)) - Number(!active.some((l) => l.axis === b.id))) // shared (e.g. dollar) axis on the left
+  const yOf = (value, axis) => padY + (H - padY * 2) * (1 - value / axis.max)
+
   const built = active.map((line) => {
     const format = line.format ?? ((v) => v)
-    const max = Math.max(1, ...line.points.map((p) => p.value))
-    const coords = line.points.map((p, i) => [i * stepX, padY + (H - padY * 2) * (1 - p.value / max)])
+    const axis = axes.find((a) => a.id === (line.axis ?? line.key))
+    const max = Math.max(0, ...line.points.map((p) => p.value))
+    const coords = line.points.map((p, i) => [i * stepX, yOf(p.value, axis)])
     const d = coords.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ')
 
     return { ...line, format, max, coords, d }
   })
 
+  const ticks = Array.from({ length: TICKS + 1 }, (_, i) => (TICKS - i) / TICKS) // 1 … 0
+  const axisLabels = (axis, side) => (
+    <div className={`chart-line-y ${side}`}>
+      {ticks.map((t) => <span key={t}>{axis.format(Math.round(axis.max * t))}</span>)}
+    </div>
+  )
   const showEvery = rows.length > 12 ? Math.ceil(rows.length / 8) : 1
 
   return (
@@ -101,22 +131,26 @@ export function LineChart({ lines }) {
           </span>
         ))}
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Trend">
-        {built.length === 1 && <path className="line-area" d={`${built[0].d} L${W} ${H} L0 ${H} Z`} />}
-        {built.map((line) => <path key={line.key} d={line.d} fill="none" stroke={line.color} strokeWidth="2" />)}
-        {built.map((line) => line.coords.map(([x, y], i) => (
-          <circle key={`${line.key}-${i}`} cx={x} cy={y} r="2" fill={line.color}>
-            <title>{`${line.label} · ${line.points[i].label}: ${line.format(line.points[i].value)}`}</title>
-          </circle>
-        )))}
-      </svg>
+      <div className="chart-line-plot">
+        {axisLabels(axes[0], 'left')}
+        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Trend">
+          {ticks.map((t) => <line key={t} className="chart-grid" x1="0" x2={W} y1={padY + (H - padY * 2) * (1 - t)} y2={padY + (H - padY * 2) * (1 - t)} />)}
+          {built.length === 1 && <path className="line-area" d={`${built[0].d} L${W} ${H} L0 ${H} Z`} />}
+          {built.map((line) => <path key={line.key} d={line.d} fill="none" stroke={line.color} strokeWidth="2" />)}
+          {built.map((line) => line.coords.map(([x, y], i) => (
+            <circle key={`${line.key}-${i}`} cx={x} cy={y} r="2" fill={line.color}>
+              <title>{`${line.label} · ${line.points[i].label}: ${line.format(line.points[i].value)}`}</title>
+            </circle>
+          )))}
+        </svg>
+        {axes[1] ? axisLabels(axes[1], 'right') : <div />}
+      </div>
       <div className="chart-line-x">
         {rows.map((r, i) => <span key={r.label + i}>{i % showEvery === 0 ? r.label : ''}</span>)}
       </div>
     </div>
   )
 }
-
 // Grid of cells shaded by value. rows: string[]; matrix: number[rows][cols];
 // peak: optional pre-computed max; cols: optional [firstLabel, lastLabel] axis.
 export function Heatmap({ rows, matrix, peak, cols, format = (v) => v, cellTitle }) {
