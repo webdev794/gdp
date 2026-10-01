@@ -163,7 +163,7 @@ const variantRowsFrom = (product) => (product.variants ?? []).map((v) => ({
   stock: v.inventory_quantity, image_url: v.image_url ?? '', is_active: v.is_active,
 }))
 const imageRowsFrom = (product) => (product.images ?? []).map((img) => ({ id: img.id, image_url: img.image_url }))
-const EMPTY_CATEGORY = { name: '', slug: '', sort_order: 0, is_active: true }
+const EMPTY_CATEGORY = { name: '', slug: '', image_url: '', sort_order: 0, is_active: true }
 const EMPTY_STORE = { name: '', line1: '', line2: '', city: '', state: '', postal_code: '', latitude: '', longitude: '', delivery_radius_km: 5, is_active: true }
 const riderFormFrom = (rider) => ({
   id: rider.id,
@@ -215,7 +215,6 @@ function riderStatusChip(rider) {
   )
 }
 const EMPTY_BANNER = { image_url: '', headline: '', category_slug: '', link_url: '', placement: 'strip', sort_order: 0, is_active: true }
-const EMPTY_TILE = { title: '', image_url: '', category_slug: '', link_url: '', sort_order: 0, is_active: true }
 const EMPTY_PAGE = { title: '', slug: '', banner_image: '', content: '', sections: [], footer_group: 'useful_links', show_in_footer: true, is_published: true, sort_order: 0 }
 const sectionLabel = (type) => (SECTION_TYPES.find(([value]) => value === type) ?? [type, type])[1]
 
@@ -411,8 +410,6 @@ export default function Admin({ token, onClose }) {
   const [storeForm, setStoreForm] = useState(null)
   const [banners, setBanners] = useState([])
   const [bannerForm, setBannerForm] = useState(null)
-  const [homeTiles, setHomeTiles] = useState([])
-  const [tileForm, setTileForm] = useState(null)
   const [pages, setPages] = useState([])
   const [pageForm, setPageForm] = useState(null)
   const [pagePreview, setPagePreview] = useState(false)
@@ -579,11 +576,6 @@ export default function Admin({ token, onClose }) {
       .then((data) => setBanners(data.data ?? [])).catch(() => setMessage('Could not load banners.'))
   }, [authHeaders])
 
-  const loadHomeTiles = useCallback(() => {
-    fetch(`${API_URL}/admin/home-tiles`, { headers: authHeaders() }).then(readJson)
-      .then((data) => setHomeTiles(data.data ?? [])).catch(() => setMessage('Could not load homepage tiles.'))
-  }, [authHeaders])
-
   const loadPages = useCallback(() => {
     fetch(`${API_URL}/admin/pages`, { headers: authHeaders() }).then(readJson)
       .then((data) => setPages(data.data ?? [])).catch(() => setMessage('Could not load pages.'))
@@ -624,7 +616,7 @@ export default function Admin({ token, onClose }) {
   }, [loadOpenOrders])
   useEffect(() => { if (tab === 'riders') { loadRiders(); loadStores() } }, [tab, loadRiders, loadStores])
   useEffect(() => { if (tab === 'stores') loadStores() }, [tab, loadStores])
-  useEffect(() => { if (tab === 'homepage') { loadBanners(); loadHomeTiles(); loadCategories() } }, [tab, loadBanners, loadHomeTiles, loadCategories])
+  useEffect(() => { if (tab === 'homepage') { loadBanners(); loadCategories() } }, [tab, loadBanners, loadCategories])
   useEffect(() => { if (tab === 'support') loadThreads() }, [tab, loadThreads])
   const threadId = thread?.id ?? null
   useEffect(() => {
@@ -871,37 +863,6 @@ export default function Admin({ token, onClose }) {
       const response = await fetch(`${API_URL}/admin/banners/${banner.id}`, { method: 'DELETE', headers: authHeaders() })
       if (!response.ok && response.status !== 204) throw new Error((await readJson(response)).message ?? 'Could not delete the banner.')
       loadBanners()
-    } catch (error) { fail(error) }
-  }
-
-  async function saveTile(event) {
-    event.preventDefault()
-    setMessage('')
-    const { id, ...rest } = tileForm
-    const payload = {
-      ...rest,
-      title: rest.title.trim() || null,
-      image_url: rest.image_url.trim() || null,
-      category_slug: rest.category_slug || null,
-      link_url: rest.link_url.trim() || null,
-      sort_order: Number(rest.sort_order) || 0,
-    }
-    try {
-      const response = await fetch(`${API_URL}/admin/home-tiles${id ? `/${id}` : ''}`, { method: id ? 'PATCH' : 'POST', headers: jsonHeaders(), body: JSON.stringify(payload) })
-      const data = await readJson(response)
-      if (!response.ok) throw new Error(data.message ?? Object.values(data.errors ?? {})[0]?.[0] ?? 'Could not save the tile.')
-      setTileForm(null)
-      loadHomeTiles()
-    } catch (error) { fail(error) }
-  }
-
-  async function removeTile(tile) {
-    if (!window.confirm('Delete this homepage tile?')) return
-    setMessage('')
-    try {
-      const response = await fetch(`${API_URL}/admin/home-tiles/${tile.id}`, { method: 'DELETE', headers: authHeaders() })
-      if (!response.ok && response.status !== 204) throw new Error((await readJson(response)).message ?? 'Could not delete the tile.')
-      loadHomeTiles()
     } catch (error) { fail(error) }
   }
 
@@ -1526,7 +1487,7 @@ export default function Admin({ token, onClose }) {
     event.preventDefault()
     setMessage('')
     const { id, ...rest } = categoryForm
-    const payload = { ...rest, sort_order: Number(rest.sort_order) }
+    const payload = { ...rest, image_url: (rest.image_url ?? '').trim() || null, sort_order: Number(rest.sort_order) }
     if (!payload.slug) delete payload.slug
     try {
       const response = await fetch(`${API_URL}/admin/categories${id ? `/${id}` : ''}`, { method: id ? 'PATCH' : 'POST', headers: jsonHeaders(), body: JSON.stringify(payload) })
@@ -1674,7 +1635,7 @@ export default function Admin({ token, onClose }) {
     setMessage('')
     // Any open edit form belongs to the tab you're leaving — close them all.
     setProductForm(null); setCategoryForm(null); setStoreForm(null); setRiderForm(null)
-    setBannerForm(null); setTileForm(null); setPageForm(null)
+    setBannerForm(null); setPageForm(null)
     // On a narrow screen the sidebar overlays the content — close it after a pick.
     if (typeof window !== 'undefined' && window.matchMedia('(max-width: 860px)').matches) {
       setNavOpen(false)
@@ -2358,6 +2319,16 @@ export default function Admin({ token, onClose }) {
           {categoryForm && (
             <form id="admin-category-form" className="admin-form" onSubmit={saveCategory}>
               <h3>{categoryForm.id ? `Edit category #${categoryForm.id}` : 'New category'}</h3>
+              <div className="admin-image-field">
+                {categoryForm.image_url
+                  ? <img className="admin-banner-thumb" src={mediaUrl(categoryForm.image_url)} alt="" />
+                  : <div className="admin-banner-thumb placeholder">no image</div>}
+                <div>
+                  <label>Image — shown on the homepage and category pages<input value={categoryForm.image_url ?? ''} onChange={(event) => setCategoryForm({ ...categoryForm, image_url: event.target.value })} placeholder="/img/… or https://…, or upload" /></label>
+                  <input type="file" accept="image/*" disabled={imgBusy} onChange={(event) => uploadImage(event.target.files?.[0], (url) => setCategoryForm((form) => ({ ...form, image_url: url })))} />
+                  {imgBusy && <span className="muted"> uploading…</span>}
+                </div>
+              </div>
               <div className="admin-form-grid">
                 <label>Name<input required value={categoryForm.name} onChange={(event) => setCategoryForm({ ...categoryForm, name: event.target.value })} /></label>
                 <label>Slug (optional)<input value={categoryForm.slug ?? ''} onChange={(event) => setCategoryForm({ ...categoryForm, slug: event.target.value })} /></label>
@@ -2373,7 +2344,7 @@ export default function Admin({ token, onClose }) {
 
           {listBusy.categories && categories.length === 0 ? <Loading>Loading categories…</Loading> : categories.length === 0 ? <p className="admin-empty">No categories.</p> : (
             <table className="admin-table">
-              <thead><tr><th aria-label="Drag to reorder"></th><th>Name</th><th>Slug</th><th>Products</th><th>Sort</th><th>Active</th><th></th></tr></thead>
+              <thead><tr><th aria-label="Drag to reorder"></th><th>Image</th><th>Name</th><th>Slug</th><th>Products</th><th>Sort</th><th>Active</th><th></th></tr></thead>
               <tbody>
                 {pageSlice(categories, categoriesPage).map((category) => (
                   <tr key={category.id} draggable
@@ -2396,13 +2367,14 @@ export default function Admin({ token, onClose }) {
                     onDrop={(event) => event.preventDefault()}
                     onDragEnd={() => { setDragCatId(null); if (dragCatMoved.current) saveCategoryOrder() }}>
                     <td className="admin-drag-handle" title="Drag to reorder">{'\u283f'}</td>
+                    <td>{category.image_url ? <img className="admin-banner-thumb" src={mediaUrl(category.image_url)} alt="" /> : <span className="muted">—</span>}</td>
                     <td>{category.name}</td>
                     <td>{category.slug}</td>
                     <td>{category.products_count ?? 0}</td>
                     <td>{category.sort_order}</td>
                     <td>{category.is_active ? 'Yes' : 'No'}</td>
                     <td className="admin-actions">
-                      <button className="act" type="button" onClick={() => { setCategoryForm({ id: category.id, name: category.name, slug: category.slug, sort_order: category.sort_order, is_active: category.is_active }); scrollFormIntoView('admin-category-form') }}>Edit</button>
+                      <button className="act" type="button" onClick={() => { setCategoryForm({ id: category.id, name: category.name, slug: category.slug, image_url: category.image_url ?? '', sort_order: category.sort_order, is_active: category.is_active }); scrollFormIntoView('admin-category-form') }}>Edit</button>
                       <button className="act danger" type="button" onClick={() => removeCategory(category)}>Delete</button>
                     </td>
                   </tr>
@@ -2704,59 +2676,6 @@ export default function Admin({ token, onClose }) {
             </table>
           )}
 
-          <h3 className="admin-subhead">Category tiles</h3>
-          <div className="admin-toolbar">
-            <button className="act" type="button" onClick={() => { setTileForm({ ...EMPTY_TILE }); scrollFormIntoView('admin-tile-form') }}>New tile</button>
-            <span className="muted">The homepage shows these in order — first three as large cards, the rest as a grid. Leave the title or image blank to use the category&rsquo;s own. With no active tiles the homepage lists every category.</span>
-          </div>
-
-          {tileForm && (
-            <form id="admin-tile-form" className="admin-form" onSubmit={saveTile}>
-              <h3>{tileForm.id ? `Edit tile #${tileForm.id}` : 'New tile'}</h3>
-              <div className="admin-image-field">
-                {tileForm.image_url
-                  ? <img className="admin-banner-thumb" src={mediaUrl(tileForm.image_url)} alt="" />
-                  : <div className="admin-banner-thumb placeholder">category image</div>}
-                <div>
-                  <label>Custom image URL (optional)<input value={tileForm.image_url} onChange={(event) => setTileForm({ ...tileForm, image_url: event.target.value })} placeholder="blank = use the category image" /></label>
-                  <input type="file" accept="image/*" disabled={imgBusy} onChange={(event) => uploadImage(event.target.files?.[0], (url) => setTileForm((form) => ({ ...form, image_url: url })))} />
-                  {imgBusy && <span className="muted"> uploading…</span>}
-                </div>
-              </div>
-              <div className="admin-form-grid">
-                <label>Category<select value={tileForm.category_slug} onChange={(event) => setTileForm({ ...tileForm, category_slug: event.target.value })}><option value="">— none (use link) —</option>{categories.map((c) => <option key={c.id} value={c.slug}>{c.name}</option>)}</select></label>
-                <label>Custom title (optional)<input maxLength="120" value={tileForm.title} onChange={(event) => setTileForm({ ...tileForm, title: event.target.value })} placeholder="blank = category name" /></label>
-                <label>Or link URL<input value={tileForm.link_url} onChange={(event) => setTileForm({ ...tileForm, link_url: event.target.value })} placeholder="used only if no category" /></label>
-                <label>Sort order<input type="number" min="0" max="9999" value={tileForm.sort_order} onChange={(event) => setTileForm({ ...tileForm, sort_order: event.target.value })} /></label>
-                <label className="admin-check"><input type="checkbox" checked={tileForm.is_active} onChange={(event) => setTileForm({ ...tileForm, is_active: event.target.checked })} /> Active</label>
-              </div>
-              <div className="admin-form-actions">
-                <button className="act" type="submit" disabled={!tileForm.category_slug && !tileForm.link_url.trim()}>Save</button>
-                <button className="act ghost" type="button" onClick={() => setTileForm(null)}>Cancel</button>
-              </div>
-            </form>
-          )}
-
-          {homeTiles.length === 0 ? <p className="admin-empty">No tiles — the homepage is listing every category.</p> : (
-            <table className="admin-table">
-              <thead><tr><th>Image</th><th>Title</th><th>Target</th><th>Order</th><th>Active</th><th></th></tr></thead>
-              <tbody>
-                {homeTiles.map((tile) => (
-                  <tr key={tile.id}>
-                    <td>{tile.image_url ? <img className="admin-banner-thumb" src={mediaUrl(tile.image_url)} alt="" /> : <span className="muted">category</span>}</td>
-                    <td>{tile.title || <span className="muted">category name</span>}</td>
-                    <td>{tile.category_slug ? `#${tile.category_slug}` : (tile.link_url || <span className="muted">—</span>)}</td>
-                    <td>{tile.sort_order}</td>
-                    <td>{tile.is_active ? 'Yes' : 'No'}</td>
-                    <td className="admin-actions">
-                      <button className="act" type="button" onClick={() => { setTileForm({ id: tile.id, title: tile.title ?? '', image_url: tile.image_url ?? '', category_slug: tile.category_slug ?? '', link_url: tile.link_url ?? '', sort_order: tile.sort_order ?? 0, is_active: tile.is_active }); scrollFormIntoView('admin-tile-form') }}>Edit</button>
-                      <button className="act danger" type="button" onClick={() => removeTile(tile)}>Delete</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
         </section>
       )}
 

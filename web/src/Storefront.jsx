@@ -427,7 +427,6 @@ export default function Storefront() {
   const [locationMsg, setLocationMsg] = useState('')
   const [stores, setStores] = useState([])
   const [banners, setBanners] = useState([])
-  const [homeTiles, setHomeTiles] = useState([])
   const [branding, setBranding] = useState(undefined)
   const [footer, setFooter] = useState(null)
   const mapRef = useRef(null)
@@ -556,8 +555,8 @@ export default function Storefront() {
   useEffect(() => {
     fetch(`${API_URL}/config`, { headers: { Accept: 'application/json' } })
       .then(responseJson)
-      .then((data) => { setCodEnabled(!!data.data?.cod_enabled); setStores(data.data?.stores ?? []); setBanners(data.data?.banners ?? []); setHomeTiles(data.data?.home_tiles ?? []); setBranding(data.data?.branding ?? null); setFooter(data.data?.footer ?? null); if (data.data) setFees(data.data) })
-      .catch(() => { setCodEnabled(false); setStores([]); setBanners([]); setHomeTiles([]); setBranding(null) })
+      .then((data) => { setCodEnabled(!!data.data?.cod_enabled); setStores(data.data?.stores ?? []); setBanners(data.data?.banners ?? []); setBranding(data.data?.branding ?? null); setFooter(data.data?.footer ?? null); if (data.data) setFees(data.data) })
+      .catch(() => { setCodEnabled(false); setStores([]); setBanners([]); setBranding(null) })
   }, [])
 
   // Apply admin-configured branding: theme palette, accent colours, tab title
@@ -1578,11 +1577,9 @@ export default function Storefront() {
     if (target.link_url) window.open(target.link_url, '_blank', 'noopener')
   }
 
-  // Curated homepage tiles when an admin has set them; otherwise every category.
+  // Homepage tiles come straight from Admin → Categories (order, image, active).
   const catBySlug = Object.fromEntries(categories.map((c) => [c.slug, c]))
-  const homeTileList = homeTiles.length
-    ? homeTiles
-    : categories.map((c) => ({ id: `cat-${c.id}`, title: c.name, image_url: c.image_url, category_slug: c.slug, link_url: null }))
+  const homeTileList = categories.map((c) => ({ id: `cat-${c.id}`, title: c.name, image_url: c.image_url, category_slug: c.slug, link_url: null }))
   const tileMeta = (tile) => {
     const name = tile.category_slug ? catBySlug[tile.category_slug]?.name : null
     return {
