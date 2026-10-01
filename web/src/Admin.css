@@ -8,7 +8,7 @@
 .admin-brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.02em;margin-right:auto}
 .admin-brand span{display:grid;place-items:center;width:24px;height:24px;border-radius:7px;background:#8bd08f;color:#141a12}
 .admin-bar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-.admin-top-tab{padding:9px 15px;border:1px solid #3a4433;border-radius:12px;background:transparent;color:#cdd6c8;font:11px 'Okra',sans-serif;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;transition:background .12s ease,color .12s ease}
+.admin-top-tab{display:inline-flex;align-items:center;justify-content:center;line-height:1;padding:9px 15px;border:1px solid #3a4433;border-radius:12px;background:transparent;color:#cdd6c8;font:11px 'Okra',sans-serif;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;transition:background .12s ease,color .12s ease}
 .admin-top-tab:hover{background:#2e7d32;color:#fff;border-color:#2e7d32}
 .admin-top-tab.active{background:#2e7d32;color:#fff;border-color:#2e7d32}
 .admin-close{padding:9px 16px;border:1px solid #3a4433;border-radius:12px;background:transparent;color:#f3f5ef;font:11px 'Okra',sans-serif;text-transform:uppercase;letter-spacing:.06em;cursor:pointer;transition:background .12s ease,border-color .12s ease,color .12s ease}
@@ -443,4 +443,4 @@ button.admin-bell-more:hover{text-decoration:underline}
 
 .admin-chat-rating{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;margin:10px 0 0;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fafbf8;font-size:12px}
 .admin-chat-rating-c{flex-basis:100%;color:var(--ink);font-size:13px;line-height:1.4}
-.admin-top-tab.open-orders{color:#8a4b00}.admin-top-tab.open-orders .tab-badge{background:#e07a00}
+.admin-top-tab.open-orders .tab-badge{background:#e07a00}
