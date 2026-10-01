@@ -325,7 +325,7 @@ Admin endpoints (bearer token belonging to an admin user):
 
 ```text
 GET    /api/admin/metrics              dashboard counts, paid revenue, low stock
-GET    /api/admin/metrics/timeseries   orders bucketed over time — ?bucket=day|week|month (+ optional ?from=&to=)
+GET    /api/admin/metrics/timeseries   orders bucketed over time — ?bucket=day|week|month|year (+ optional ?from=&to=)
 GET    /api/admin/metrics/compare       one period-to-date vs the previous equal period — ?preset=day|two_day|week|month|six_month|year|custom (custom needs ?days=N)
 GET    /api/admin/customers            customers with order count and paid spend
 GET    /api/admin/customers/{user}     customer detail: addresses and order history
@@ -345,9 +345,11 @@ DELETE /api/admin/categories/{category}   409 while the category still has produ
 In the storefront, an `is_admin` account sees an **Admin** link in the header that opens a
 full-screen console. A **left sidebar** holds the primary sections (Dashboard, Orders,
 Products, Categories, Customers, Stores, **Store settings**, **Secure access**) plus a
-collapsible **Pages** group (Homepage layout editor, then every content page);
-Support, Settings, the chat-sound toggle and **Back to store** stay in the
-top-right bar. The **☰** button collapses the
+collapsible **Pages** group (All pages — with a Homepage row for banners —,
+Add new page, Formatting guide) and a **Blogs** group (All blogs, Add new blog,
+Formatting guide); Footer sits under **Store settings**. Support, the open-orders
+counter, the 🔔 bell, the all-sounds 🔊 switch and **Log out** stay in the
+top-right bar; the store logo (from Store settings) links to the Dashboard. The **☰** button collapses the
 sidebar for a full-width view (remembered per browser in `localStorage`); on narrow
 screens the sidebar overlays the content and a tap outside closes it. The main area is the
 only scroll container, so it always fits the viewport.
@@ -367,10 +369,16 @@ The **dashboard** tab has three blocks:
   period dropdown, a custom-days input, an orders ↔ revenue toggle, and a ▲/▼ %
   delta headline.
 - **Orders trend** — `GET /api/admin/metrics/timeseries` returns a gap-filled
-  series bucketed by **day / week / month** (default window 14 days / 12 weeks /
-  12 months; a custom `from`/`to` is accepted and capped), with `by_status` and
-  `by_payment_method` counts for the window. Rendered as a bar chart (toggle
-  orders ↔ revenue) plus two pie charts.
+  series bucketed by **day / week / month / year** (default window 14 days / 12 weeks /
+  12 months / 12 years; a custom `from`/`to` is accepted and capped). Each bucket has
+  `orders`, `orders_cents` (value of all orders placed), `paid_orders`,
+  `revenue_cents`, `refunded_cents` and `refunded_orders`; plus `by_status` and
+  `by_payment_method` (delivered orders only). Rendered as a line chart on one
+  shared dollar scale (Orders amount / Revenue / Refunds; dot tooltips add the
+  order count) plus two pie charts.
+- **When orders come in** — `GET /api/admin/metrics/insights?month=YYYY-MM` returns
+  a day-of-month × hour grid (without `month`: last 90 days by weekday), with a
+  matching `cancelled` grid; cells are split red (cancelled share) / green.
 
 Charts are hand-drawn SVG in `web/src/Charts.jsx` — no charting dependency. All
 bucketing / windowing is done in PHP (or portable SQL) so it behaves identically
@@ -854,8 +862,9 @@ curated from **Admin console → homepage**:
 
 1. **Promo banners** — the first (lowest `sort_order`) active banner is a
    full-width hero; the rest form a horizontal strip below it.
-2. **Curated category tiles** — the first three active tiles render as large
-   feature cards (image, item count, sample product names); the rest as a grid.
+2. **Category tiles** — every active category from **Admin → Categories**, in
+   its sort order and with its image; the first three render as large feature
+   cards (image, item count, sample product names), the rest as a grid.
 
 Both a banner and a tile link the same way: a chosen **category** wins, otherwise
 a custom **`link_url`** opens in a new tab.
@@ -864,11 +873,10 @@ a custom **`link_url`** opens in a new tab.
 `POST /api/admin/media`), optional `headline`, `category_slug` **or** `link_url`,
 `sort_order`, `is_active`.
 
-**Category tiles** (`home_tiles` table) — `category_slug` (the link target — "pick
-up the category"), optional `title` and `image_url` overrides (blank falls back to
-the category's own name/image), optional `link_url` for a non-category tile,
-`sort_order`, `is_active`. With **no active tiles** the homepage falls back to
-listing every category.
+**Category tiles** come straight from `categories` (`sort_order`, `image_url`,
+`is_active`), managed in **Admin → Categories** (drag-and-drop order, image
+upload). The old `home_tiles` table is no longer used by the storefront; a
+migration copied any custom tile image onto its category.
 
 Admin API (`+admin`): `GET/POST /api/admin/banners`,
 `PATCH/DELETE /api/admin/banners/{banner}`; `GET/POST /api/admin/home-tiles`,
@@ -898,9 +906,9 @@ social platform (blank hides that icon), and a list of extra label+URL links.
   `show_in_footer`, `footer_group`, `sort_order`.
 - Public API: `GET /api/pages` (published, footer metadata) and
   `GET /api/pages/{slug}` (title + content).
-- Admin: **Admin console → Pages** — a collapsible sidebar group whose first
-  items are the **Homepage** layout editor (banners + category tiles) and the
-  **Footer** editor, followed by every content page; each page opens an editor
+- Admin: **Admin console → Pages** (All pages / Add new page) and **Blogs**
+  (All blogs / Add new blog); the Homepage banners editor is a row in All
+  pages and the **Footer** editor is under Store settings. Each page opens an editor
   (title, auto-slug, Markdown body with a Write/Preview toggle, footer group,
   show-in-footer, published, sort order). Endpoints `GET/POST /api/admin/pages`,
   `PATCH/DELETE /api/admin/pages/{page}`.
